@@ -30,6 +30,7 @@ export function SettingsShell({
           primaryColor={settings?.primary_color ?? "#18181b"}
           logoUrl={settings?.logo_url ?? null}
           heroImageUrl={settings?.hero_image_url ?? null}
+          theme={settings?.theme ?? null}
           onSaved={onSaved}
         />
         <SettingsForm

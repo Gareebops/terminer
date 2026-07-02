@@ -519,20 +519,44 @@ export async function updateStaffPhoto(
   return { ok: true };
 }
 
-export async function updateAppearance(input: {
-  primaryColor: string;
-}): Promise<ActionResult> {
-  const parsed = z
-    .object({ primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Neispravna boja.") })
-    .safeParse(input);
+const appearanceSchema = z.object({
+  primaryColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Neispravna boja.")
+    .optional(),
+  fontPair: z.enum(["geist", "elegant", "modern", "warm", "classic"]).optional(),
+  mode: z.enum(["light", "dark"]).optional(),
+});
+
+export async function updateAppearance(
+  input: z.infer<typeof appearanceSchema>
+): Promise<ActionResult> {
+  const parsed = appearanceSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
   }
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
+
+  const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (parsed.data.primaryColor) patch.primary_color = parsed.data.primaryColor;
+
+  if (parsed.data.fontPair || parsed.data.mode) {
+    const { data: current } = await supabase
+      .from("site_settings")
+      .select("theme")
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+    patch.theme = {
+      ...((current?.theme as object) ?? {}),
+      ...(parsed.data.fontPair ? { font_pair: parsed.data.fontPair } : {}),
+      ...(parsed.data.mode ? { mode: parsed.data.mode } : {}),
+    };
+  }
+
   const { error } = await supabase
     .from("site_settings")
-    .update({ primary_color: parsed.data.primaryColor, updated_at: new Date().toISOString() })
+    .update(patch)
     .eq("tenant_id", tenant.id);
   if (error) return { ok: false, error: "Čuvanje nije uspelo." };
   revalidatePath("/admin/podesavanja");

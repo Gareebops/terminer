@@ -7,7 +7,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
+import { FONT_PAIRS, type FontPairId } from "@/lib/fonts";
+import type { SiteTheme } from "@/lib/types";
 import { updateAppearance, updateSiteImage } from "../actions";
 
 const PRESETS: { name: string; value: string }[] = [
@@ -141,15 +144,21 @@ export function AppearanceForm({
   primaryColor,
   logoUrl,
   heroImageUrl,
+  theme,
   onSaved,
 }: {
   tenantId: string;
   primaryColor: string;
   logoUrl: string | null;
   heroImageUrl: string | null;
+  theme: SiteTheme | null;
   onSaved?: () => void;
 }) {
   const [color, setColor] = useState(primaryColor);
+  const [fontPair, setFontPair] = useState<FontPairId>(
+    (theme?.font_pair as FontPairId) ?? "geist"
+  );
+  const [darkMode, setDarkMode] = useState(theme?.mode === "dark");
   const [pending, startTransition] = useTransition();
 
   function saveColor(next: string) {
@@ -158,6 +167,32 @@ export function AppearanceForm({
       const res = await updateAppearance({ primaryColor: next });
       if (res.ok) {
         toast.success("Boja je sačuvana.");
+        onSaved?.();
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
+    });
+  }
+
+  function saveFontPair(next: FontPairId) {
+    setFontPair(next);
+    startTransition(async () => {
+      const res = await updateAppearance({ fontPair: next });
+      if (res.ok) {
+        toast.success("Fontovi su sačuvani.");
+        onSaved?.();
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
+    });
+  }
+
+  function saveMode(dark: boolean) {
+    setDarkMode(dark);
+    startTransition(async () => {
+      const res = await updateAppearance({ mode: dark ? "dark" : "light" });
+      if (res.ok) {
+        toast.success(dark ? "Tamna varijanta." : "Svetla varijanta.");
         onSaved?.();
       } else {
         toast.error(res.error ?? "Greška.");
@@ -212,6 +247,43 @@ export function AppearanceForm({
               Druga boja
             </label>
           </div>
+        </div>
+
+        <div>
+          <Label>Fontovi</Label>
+          <p className="mb-3 mt-1 text-xs text-muted-foreground">
+            Karakter sajta — naslovi i tekst. Promena se vidi u pregledu desno.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {FONT_PAIRS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                disabled={pending}
+                onClick={() => saveFontPair(p.id)}
+                data-active={fontPair === p.id}
+                className="rounded-lg border p-3 text-left transition hover:bg-accent data-[active=true]:border-ring data-[active=true]:ring-1 data-[active=true]:ring-ring"
+              >
+                <p className="text-sm font-semibold">{p.label}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{p.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div>
+            <Label htmlFor="site-dark">Tamna varijanta sajta</Label>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Tamna pozadina i svetao tekst — barbershop atmosfera.
+            </p>
+          </div>
+          <Switch
+            id="site-dark"
+            checked={darkMode}
+            onCheckedChange={saveMode}
+            disabled={pending}
+          />
         </div>
 
         <ImageUploadRow

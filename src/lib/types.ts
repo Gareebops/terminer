@@ -18,7 +18,13 @@ export interface Tenant {
   created_at: string;
 }
 
+export interface SiteTheme {
+  font_pair?: string; // FontPairId
+  mode?: "light" | "dark";
+}
+
 export interface SiteSettings {
+  theme?: SiteTheme | null;
   tenant_id: string;
   logo_url: string | null;
   hero_title: string | null;

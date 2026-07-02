@@ -75,7 +75,7 @@ export default async function SalonPage({
               {settings.city}
             </p>
           )}
-          <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-6xl">
+          <h1 className="mt-4 font-heading text-4xl font-bold tracking-tight sm:text-6xl">
             {settings?.hero_title || tenant.name}
           </h1>
           {settings?.hero_subtitle && (
@@ -119,7 +119,7 @@ export default async function SalonPage({
         <p className="text-sm font-semibold uppercase tracking-widest text-primary">
           Cenovnik
         </p>
-        <h2 className="mt-2 text-3xl font-bold tracking-tight">Usluge</h2>
+        <h2 className="mt-2 font-heading text-3xl font-bold tracking-tight">Usluge</h2>
         <div className="mt-8 divide-y">
           {services.map((s) => (
             <div key={s.id} className="flex items-center justify-between gap-4 py-4">
@@ -158,7 +158,7 @@ export default async function SalonPage({
             <p className="text-sm font-semibold uppercase tracking-widest text-primary">
               Tim
             </p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight">Ko te šiša</h2>
+            <h2 className="mt-2 font-heading text-3xl font-bold tracking-tight">Ko te šiša</h2>
             <div className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {staff.map((m) => (
                 <div key={m.id} className="text-center">
@@ -192,7 +192,7 @@ export default async function SalonPage({
           <p className="text-sm font-semibold uppercase tracking-widest text-primary">
             Galerija
           </p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight">Naši radovi</h2>
+          <h2 className="mt-2 font-heading text-3xl font-bold tracking-tight">Naši radovi</h2>
           <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {gallery.map((g) => (
               <Image
@@ -214,7 +214,7 @@ export default async function SalonPage({
           <p className="text-sm font-semibold uppercase tracking-widest text-primary">
             Kontakt
           </p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight">Gde smo</h2>
+          <h2 className="mt-2 font-heading text-3xl font-bold tracking-tight">Gde smo</h2>
           <div className="mt-8 flex flex-wrap items-start justify-between gap-6">
             <div className="space-y-3 text-sm">
               {settings?.phone && (
