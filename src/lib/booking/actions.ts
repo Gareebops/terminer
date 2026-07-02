@@ -22,22 +22,33 @@ const uuidSchema = z
   .string()
   .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "Neispravan ID.");
 
-async function loadBookingContext(slug: string, staffId: string, serviceId: string) {
+// Namerno NE filtriramo po is_published: vlasnik testira zakazivanje i pre
+// objave sajta. Anonimni posetilac ne može da dođe do UUID-jeva usluga i
+// frizera neobjavljenog salona (RLS krije stranicu), pa je ovo bezbedno.
+async function loadBookingContext(
+  slug: string,
+  staffId: string,
+  serviceId: string
+): Promise<
+  | { db: ReturnType<typeof createAdminClient>; tenant: Tenant; staff: Staff; service: Service }
+  | { error: string }
+> {
   const db = createAdminClient();
   const { data: tenant } = await db
     .from("tenants")
     .select("*")
     .eq("slug", slug)
-    .eq("is_published", true)
     .maybeSingle();
-  if (!tenant) return null;
+  if (!tenant) return { error: "Salon nije pronađen." };
 
   const [staffRes, serviceRes, linkRes] = await Promise.all([
     db.from("staff").select("*").eq("id", staffId).eq("tenant_id", tenant.id).eq("is_active", true).maybeSingle(),
     db.from("services").select("*").eq("id", serviceId).eq("tenant_id", tenant.id).eq("is_active", true).maybeSingle(),
     db.from("staff_services").select("staff_id").eq("staff_id", staffId).eq("service_id", serviceId).maybeSingle(),
   ]);
-  if (!staffRes.data || !serviceRes.data || !linkRes.data) return null;
+  if (!staffRes.data) return { error: "Frizer nije pronađen ili je neaktivan." };
+  if (!serviceRes.data) return { error: "Usluga nije pronađena ili je neaktivna." };
+  if (!linkRes.data) return { error: "Izabrani frizer ne radi ovu uslugu." };
 
   return {
     db,
@@ -110,10 +121,12 @@ async function getBusyRanges(
   }));
 }
 
-async function computeSlots(
-  ctx: NonNullable<Awaited<ReturnType<typeof loadBookingContext>>>,
-  date: string
-): Promise<string[]> {
+type BookingContext = Exclude<
+  Awaited<ReturnType<typeof loadBookingContext>>,
+  { error: string }
+>;
+
+async function computeSlots(ctx: BookingContext, date: string): Promise<string[]> {
   const window = await getWorkWindow(ctx.db, ctx.staff.id, date);
   if (!window) return [];
 
@@ -142,7 +155,7 @@ export async function getAvailableSlots(input: {
   if (!parsedDate.success) return { error: "Neispravan datum." };
 
   const ctx = await loadBookingContext(input.slug, input.staffId, input.serviceId);
-  if (!ctx) return { error: "Salon, usluga ili frizer nisu pronađeni." };
+  if ("error" in ctx) return { error: ctx.error };
 
   return { slots: await computeSlots(ctx, input.date) };
 }
@@ -176,7 +189,7 @@ export async function createBooking(
   const input = parsed.data;
 
   const ctx = await loadBookingContext(input.slug, input.staffId, input.serviceId);
-  if (!ctx) return { ok: false, error: "Salon, usluga ili frizer nisu pronađeni." };
+  if ("error" in ctx) return { ok: false, error: ctx.error };
 
   // Termin mora biti među trenutno dostupnim slotovima
   const slots = await computeSlots(ctx, input.date);

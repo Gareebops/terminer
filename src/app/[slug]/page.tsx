@@ -24,6 +24,16 @@ export default async function SalonPage({
 
   return (
     <main className="flex-1">
+      {/* Neobjavljen sajt vide samo članovi salona (RLS) — podseti ih */}
+      {!tenant.is_published && (
+        <div className="bg-amber-500 px-4 py-2 text-center text-sm font-medium text-amber-950">
+          Sajt još nije objavljen — vidiš ga samo ti. Objavi ga u{" "}
+          <Link href="/admin/podesavanja" className="underline">
+            Podešavanjima
+          </Link>
+          .
+        </div>
+      )}
       {/* Sticky zaglavlje */}
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
