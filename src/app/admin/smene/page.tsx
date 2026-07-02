@@ -61,8 +61,8 @@ export default async function ShiftsPage({
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Smene</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h1 className="text-3xl font-extrabold tracking-tight">Smene</h1>
+          <p className="mt-1 text-sm font-medium text-ink/50">
             Raspored po datumu. &quot;Podrazumevano&quot; = važi radno vreme
             zaposlenog; smena za konkretan dan ima prednost.
           </p>
@@ -85,7 +85,7 @@ export default async function ShiftsPage({
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 rounded-[2rem] bg-white p-6 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
         <ShiftsGrid
           weekDates={weekDates}
           staff={(staffRes.data ?? []) as Staff[]}

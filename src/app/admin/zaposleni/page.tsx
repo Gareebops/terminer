@@ -16,10 +16,9 @@ export default async function StaffPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Zaposleni</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Novi zaposleni podrazumevano radi sve usluge, pon–sub 09–20. Smene i
-        raspored po datumu stižu uskoro.
+      <h1 className="text-3xl font-extrabold tracking-tight">Zaposleni</h1>
+      <p className="mt-1 text-sm font-medium text-ink/50">
+        Klik na zaposlenog otvara usluge, radno vreme, smene i fotografiju.
       </p>
       <div className="mt-6">
         <StaffManager staff={(staff ?? []) as Staff[]} />

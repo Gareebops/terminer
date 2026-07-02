@@ -43,7 +43,9 @@ export default async function StaffDetailPage({
       >
         <ArrowLeft className="size-4" /> Zaposleni
       </Link>
-      <h1 className="mt-2 text-2xl font-bold">{(staffRes.data as Staff).name}</h1>
+      <h1 className="mt-2 text-3xl font-extrabold tracking-tight">
+        {(staffRes.data as Staff).name}
+      </h1>
       <div className="mt-6">
         <StaffDetail
           staffId={id}

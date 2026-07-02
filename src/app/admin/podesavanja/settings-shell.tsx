@@ -64,7 +64,7 @@ export function SettingsShell({
               </Button>
             </div>
           </div>
-          <div className="overflow-hidden rounded-[2rem] border-8 border-zinc-900 shadow-xl">
+          <div className="overflow-hidden rounded-[2rem] border-8 border-ink shadow-[0_4px_24px_rgba(20,25,20,0.12)]">
             <iframe
               key={refreshKey}
               src={`/${slug}`}

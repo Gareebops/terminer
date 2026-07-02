@@ -15,8 +15,8 @@ export default async function SettingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Podešavanja</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <h1 className="text-3xl font-extrabold tracking-tight">Podešavanja</h1>
+      <p className="mt-1 text-sm font-medium text-ink/50">
         Sadržaj tvog sajta na adresi /{tenant.slug}
       </p>
       <div className="mt-6">

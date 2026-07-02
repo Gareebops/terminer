@@ -323,7 +323,7 @@ export function CalendarView({
         <BlockDialog day={day} staff={staff} />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border">
+      <div className="overflow-x-auto rounded-[2rem] bg-white p-3 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
         <div
           className="grid"
           style={{
@@ -381,8 +381,13 @@ export function CalendarView({
                       key={b.id}
                       onClick={() => removeBlock(b.id)}
                       title={`Blokirano${b.reason ? `: ${b.reason}` : ""} — klik za uklanjanje`}
-                      className="absolute inset-x-1 rounded bg-muted/90 px-2 py-1 text-left text-xs text-muted-foreground ring-1 ring-border hover:ring-destructive"
-                      style={{ top: top(s), height: (e - s) * PX_PER_MIN }}
+                      className="absolute inset-x-1 rounded-xl bg-ink/[0.04] px-2 py-1 text-left text-xs text-ink/60 ring-1 ring-ink/10 hover:ring-red-400"
+                      style={{
+                        top: top(s),
+                        height: (e - s) * PX_PER_MIN,
+                        backgroundImage:
+                          "repeating-linear-gradient(135deg, rgba(0,0,0,0.07) 0 2px, transparent 2px 8px)",
+                      }}
                     >
                       <span className="font-medium">Blokirano</span>
                       {b.reason && <span> · {b.reason}</span>}
@@ -396,7 +401,7 @@ export function CalendarView({
                     <div
                       key={b.id}
                       title={`${b.customer_name} · ${b.customer_phone}`}
-                      className="absolute inset-x-1 overflow-hidden rounded bg-primary px-2 py-1 text-xs text-primary-foreground"
+                      className="absolute inset-x-1 overflow-hidden rounded-xl bg-ink px-2 py-1 text-xs text-white"
                       style={{ top: top(s), height: Math.max((e - s) * PX_PER_MIN, 22) }}
                     >
                       <span className="font-medium">

@@ -141,3 +141,20 @@
     @apply font-sans;
   }
 }
+
+/* Terminer admin scope — DS polish za shadcn komponente unutar admina.
+   Kartice: meka senka bez bordera; dugmad/bedževi/selecti: pill. */
+.admin-scope [data-slot="card"] {
+  border: 0;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 24px rgba(20, 25, 20, 0.06);
+}
+.admin-scope [data-slot="button"],
+.admin-scope [data-slot="badge"],
+.admin-scope [data-slot="select-trigger"],
+.admin-scope [data-slot="dropdown-menu-trigger"] {
+  border-radius: 999px;
+}
+.admin-scope [data-slot="dialog-content"] {
+  border-radius: 1.5rem;
+}

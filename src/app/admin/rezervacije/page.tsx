@@ -19,11 +19,11 @@ export default async function BookingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold">Rezervacije</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
+      <h1 className="text-3xl font-extrabold tracking-tight">Rezervacije</h1>
+      <p className="mt-1 text-sm font-medium text-ink/50">
         Predstojeći termini, od danas pa nadalje.
       </p>
-      <div className="mt-6">
+      <div className="mt-6 rounded-[2rem] bg-white p-6 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
         <BookingsTable
           bookings={
             (bookings ?? []) as (Booking & {

@@ -13,7 +13,7 @@ export default async function AdminLayout({
 
   return (
     <div
-      className="flex min-h-screen flex-1 gap-4 bg-canvas p-4 font-display text-ink"
+      className="admin-scope flex min-h-screen flex-1 gap-4 bg-canvas p-4 font-display text-ink"
       style={{ ["--radius" as string]: "1rem" }}
     >
       <aside className="sticky top-4 flex h-[calc(100vh-2rem)] w-60 shrink-0 flex-col rounded-3xl bg-ink text-white">

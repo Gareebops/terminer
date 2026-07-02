@@ -106,7 +106,7 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
         {staff.map((m) => (
           <div
             key={m.id}
-            className="flex items-center justify-between rounded-lg border p-4"
+            className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-[0_4px_24px_rgba(20,25,20,0.06)]"
           >
             <Link
               href={`/admin/zaposleni/${m.id}`}

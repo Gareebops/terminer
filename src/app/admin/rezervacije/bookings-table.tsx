@@ -29,12 +29,12 @@ const statusLabels: Record<BookingStatus, string> = {
   no_show: "Nije došao",
 };
 
-const statusVariants: Record<BookingStatus, "default" | "secondary" | "destructive" | "outline"> = {
-  pending: "outline",
-  confirmed: "default",
-  cancelled: "destructive",
-  completed: "secondary",
-  no_show: "destructive",
+const statusStyles: Record<BookingStatus, string> = {
+  pending: "bg-ink/5 text-ink",
+  confirmed: "bg-mint text-ink",
+  cancelled: "bg-red-100 text-red-900",
+  completed: "bg-lavender text-ink",
+  no_show: "bg-red-100 text-red-900",
 };
 
 type Row = Booking & {
@@ -90,7 +90,9 @@ export function BookingsTable({ bookings }: { bookings: Row[] }) {
             <TableCell>{b.services?.name ?? "—"}</TableCell>
             <TableCell>{b.staff?.name ?? "—"}</TableCell>
             <TableCell>
-              <Badge variant={statusVariants[b.status]}>{statusLabels[b.status]}</Badge>
+              <Badge className={`border-0 font-semibold ${statusStyles[b.status]}`}>
+                {statusLabels[b.status]}
+              </Badge>
             </TableCell>
             <TableCell>
               <DropdownMenu>

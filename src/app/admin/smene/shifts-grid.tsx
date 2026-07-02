@@ -63,7 +63,7 @@ export function ShiftsGrid({
               return (
                 <th
                   key={d}
-                  className={`border-b p-2 text-center font-medium ${d === todayStr ? "bg-accent/50" : ""}`}
+                  className={`border-b p-2 text-center font-medium ${d === todayStr ? "bg-mint/40" : ""}`}
                 >
                   <div>{DAY_NAMES_SR[date.getDay()].slice(0, 3)}</div>
                   <div className="text-xs font-normal text-muted-foreground">
@@ -83,7 +83,7 @@ export function ShiftsGrid({
                 {weekDates.map((d) => (
                   <td
                     key={d}
-                    className={`border-b p-1 ${d === todayStr ? "bg-accent/50" : ""}`}
+                    className={`border-b p-1 ${d === todayStr ? "bg-mint/40" : ""}`}
                   >
                     <Select
                       value={cellValue(m.id, d)}

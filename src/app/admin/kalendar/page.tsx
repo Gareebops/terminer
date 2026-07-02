@@ -55,7 +55,7 @@ export default async function CalendarPage({
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Kalendar</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight">Kalendar</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" asChild>
             <Link href={`/admin/kalendar?dan=${addDays(day, -1)}`}>
