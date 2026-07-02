@@ -6,6 +6,8 @@ import {
   Scissors,
   Users,
 } from "lucide-react";
+import { HeroItem, HeroStagger } from "@/components/animate";
+import { HeroDemo } from "@/components/landing/hero-demo";
 
 const features = [
   {
@@ -55,32 +57,45 @@ export default function HomePage() {
         </nav>
       </header>
 
-      {/* Tamna hero kartica */}
+      {/* Tamna hero kartica sa živom demonstracijom */}
       <section className="mx-auto max-w-5xl px-4 pt-4">
-        <div className="rounded-[2rem] bg-ink px-6 py-20 text-center text-white sm:py-24">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">
-            Domaća platforma za salone
-          </p>
-          <h1 className="mx-auto mt-5 max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
-            Sajt i online zakazivanje za tvoj salon — za par minuta
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-white/60">
-            Registruj salon, unesi usluge i radno vreme, izaberi izgled — i
-            klijenti odmah mogu da zakazuju online.
-          </p>
-          <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/registracija"
-              className="flex items-center gap-2 rounded-full bg-mint px-7 py-3.5 font-bold text-ink transition-transform hover:scale-[1.03]"
-            >
-              Kreni besplatno <ArrowUpRight className="size-4" />
-            </Link>
-            <Link
-              href="/demo"
-              className="rounded-full border border-white/20 px-7 py-3.5 font-semibold text-white/90 transition-colors hover:bg-white/10"
-            >
-              Pogledaj demo salon
-            </Link>
+        <div className="grid items-center gap-10 overflow-hidden rounded-[2rem] bg-ink px-6 py-14 text-white sm:px-10 lg:grid-cols-[1.15fr_1fr] lg:py-16">
+          <HeroStagger>
+            <HeroItem>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">
+                Domaća platforma za salone
+              </p>
+            </HeroItem>
+            <HeroItem>
+              <h1 className="mt-5 max-w-xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
+                Sajt i online zakazivanje za tvoj salon — za par minuta
+              </h1>
+            </HeroItem>
+            <HeroItem>
+              <p className="mt-6 max-w-lg text-lg text-white/60">
+                Registruj salon, unesi usluge i radno vreme, izaberi izgled — i
+                klijenti odmah mogu da zakazuju online.
+              </p>
+            </HeroItem>
+            <HeroItem>
+              <div className="mt-9 flex flex-wrap gap-3">
+                <Link
+                  href="/registracija"
+                  className="flex items-center gap-2 rounded-full bg-mint px-7 py-3.5 font-bold text-ink transition-transform hover:scale-[1.03]"
+                >
+                  Kreni besplatno <ArrowUpRight className="size-4" />
+                </Link>
+                <Link
+                  href="/demo"
+                  className="rounded-full border border-white/20 px-7 py-3.5 font-semibold text-white/90 transition-colors hover:bg-white/10"
+                >
+                  Pogledaj demo salon
+                </Link>
+              </div>
+            </HeroItem>
+          </HeroStagger>
+          <div className="hidden justify-center sm:flex">
+            <HeroDemo />
           </div>
         </div>
       </section>
