@@ -21,10 +21,18 @@ export default async function BookingPage({
       >
         <ArrowLeft className="size-4" /> {site.tenant.name}
       </Link>
-      <h1 className="mt-4 text-3xl font-bold tracking-tight">Zakaži termin</h1>
+      <h1 className="mt-4 font-heading text-3xl font-bold tracking-tight">
+        Zakaži termin
+      </h1>
       <div className="mt-8">
         <BookingWizard
           slug={site.tenant.slug}
+          salonName={site.tenant.name}
+          address={
+            site.settings
+              ? [site.settings.address, site.settings.city].filter(Boolean).join(", ")
+              : null
+          }
           services={site.services}
           staff={site.staff}
           staffServices={site.staffServices}
