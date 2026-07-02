@@ -1,29 +1,8 @@
 import Link from "next/link";
-import {
-  CalendarDays,
-  CalendarRange,
-  ClipboardList,
-  ExternalLink,
-  Images,
-  LayoutDashboard,
-  Scissors,
-  Settings,
-  Users,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
 import { getAdminContext } from "@/lib/admin";
+import { AdminNav } from "./admin-nav";
 import { LogoutButton } from "./logout-button";
-
-const nav = [
-  { href: "/admin", label: "Početna", icon: LayoutDashboard },
-  { href: "/admin/kalendar", label: "Kalendar", icon: CalendarDays },
-  { href: "/admin/rezervacije", label: "Rezervacije", icon: ClipboardList },
-  { href: "/admin/usluge", label: "Usluge", icon: Scissors },
-  { href: "/admin/zaposleni", label: "Zaposleni", icon: Users },
-  { href: "/admin/smene", label: "Smene", icon: CalendarRange },
-  { href: "/admin/galerija", label: "Galerija", icon: Images },
-  { href: "/admin/podesavanja", label: "Podešavanja", icon: Settings },
-];
 
 export default async function AdminLayout({
   children,
@@ -33,38 +12,32 @@ export default async function AdminLayout({
   const { tenant } = await getAdminContext();
 
   return (
-    <div className="flex min-h-screen flex-1">
-      <aside className="flex w-56 shrink-0 flex-col border-r bg-muted/30">
-        <div className="border-b p-4">
-          <p className="truncate font-semibold">{tenant.name}</p>
+    <div
+      className="flex min-h-screen flex-1 gap-4 bg-canvas p-4 font-display text-ink"
+      style={{ ["--radius" as string]: "1rem" }}
+    >
+      <aside className="sticky top-4 flex h-[calc(100vh-2rem)] w-60 shrink-0 flex-col rounded-3xl bg-ink text-white">
+        <div className="p-5 pb-2">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">
+            Terminer
+          </p>
+          <p className="mt-1.5 truncate text-lg font-bold tracking-tight">
+            {tenant.name}
+          </p>
           <Link
             href={`/${tenant.slug}`}
             target="_blank"
-            className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:underline"
+            className="mt-1 flex items-center gap-1 text-xs text-white/50 hover:text-white"
           >
             /{tenant.slug} <ExternalLink className="size-3" />
           </Link>
         </div>
-        <nav className="flex-1 space-y-1 p-2">
-          {nav.map((item) => (
-            <Button
-              key={item.href}
-              variant="ghost"
-              className="w-full justify-start"
-              asChild
-            >
-              <Link href={item.href}>
-                <item.icon className="size-4" />
-                {item.label}
-              </Link>
-            </Button>
-          ))}
-        </nav>
-        <div className="border-t p-2">
+        <AdminNav />
+        <div className="border-t border-white/10 p-3">
           <LogoutButton />
         </div>
       </aside>
-      <main className="flex-1 p-6">{children}</main>
+      <main className="min-w-0 flex-1 py-2 pr-2">{children}</main>
     </div>
   );
 }

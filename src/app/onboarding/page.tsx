@@ -37,8 +37,8 @@ export default function OnboardingPage() {
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-16">
-      <Card className="w-full max-w-md">
+    <main className="flex flex-1 items-center justify-center bg-canvas px-4 py-16 font-display">
+      <Card className="w-full max-w-md rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
         <CardHeader>
           <CardTitle>Napravi svoj salon</CardTitle>
         </CardHeader>

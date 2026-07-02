@@ -45,8 +45,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-16">
-      <Card className="w-full max-w-sm">
+    <main className="flex flex-1 items-center justify-center bg-canvas px-4 py-16 font-display">
+      <Card className="w-full max-w-sm rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
         <CardHeader>
           <CardTitle>Registruj svoj salon</CardTitle>
         </CardHeader>

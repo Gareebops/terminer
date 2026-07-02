@@ -32,7 +32,7 @@ function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
       <CardHeader>
         <CardTitle>Prijava</CardTitle>
       </CardHeader>
@@ -75,7 +75,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-16">
+    <main className="flex flex-1 items-center justify-center bg-canvas px-4 py-16 font-display">
       <Suspense>
         <LoginForm />
       </Suspense>
