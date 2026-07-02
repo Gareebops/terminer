@@ -114,6 +114,60 @@ export default function HomePage() {
         ))}
       </section>
 
+      {/* Cenovnik */}
+      <section className="mx-auto max-w-5xl px-4 pb-16">
+        <div className="text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink/40">
+            Cenovnik
+          </p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+            Jedna cena, sve uključeno
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl font-medium text-ink/55">
+            Košta te otprilike jedno šišanje mesečno — a pokrije se prvom
+            rezervacijom koja ti ne bi propala.
+          </p>
+        </div>
+        <div className="mx-auto mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
+          <div className="rounded-[2rem] bg-white p-7 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
+            <p className="text-sm font-bold uppercase tracking-wider text-ink/40">
+              Mesečno
+            </p>
+            <p className="mt-3 text-5xl font-extrabold tracking-tight">
+              1.990 <span className="text-lg font-bold text-ink/50">RSD/mes</span>
+            </p>
+            <ul className="mt-5 space-y-2 text-sm font-medium text-ink/60">
+              <li>✓ Sajt salona + online zakazivanje</li>
+              <li>✓ Neograničeno rezervacija i zaposlenih</li>
+              <li>✓ Smene, kalendar, statistika</li>
+            </ul>
+          </div>
+          <div className="relative rounded-[2rem] bg-mint p-7">
+            <span className="absolute right-5 top-5 rounded-full bg-ink px-3 py-1 text-xs font-bold text-white">
+              2 meseca gratis
+            </span>
+            <p className="text-sm font-bold uppercase tracking-wider text-ink/50">
+              Godišnje
+            </p>
+            <p className="mt-3 text-5xl font-extrabold tracking-tight">
+              19.900 <span className="text-lg font-bold text-ink/50">RSD/god</span>
+            </p>
+            <ul className="mt-5 space-y-2 text-sm font-medium text-ink/60">
+              <li>✓ Sve iz mesečnog plana</li>
+              <li>✓ Ispadne 1.658 RSD mesečno</li>
+              <li>✓ Jedna faktura godišnje</li>
+            </ul>
+          </div>
+        </div>
+        <p className="mt-6 text-center text-sm font-semibold text-ink/60">
+          Prvih <span className="text-ink">30 dana je besplatno</span> — bez
+          kartice, bez obaveze.{" "}
+          <Link href="/registracija" className="underline">
+            Probaj odmah
+          </Link>
+        </p>
+      </section>
+
       <footer className="mx-auto flex max-w-5xl items-center justify-between px-4 pb-10 text-sm font-medium text-ink/50">
         <span>© {new Date().getFullYear()} Terminer</span>
         <span>Napravljeno u Srbiji</span>

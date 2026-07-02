@@ -16,6 +16,9 @@ export interface Tenant {
   timezone: string;
   is_published: boolean;
   created_at: string;
+  trial_ends_at: string;
+  paid_until: string | null;
+  billing_note: string | null;
 }
 
 export interface SiteTheme {

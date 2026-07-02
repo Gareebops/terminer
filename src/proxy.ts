@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // Rezervisani path segmenti koji nisu tenant slug-ovi.
 const RESERVED = new Set([
   "admin",
+  "superadmin",
   "prijava",
   "registracija",
   "onboarding",

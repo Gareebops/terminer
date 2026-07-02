@@ -1,8 +1,42 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { getAdminContext } from "@/lib/admin";
+import { subscriptionInfo } from "@/lib/billing";
 import { AdminNav } from "./admin-nav";
 import { LogoutButton } from "./logout-button";
+
+function SubscriptionBanner({
+  status,
+  daysLeft,
+}: {
+  status: string;
+  daysLeft: number;
+}) {
+  if (status === "active") return null;
+
+  const styles: Record<string, string> = {
+    trial: "bg-lavender text-ink",
+    grace: "bg-amber-400 text-amber-950",
+    expired: "bg-red-500 text-white",
+  };
+  const text: Record<string, string> = {
+    trial: `Probni period — još ${daysLeft} ${daysLeft === 1 ? "dan" : "dana"} besplatnog korišćenja.`,
+    grace: `Pretplata je istekla — online zakazivanje se pauzira za ${daysLeft} ${daysLeft === 1 ? "dan" : "dana"}.`,
+    expired:
+      "Pretplata je istekla i online zakazivanje je pauzirano. Tvoj sajt je i dalje aktivan.",
+  };
+
+  return (
+    <div
+      className={`mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl px-5 py-3 text-sm font-semibold ${styles[status]}`}
+    >
+      <span>{text[status]}</span>
+      <span className="text-xs font-medium opacity-80">
+        Produženje: 1.990 RSD/mes ili 19.900 RSD/god — javi se za fakturu.
+      </span>
+    </div>
+  );
+}
 
 export default async function AdminLayout({
   children,
@@ -10,6 +44,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const { tenant } = await getAdminContext();
+  const sub = subscriptionInfo(tenant);
 
   return (
     <div
@@ -37,7 +72,10 @@ export default async function AdminLayout({
           <LogoutButton />
         </div>
       </aside>
-      <main className="min-w-0 flex-1 py-2 pr-2">{children}</main>
+      <main className="min-w-0 flex-1 py-2 pr-2">
+        <SubscriptionBanner status={sub.status} daysLeft={sub.daysLeft} />
+        {children}
+      </main>
     </div>
   );
 }

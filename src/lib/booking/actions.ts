@@ -9,6 +9,7 @@ import {
   type TimeRange,
 } from "@/lib/booking/slots";
 import { nowInZone, zonedToUtc } from "@/lib/booking/timezone";
+import { isBookingPaused } from "@/lib/billing";
 import type { Service, Staff, Tenant } from "@/lib/types";
 
 // Sve javne booking operacije idu kroz ove server akcije sa service-role
@@ -40,6 +41,11 @@ async function loadBookingContext(
     .eq("slug", slug)
     .maybeSingle();
   if (!tenant) return { error: "Salon nije pronađen." };
+
+  // Istekla pretplata pauzira samo online zakazivanje — sajt ostaje živ
+  if (isBookingPaused(tenant as Tenant)) {
+    return { error: "Online zakazivanje je trenutno pauzirano. Pozovi salon telefonom." };
+  }
 
   const [staffRes, serviceRes, linkRes] = await Promise.all([
     db.from("staff").select("*").eq("id", staffId).eq("tenant_id", tenant.id).eq("is_active", true).maybeSingle(),
