@@ -566,6 +566,47 @@ export async function updateSiteImage(
   return { ok: true };
 }
 
+export async function addGalleryImage(url: string): Promise<ActionResult> {
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+
+  const expectedPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tenant-media/${tenant.id}/`;
+  if (!url.startsWith(expectedPrefix)) {
+    return { ok: false, error: "Neispravna adresa slike." };
+  }
+
+  const { error } = await supabase
+    .from("gallery")
+    .insert({ tenant_id: tenant.id, image_url: url });
+  if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+
+  revalidatePath("/admin/galerija");
+  revalidatePath(`/${tenant.slug}`);
+  return { ok: true };
+}
+
+export async function deleteGalleryImage(id: string): Promise<ActionResult> {
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+
+  const { data: row } = await supabase
+    .from("gallery")
+    .select("image_url")
+    .eq("id", id)
+    .maybeSingle();
+
+  const { error } = await supabase.from("gallery").delete().eq("id", id);
+  if (error) return { ok: false, error: "Brisanje nije uspelo." };
+
+  // Počisti i fajl iz storage-a (ako ne uspe, red je već obrisan — nije kritično)
+  const path = row?.image_url?.split("/tenant-media/")[1];
+  if (path) await supabase.storage.from("tenant-media").remove([path]);
+
+  revalidatePath("/admin/galerija");
+  revalidatePath(`/${tenant.slug}`);
+  return { ok: true };
+}
+
 const settingsSchema = z.object({
   heroTitle: z.string().trim().max(100).optional(),
   heroSubtitle: z.string().trim().max(300).optional(),

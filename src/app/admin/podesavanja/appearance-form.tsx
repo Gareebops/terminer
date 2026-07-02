@@ -26,6 +26,7 @@ function ImageUploadRow({
   tenantId,
   currentUrl,
   preview,
+  onSaved,
 }: {
   kind: "logo" | "hero";
   label: string;
@@ -33,6 +34,7 @@ function ImageUploadRow({
   tenantId: string;
   currentUrl: string | null;
   preview: "square" | "wide";
+  onSaved?: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
@@ -61,16 +63,24 @@ function ImageUploadRow({
       }
       const { data } = supabase.storage.from("tenant-media").getPublicUrl(path);
       const res = await updateSiteImage(kind, data.publicUrl);
-      if (res.ok) toast.success("Sačuvano.");
-      else toast.error(res.error ?? "Greška.");
+      if (res.ok) {
+        toast.success("Sačuvano.");
+        onSaved?.();
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
     });
   }
 
   function remove() {
     startTransition(async () => {
       const res = await updateSiteImage(kind, null);
-      if (res.ok) toast.success("Uklonjeno.");
-      else toast.error(res.error ?? "Greška.");
+      if (res.ok) {
+        toast.success("Uklonjeno.");
+        onSaved?.();
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
     });
   }
 
@@ -131,11 +141,13 @@ export function AppearanceForm({
   primaryColor,
   logoUrl,
   heroImageUrl,
+  onSaved,
 }: {
   tenantId: string;
   primaryColor: string;
   logoUrl: string | null;
   heroImageUrl: string | null;
+  onSaved?: () => void;
 }) {
   const [color, setColor] = useState(primaryColor);
   const [pending, startTransition] = useTransition();
@@ -144,8 +156,12 @@ export function AppearanceForm({
     setColor(next);
     startTransition(async () => {
       const res = await updateAppearance({ primaryColor: next });
-      if (res.ok) toast.success("Boja je sačuvana.");
-      else toast.error(res.error ?? "Greška.");
+      if (res.ok) {
+        toast.success("Boja je sačuvana.");
+        onSaved?.();
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
     });
   }
 
@@ -205,6 +221,7 @@ export function AppearanceForm({
           tenantId={tenantId}
           currentUrl={logoUrl}
           preview="square"
+          onSaved={onSaved}
         />
         <ImageUploadRow
           kind="hero"
@@ -213,6 +230,7 @@ export function AppearanceForm({
           tenantId={tenantId}
           currentUrl={heroImageUrl}
           preview="wide"
+          onSaved={onSaved}
         />
       </CardContent>
     </Card>

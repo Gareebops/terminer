@@ -16,10 +16,12 @@ export function SettingsForm({
   settings,
   isPublished,
   slug,
+  onSaved,
 }: {
   settings: SiteSettings | null;
   isPublished: boolean;
   slug: string;
+  onSaved?: () => void;
 }) {
   const [heroTitle, setHeroTitle] = useState(settings?.hero_title ?? "");
   const [heroSubtitle, setHeroSubtitle] = useState(settings?.hero_subtitle ?? "");
@@ -49,8 +51,12 @@ export function SettingsForm({
         showGallery,
         showPrices,
       });
-      if (res.ok) toast.success("Sačuvano.");
-      else toast.error(res.error ?? "Greška.");
+      if (res.ok) {
+        toast.success("Sačuvano.");
+        onSaved?.();
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
     });
   }
 
@@ -63,6 +69,7 @@ export function SettingsForm({
         toast.error(res.error ?? "Greška.");
       } else {
         toast.success(next ? "Sajt je objavljen!" : "Sajt je sakriven.");
+        onSaved?.();
       }
     });
   }
