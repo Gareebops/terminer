@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
+import { fromMinutes, toMinutes } from "@/lib/booking/slots";
+import { zonedToUtc } from "@/lib/booking/timezone";
 import type { BookingStatus } from "@/lib/types";
 
 // Sve admin akcije koriste session klijent — RLS propušta samo redove
@@ -359,6 +361,134 @@ export async function setShiftAssignment(
   }
 
   revalidatePath("/admin/smene");
+  return { ok: true };
+}
+
+const adminBookingSchema = z.object({
+  serviceId: z.string().min(1),
+  staffId: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time: z.string().regex(/^\d{2}:\d{2}$/),
+  customerName: z.string().trim().min(2, "Unesi ime klijenta.").max(100),
+  customerPhone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9 /-]{6,20}$/, "Unesi ispravan broj telefona."),
+  note: z.string().trim().max(500).optional(),
+});
+
+// Ručno zakazivanje za klijente koji zovu telefonom. Namerno ne proverava
+// radno vreme/smene — salon zna šta radi; jedino preklapanje termina brani baza.
+export async function adminCreateBooking(
+  input: z.infer<typeof adminBookingSchema>
+): Promise<ActionResult> {
+  const parsed = adminBookingSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
+  }
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+  const d = parsed.data;
+
+  const [serviceRes, staffRes] = await Promise.all([
+    supabase
+      .from("services")
+      .select("id, duration_minutes")
+      .eq("id", d.serviceId)
+      .eq("tenant_id", tenant.id)
+      .maybeSingle(),
+    supabase
+      .from("staff")
+      .select("id")
+      .eq("id", d.staffId)
+      .eq("tenant_id", tenant.id)
+      .maybeSingle(),
+  ]);
+  if (!serviceRes.data || !staffRes.data) {
+    return { ok: false, error: "Usluga ili zaposleni nisu pronađeni." };
+  }
+
+  const endTime = fromMinutes(toMinutes(d.time) + serviceRes.data.duration_minutes);
+
+  const { data: customer } = await supabase
+    .from("customers")
+    .upsert(
+      { tenant_id: tenant.id, name: d.customerName, phone: d.customerPhone },
+      { onConflict: "tenant_id,phone" }
+    )
+    .select("id")
+    .maybeSingle();
+
+  const { error } = await supabase.from("bookings").insert({
+    tenant_id: tenant.id,
+    staff_id: d.staffId,
+    service_id: d.serviceId,
+    customer_id: customer?.id ?? null,
+    customer_name: d.customerName,
+    customer_phone: d.customerPhone,
+    date: d.date,
+    start_time: d.time,
+    end_time: endTime,
+    starts_at: zonedToUtc(d.date, d.time, tenant.timezone).toISOString(),
+    ends_at: zonedToUtc(d.date, endTime, tenant.timezone).toISOString(),
+    note: d.note || null,
+    status: "confirmed",
+  });
+
+  if (error) {
+    if (error.code === "23P01") {
+      return { ok: false, error: "Termin se preklapa sa postojećom rezervacijom." };
+    }
+    return { ok: false, error: "Zakazivanje nije uspelo." };
+  }
+
+  revalidatePath("/admin/kalendar");
+  revalidatePath("/admin/rezervacije");
+  return { ok: true };
+}
+
+const blockedSlotSchema = z
+  .object({
+    staffId: z.string().optional(), // undefined/"" = ceo salon
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    startTime: z.string().regex(/^\d{2}:\d{2}$/),
+    endTime: z.string().regex(/^\d{2}:\d{2}$/),
+    reason: z.string().trim().max(200).optional(),
+  })
+  .refine((d) => d.startTime < d.endTime, {
+    message: "Početak mora biti pre kraja.",
+  });
+
+export async function createBlockedSlot(
+  input: z.infer<typeof blockedSlotSchema>
+): Promise<ActionResult> {
+  const parsed = blockedSlotSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
+  }
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("blocked_slots").insert({
+    tenant_id: tenant.id,
+    staff_id: parsed.data.staffId || null,
+    date: parsed.data.date,
+    start_time: parsed.data.startTime,
+    end_time: parsed.data.endTime,
+    reason: parsed.data.reason || null,
+  });
+  if (error) return { ok: false, error: "Blokiranje nije uspelo." };
+
+  revalidatePath("/admin/kalendar");
+  return { ok: true };
+}
+
+export async function deleteBlockedSlot(id: string): Promise<ActionResult> {
+  await getAdminContext();
+  const supabase = await createClient();
+  const { error } = await supabase.from("blocked_slots").delete().eq("id", id);
+  if (error) return { ok: false, error: "Brisanje nije uspelo." };
+  revalidatePath("/admin/kalendar");
   return { ok: true };
 }
 

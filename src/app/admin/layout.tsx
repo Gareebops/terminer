@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   CalendarDays,
   CalendarRange,
+  ClipboardList,
   ExternalLink,
   Scissors,
   Settings,
@@ -12,7 +13,8 @@ import { getAdminContext } from "@/lib/admin";
 import { LogoutButton } from "./logout-button";
 
 const nav = [
-  { href: "/admin/rezervacije", label: "Rezervacije", icon: CalendarDays },
+  { href: "/admin/kalendar", label: "Kalendar", icon: CalendarDays },
+  { href: "/admin/rezervacije", label: "Rezervacije", icon: ClipboardList },
   { href: "/admin/usluge", label: "Usluge", icon: Scissors },
   { href: "/admin/zaposleni", label: "Zaposleni", icon: Users },
   { href: "/admin/smene", label: "Smene", icon: CalendarRange },
