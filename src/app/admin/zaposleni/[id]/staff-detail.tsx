@@ -8,9 +8,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { useRef } from "react";
+import { Plus, Trash2, Upload } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import {
   deleteShiftTemplate,
+  updateStaffPhoto,
   updateStaffServices,
   updateWorkingHours,
   upsertShiftTemplate,
@@ -38,6 +42,102 @@ function buildDayRows(hours: WorkingHours[]): DayRow[] {
       endTime: h?.end_time?.slice(0, 5) ?? "17:00",
     };
   });
+}
+
+function PhotoCard({
+  staffId,
+  tenantId,
+  photoUrl,
+}: {
+  staffId: string;
+  tenantId: string;
+  photoUrl: string | null;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [pending, startTransition] = useTransition();
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Izaberi sliku (JPG, PNG ili WebP).");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Slika je veća od 5 MB.");
+      return;
+    }
+    startTransition(async () => {
+      const supabase = createClient();
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      // Timestamp u imenu razbija keš pri zameni slike
+      const path = `${tenantId}/staff/${staffId}-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("tenant-media")
+        .upload(path, file, { upsert: true });
+      if (error) {
+        toast.error("Upload nije uspeo. Pokušaj ponovo.");
+        return;
+      }
+      const { data } = supabase.storage.from("tenant-media").getPublicUrl(path);
+      const res = await updateStaffPhoto(staffId, data.publicUrl);
+      if (res.ok) toast.success("Fotografija je sačuvana.");
+      else toast.error(res.error ?? "Greška.");
+    });
+  }
+
+  function removePhoto() {
+    startTransition(async () => {
+      const res = await updateStaffPhoto(staffId, null);
+      if (res.ok) toast.success("Fotografija je uklonjena.");
+      else toast.error(res.error ?? "Greška.");
+    });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Fotografija</CardTitle>
+      </CardHeader>
+      <CardContent className="flex items-center gap-4">
+        {photoUrl ? (
+          <Image
+            src={photoUrl}
+            alt="Fotografija zaposlenog"
+            width={80}
+            height={80}
+            className="size-20 rounded-full object-cover"
+          />
+        ) : (
+          <div className="flex size-20 items-center justify-center rounded-full bg-muted text-sm text-muted-foreground">
+            Nema
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onFile}
+          />
+          <Button
+            variant="outline"
+            disabled={pending}
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload className="size-4" />
+            {pending ? "Otpremanje..." : photoUrl ? "Zameni" : "Otpremi"}
+          </Button>
+          {photoUrl && (
+            <Button variant="ghost" disabled={pending} onClick={removePhoto}>
+              Ukloni
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 function ShiftTemplatesCard({
@@ -133,12 +233,16 @@ function ShiftTemplatesCard({
 
 export function StaffDetail({
   staffId,
+  tenantId,
+  photoUrl,
   services,
   assignedServiceIds,
   workingHours,
   shiftTemplates,
 }: {
   staffId: string;
+  tenantId: string;
+  photoUrl: string | null;
   services: Service[];
   assignedServiceIds: string[];
   workingHours: WorkingHours[];
@@ -188,6 +292,8 @@ export function StaffDetail({
 
   return (
     <div className="space-y-6">
+      <PhotoCard staffId={staffId} tenantId={tenantId} photoUrl={photoUrl} />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Usluge koje radi</CardTitle>

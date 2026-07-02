@@ -492,6 +492,33 @@ export async function deleteBlockedSlot(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+export async function updateStaffPhoto(
+  staffId: string,
+  photoUrl: string | null
+): Promise<ActionResult> {
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+
+  // Prihvati samo URL iz našeg storage-a, u folderu ovog salona
+  if (photoUrl !== null) {
+    const expectedPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tenant-media/${tenant.id}/`;
+    if (!photoUrl.startsWith(expectedPrefix)) {
+      return { ok: false, error: "Neispravna adresa slike." };
+    }
+  }
+
+  const { error } = await supabase
+    .from("staff")
+    .update({ photo_url: photoUrl })
+    .eq("id", staffId);
+  if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+
+  revalidatePath(`/admin/zaposleni/${staffId}`);
+  revalidatePath("/admin/zaposleni");
+  revalidatePath(`/${tenant.slug}`);
+  return { ok: true };
+}
+
 const settingsSchema = z.object({
   heroTitle: z.string().trim().max(100).optional(),
   heroSubtitle: z.string().trim().max(300).optional(),

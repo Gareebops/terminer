@@ -4,6 +4,7 @@ import {
   CalendarRange,
   ClipboardList,
   ExternalLink,
+  LayoutDashboard,
   Scissors,
   Settings,
   Users,
@@ -13,6 +14,7 @@ import { getAdminContext } from "@/lib/admin";
 import { LogoutButton } from "./logout-button";
 
 const nav = [
+  { href: "/admin", label: "Početna", icon: LayoutDashboard },
   { href: "/admin/kalendar", label: "Kalendar", icon: CalendarDays },
   { href: "/admin/rezervacije", label: "Rezervacije", icon: ClipboardList },
   { href: "/admin/usluge", label: "Usluge", icon: Scissors },

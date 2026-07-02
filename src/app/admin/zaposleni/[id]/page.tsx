@@ -47,6 +47,8 @@ export default async function StaffDetailPage({
       <div className="mt-6">
         <StaffDetail
           staffId={id}
+          tenantId={tenant.id}
+          photoUrl={(staffRes.data as Staff).photo_url}
           services={(servicesRes.data ?? []) as Service[]}
           assignedServiceIds={(linksRes.data ?? []).map((l) => l.service_id)}
           workingHours={(hoursRes.data ?? []) as WorkingHours[]}
