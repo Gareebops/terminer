@@ -3,8 +3,6 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AtSign, Clock, MapPin, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { formatPrice } from "@/lib/booking/slots";
 import { getTenantSite } from "@/lib/tenant";
 
@@ -18,96 +16,170 @@ export default async function SalonPage({
   if (!site) notFound();
 
   const { tenant, settings, services, staff, gallery } = site;
+  const mapsQuery =
+    settings?.address || settings?.city
+      ? encodeURIComponent([settings.address, settings.city].filter(Boolean).join(", "))
+      : null;
 
   return (
     <main className="flex-1">
+      {/* Sticky zaglavlje */}
+      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+          <Link href={`/${tenant.slug}`} className="flex items-center gap-2.5">
+            {settings?.logo_url ? (
+              <Image
+                src={settings.logo_url}
+                alt=""
+                width={36}
+                height={36}
+                className="size-9 rounded-lg object-cover"
+              />
+            ) : (
+              <span className="flex size-9 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">
+                {tenant.name.charAt(0)}
+              </span>
+            )}
+            <span className="font-semibold tracking-tight">{tenant.name}</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            {settings?.phone && (
+              <Button variant="ghost" size="sm" className="hidden sm:inline-flex" asChild>
+                <a href={`tel:${settings.phone}`}>
+                  <Phone className="size-4" /> {settings.phone}
+                </a>
+              </Button>
+            )}
+            <Button size="sm" asChild>
+              <Link href={`/${tenant.slug}/zakazi`}>Zakaži termin</Link>
+            </Button>
+          </div>
+        </div>
+      </header>
+
       {/* Hero */}
-      <section className="relative border-b bg-zinc-950 text-white">
+      <section className="relative isolate overflow-hidden bg-zinc-950 text-white">
         {settings?.hero_image_url && (
           <Image
             src={settings.hero_image_url}
             alt=""
             fill
-            className="object-cover opacity-40"
+            priority
+            className="object-cover opacity-50"
           />
         )}
-        <div className="relative mx-auto max-w-4xl px-4 py-28 text-center">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-zinc-950/20" />
+        <div className="relative mx-auto max-w-4xl px-4 pb-28 pt-24 text-center sm:pb-36 sm:pt-32">
+          {settings?.city && (
+            <p className="text-sm font-medium uppercase tracking-[0.25em] text-zinc-300">
+              {settings.city}
+            </p>
+          )}
+          <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-6xl">
             {settings?.hero_title || tenant.name}
           </h1>
           {settings?.hero_subtitle && (
-            <p className="mx-auto mt-4 max-w-xl text-lg text-zinc-300">
+            <p className="mx-auto mt-5 max-w-xl text-lg text-zinc-300">
               {settings.hero_subtitle}
             </p>
           )}
-          <Button size="lg" className="mt-8" asChild>
-            <Link href={`/${tenant.slug}/zakazi`}>Zakaži termin</Link>
-          </Button>
+          <div className="mt-9 flex flex-wrap justify-center gap-3">
+            <Button size="lg" asChild>
+              <Link href={`/${tenant.slug}/zakazi`}>Zakaži termin</Link>
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-white/25 bg-white/5 text-white hover:bg-white/15 hover:text-white"
+              asChild
+            >
+              <a href="#cenovnik">Pogledaj cenovnik</a>
+            </Button>
+          </div>
+          {(settings?.address || settings?.phone) && (
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-zinc-300">
+              {settings?.address && (
+                <span className="flex items-center gap-1.5">
+                  <MapPin className="size-4" />
+                  {[settings.address, settings.city].filter(Boolean).join(", ")}
+                </span>
+              )}
+              {settings?.phone && (
+                <a href={`tel:${settings.phone}`} className="flex items-center gap-1.5 hover:text-white">
+                  <Phone className="size-4" /> {settings.phone}
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
       {/* Usluge / cenovnik */}
-      <section className="mx-auto max-w-4xl px-4 py-16">
-        <h2 className="text-2xl font-bold">Usluge</h2>
-        <div className="mt-6 space-y-1">
+      <section id="cenovnik" className="mx-auto max-w-4xl scroll-mt-20 px-4 py-20">
+        <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+          Cenovnik
+        </p>
+        <h2 className="mt-2 text-3xl font-bold tracking-tight">Usluge</h2>
+        <div className="mt-8 divide-y">
           {services.map((s) => (
-            <div key={s.id}>
-              <div className="flex items-center justify-between gap-4 py-3">
-                <div>
-                  <p className="font-medium">{s.name}</p>
-                  {s.description && (
-                    <p className="text-sm text-muted-foreground">{s.description}</p>
-                  )}
-                </div>
-                <div className="flex shrink-0 items-center gap-4 text-sm">
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Clock className="size-4" />
-                    {s.duration_minutes} min
-                  </span>
-                  {settings?.show_prices !== false && (
-                    <span className="font-semibold">
-                      {formatPrice(s.price, s.currency)}
-                    </span>
-                  )}
-                </div>
+            <div key={s.id} className="flex items-center justify-between gap-4 py-4">
+              <div>
+                <p className="font-medium">{s.name}</p>
+                {s.description && (
+                  <p className="mt-0.5 text-sm text-muted-foreground">{s.description}</p>
+                )}
               </div>
-              <Separator />
+              <div className="flex shrink-0 items-center gap-4">
+                <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                  <Clock className="size-3.5" />
+                  {s.duration_minutes} min
+                </span>
+                {settings?.show_prices !== false && (
+                  <span className="min-w-20 text-right font-semibold text-primary">
+                    {formatPrice(s.price, s.currency)}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
           {services.length === 0 && (
-            <p className="text-muted-foreground">Usluge još nisu unete.</p>
+            <p className="py-4 text-muted-foreground">Usluge još nisu unete.</p>
           )}
         </div>
+        <Button className="mt-6" size="lg" asChild>
+          <Link href={`/${tenant.slug}/zakazi`}>Zakaži termin</Link>
+        </Button>
       </section>
 
       {/* Tim */}
       {settings?.show_team !== false && staff.length > 0 && (
         <section className="border-t bg-muted/40">
-          <div className="mx-auto max-w-4xl px-4 py-16">
-            <h2 className="text-2xl font-bold">Naš tim</h2>
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mx-auto max-w-4xl px-4 py-20">
+            <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+              Tim
+            </p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight">Ko te šiša</h2>
+            <div className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {staff.map((m) => (
-                <Card key={m.id}>
-                  <CardContent className="pt-6 text-center">
-                    {m.photo_url ? (
-                      <Image
-                        src={m.photo_url}
-                        alt={m.name}
-                        width={96}
-                        height={96}
-                        className="mx-auto size-24 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="mx-auto flex size-24 items-center justify-center rounded-full bg-muted text-2xl font-bold">
-                        {m.name.charAt(0)}
-                      </div>
-                    )}
-                    <p className="mt-3 font-semibold">{m.name}</p>
-                    {m.bio && (
-                      <p className="mt-1 text-sm text-muted-foreground">{m.bio}</p>
-                    )}
-                  </CardContent>
-                </Card>
+                <div key={m.id} className="text-center">
+                  {m.photo_url ? (
+                    <Image
+                      src={m.photo_url}
+                      alt={m.name}
+                      width={112}
+                      height={112}
+                      className="mx-auto size-28 rounded-full object-cover shadow-md"
+                    />
+                  ) : (
+                    <div className="mx-auto flex size-28 items-center justify-center rounded-full bg-primary/10 text-3xl font-bold text-primary">
+                      {m.name.charAt(0)}
+                    </div>
+                  )}
+                  <p className="mt-4 font-semibold">{m.name}</p>
+                  {m.bio && (
+                    <p className="mt-1 text-sm text-muted-foreground">{m.bio}</p>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -116,9 +188,12 @@ export default async function SalonPage({
 
       {/* Galerija */}
       {settings?.show_gallery !== false && gallery.length > 0 && (
-        <section className="mx-auto max-w-4xl px-4 py-16">
-          <h2 className="text-2xl font-bold">Galerija</h2>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <section className="mx-auto max-w-4xl px-4 py-20">
+          <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+            Galerija
+          </p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight">Naši radovi</h2>
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {gallery.map((g) => (
               <Image
                 key={g.id}
@@ -126,7 +201,7 @@ export default async function SalonPage({
                 alt=""
                 width={400}
                 height={400}
-                className="aspect-square rounded-lg object-cover"
+                className="aspect-square rounded-xl object-cover"
               />
             ))}
           </div>
@@ -135,44 +210,62 @@ export default async function SalonPage({
 
       {/* Kontakt */}
       <section className="border-t">
-        <div className="mx-auto max-w-4xl px-4 py-16">
-          <h2 className="text-2xl font-bold">Kontakt</h2>
-          <div className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
-            {settings?.phone && (
-              <p className="flex items-center gap-2">
-                <Phone className="size-4 text-muted-foreground" />
-                <a href={`tel:${settings.phone}`} className="hover:underline">
-                  {settings.phone}
-                </a>
-              </p>
-            )}
-            {(settings?.address || settings?.city) && (
-              <p className="flex items-center gap-2">
-                <MapPin className="size-4 text-muted-foreground" />
-                {[settings.address, settings.city].filter(Boolean).join(", ")}
-              </p>
-            )}
-            {settings?.instagram && (
-              <p className="flex items-center gap-2">
-                <AtSign className="size-4 text-muted-foreground" />
+        <div className="mx-auto max-w-4xl px-4 py-20">
+          <p className="text-sm font-semibold uppercase tracking-widest text-primary">
+            Kontakt
+          </p>
+          <h2 className="mt-2 text-3xl font-bold tracking-tight">Gde smo</h2>
+          <div className="mt-8 flex flex-wrap items-start justify-between gap-6">
+            <div className="space-y-3 text-sm">
+              {settings?.phone && (
+                <p className="flex items-center gap-2.5">
+                  <Phone className="size-4 text-primary" />
+                  <a href={`tel:${settings.phone}`} className="hover:underline">
+                    {settings.phone}
+                  </a>
+                </p>
+              )}
+              {(settings?.address || settings?.city) && (
+                <p className="flex items-center gap-2.5">
+                  <MapPin className="size-4 text-primary" />
+                  {[settings.address, settings.city].filter(Boolean).join(", ")}
+                </p>
+              )}
+              {settings?.instagram && (
+                <p className="flex items-center gap-2.5">
+                  <AtSign className="size-4 text-primary" />
+                  <a
+                    href={`https://instagram.com/${settings.instagram.replace(/^@/, "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="hover:underline"
+                  >
+                    {settings.instagram}
+                  </a>
+                </p>
+              )}
+            </div>
+            {mapsQuery && (
+              <Button variant="outline" asChild>
                 <a
-                  href={`https://instagram.com/${settings.instagram.replace(/^@/, "")}`}
+                  href={`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="hover:underline"
                 >
-                  {settings.instagram}
+                  <MapPin className="size-4" /> Otvori u mapama
                 </a>
-              </p>
+              </Button>
             )}
           </div>
         </div>
       </section>
 
-      <footer className="border-t bg-muted/40">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-6 text-sm text-muted-foreground">
-          <span>© {new Date().getFullYear()} {tenant.name}</span>
-          <Link href="/" className="hover:underline">
+      <footer className="bg-zinc-950 text-zinc-400">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-8 text-sm">
+          <span>
+            © {new Date().getFullYear()} {tenant.name}
+          </span>
+          <Link href="/" className="hover:text-white">
             Pokreće Terminer
           </Link>
         </div>

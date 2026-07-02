@@ -519,6 +519,53 @@ export async function updateStaffPhoto(
   return { ok: true };
 }
 
+export async function updateAppearance(input: {
+  primaryColor: string;
+}): Promise<ActionResult> {
+  const parsed = z
+    .object({ primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Neispravna boja.") })
+    .safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
+  }
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("site_settings")
+    .update({ primary_color: parsed.data.primaryColor, updated_at: new Date().toISOString() })
+    .eq("tenant_id", tenant.id);
+  if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+  revalidatePath("/admin/podesavanja");
+  revalidatePath(`/${tenant.slug}`);
+  return { ok: true };
+}
+
+export async function updateSiteImage(
+  kind: "logo" | "hero",
+  url: string | null
+): Promise<ActionResult> {
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+
+  if (url !== null) {
+    const expectedPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/tenant-media/${tenant.id}/`;
+    if (!url.startsWith(expectedPrefix)) {
+      return { ok: false, error: "Neispravna adresa slike." };
+    }
+  }
+
+  const column = kind === "logo" ? "logo_url" : "hero_image_url";
+  const { error } = await supabase
+    .from("site_settings")
+    .update({ [column]: url, updated_at: new Date().toISOString() })
+    .eq("tenant_id", tenant.id);
+  if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+
+  revalidatePath("/admin/podesavanja");
+  revalidatePath(`/${tenant.slug}`);
+  return { ok: true };
+}
+
 const settingsSchema = z.object({
   heroTitle: z.string().trim().max(100).optional(),
   heroSubtitle: z.string().trim().max(300).optional(),

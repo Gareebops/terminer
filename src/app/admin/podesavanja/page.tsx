@@ -1,6 +1,7 @@
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { SiteSettings } from "@/lib/types";
+import { AppearanceForm } from "./appearance-form";
 import { SettingsForm } from "./settings-form";
 
 export default async function SettingsPage() {
@@ -19,7 +20,13 @@ export default async function SettingsPage() {
       <p className="mt-1 text-sm text-muted-foreground">
         Sadržaj tvog sajta na adresi /{tenant.slug}
       </p>
-      <div className="mt-6">
+      <div className="mt-6 space-y-6">
+        <AppearanceForm
+          tenantId={tenant.id}
+          primaryColor={(settings as SiteSettings | null)?.primary_color ?? "#18181b"}
+          logoUrl={(settings as SiteSettings | null)?.logo_url ?? null}
+          heroImageUrl={(settings as SiteSettings | null)?.hero_image_url ?? null}
+        />
         <SettingsForm
           settings={settings as SiteSettings | null}
           isPublished={tenant.is_published}
