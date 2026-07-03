@@ -16,6 +16,9 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  // Dolazak sa linka za potvrdu naloga (auth/callback bez sesije)
+  const justConfirmed = search.get("potvrdjen") === "1";
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -24,11 +27,27 @@ function LoginForm() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      toast.error("Pogrešan email ili lozinka.");
+      if (error.message.toLowerCase().includes("not confirmed")) {
+        setUnconfirmed(true);
+        toast.error("Nalog još nije potvrđen — proveri mejl.");
+      } else {
+        toast.error("Pogrešan email ili lozinka.");
+      }
       return;
     }
     router.push(search.get("next") ?? "/admin");
     router.refresh();
+  }
+
+  async function resendConfirmation() {
+    const supabase = createClient();
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) toast.error("Slanje nije uspelo. Sačekaj minut pa probaj opet.");
+    else toast.success(`Nova potvrda je poslata na ${email}.`);
   }
 
   return (
@@ -37,6 +56,11 @@ function LoginForm() {
         <CardTitle>Prijava</CardTitle>
       </CardHeader>
       <CardContent>
+        {justConfirmed && (
+          <p className="mb-4 rounded-lg bg-mint px-3 py-2 text-sm font-semibold text-ink">
+            Nalog je potvrđen — prijavi se i nastavi sa podešavanjem salona.
+          </p>
+        )}
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -61,6 +85,16 @@ function LoginForm() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Prijavljivanje..." : "Prijavi se"}
           </Button>
+          {unconfirmed && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={resendConfirmation}
+            >
+              Pošalji ponovo link za potvrdu
+            </Button>
+          )}
           <p className="text-center text-sm text-muted-foreground">
             Nemaš nalog?{" "}
             <Link href="/registracija" className="underline">
