@@ -674,13 +674,16 @@ export async function createInvoice(
       : today;
   const periodTo = addMonths(periodFrom, PLANS[plan].months);
 
-  // Ako već postoji faktura za isti plan i period, ne izdaji novu
+  // Ako već postoji aktivna faktura za isti plan i period, ne izdaji novu
+  // (stornirane se ignorišu — za njih sme nova)
   const { data: existing } = await db
     .from("invoices")
     .select("id")
     .eq("tenant_id", tenant.id)
     .eq("plan", plan)
     .eq("period_from", periodFrom)
+    .neq("status", "cancelled")
+    .limit(1)
     .maybeSingle();
   if (existing) return { ok: true, invoiceId: existing.id };
 

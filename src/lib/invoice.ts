@@ -50,6 +50,14 @@ export function invoiceLabel(inv: { number: number; year: number }): string {
   return `${inv.number}/${inv.year}`;
 }
 
+export type InvoiceStatus = "issued" | "paid" | "cancelled";
+
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  issued: "Na čekanju",
+  paid: "Plaćena",
+  cancelled: "Stornirana",
+};
+
 export interface Invoice {
   id: string;
   tenant_id: string;
@@ -60,5 +68,7 @@ export interface Invoice {
   period_from: string;
   period_to: string;
   buyer_info: string | null;
+  status: InvoiceStatus;
+  paid_at: string | null;
   created_at: string;
 }

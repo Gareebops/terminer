@@ -140,6 +140,13 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
   Pristup fakturi: član salona (RLS) ili superadmin. Admin baner vodi na
   Podešavanja#pretplata; superadmin lista sve izdate fakture po salonu.
   Period fakture kreće od danas ili od dana posle postojećeg paid_until.
+- **Faktura je izvor istine o naplati**: status issued/paid/cancelled +
+  paid_at. Superadmin "Označi plaćeno" → automatski paid_until =
+  max(postojeći, period_to fakture). "Storno" samo za neplaćene (reuse u
+  createInvoice ignoriše stornirane). Superadmin još ima: statistiku
+  (aktivni/proba/naplaćeno u godini/fakture na čekanju), email vlasnika po
+  salonu, "Proba +14d", gratis +1/+3/+12 mes i ručni "Datum…" za korekcije.
+  Salon u BillingCard vidi status svake fakture (Na čekanju/Plaćena/Stornirana).
 
 ## 8. Poznati gotchas
 

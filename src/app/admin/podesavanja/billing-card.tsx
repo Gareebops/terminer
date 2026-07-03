@@ -8,7 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { formatAmount, invoiceLabel, PLANS, type Invoice, type PlanId } from "@/lib/invoice";
+import {
+  formatAmount,
+  invoiceLabel,
+  INVOICE_STATUS_LABELS,
+  PLANS,
+  type Invoice,
+  type PlanId,
+} from "@/lib/invoice";
 import type { SubscriptionInfo } from "@/lib/billing";
 import { createInvoice, updateBillingInfo } from "../actions";
 
@@ -117,13 +124,24 @@ export function BillingCard({
             <p className="text-sm font-semibold">Izdate fakture</p>
             <ul className="mt-2 space-y-1.5">
               {invoices.map((inv) => (
-                <li key={inv.id} className="flex items-center gap-3 text-sm">
+                <li key={inv.id} className="flex flex-wrap items-center gap-2 text-sm">
                   <a href={`/faktura/${inv.id}`} className="font-bold underline">
                     {invoiceLabel(inv)}
                   </a>
                   <span className="text-ink/60">
                     {PLANS[inv.plan].label} · {formatAmount(Number(inv.amount))} RSD ·{" "}
                     {new Date(inv.created_at).toLocaleDateString("sr-RS")}
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                      inv.status === "paid"
+                        ? "bg-mint text-ink"
+                        : inv.status === "cancelled"
+                          ? "bg-ink/10 text-ink/50"
+                          : "bg-amber-200 text-amber-950"
+                    }`}
+                  >
+                    {INVOICE_STATUS_LABELS[inv.status]}
                   </span>
                 </li>
               ))}
