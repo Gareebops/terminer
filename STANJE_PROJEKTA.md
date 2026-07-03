@@ -1,6 +1,6 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 3. jul 2026. Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 3. jul 2026. (email potvrde + otkazivanje preko linka) Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
@@ -35,6 +35,9 @@ supabase db push       # migracije — MORA pokrenuti Mihajlo (traži DB lozinku
 `.env.local` (postoji, popunjen): `NEXT_PUBLIC_SUPABASE_URL`,
 `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
 `SUPER_ADMIN_EMAIL` (pristup /superadmin, zarez-separisano).
+Zakomentarisani i čekaju Mihajla: `RESEND_API_KEY` (bez njega se email
+potvrde samo preskaču uz warn u logu), `EMAIL_FROM` (podrazumevano
+Resend sandbox `onboarding@resend.dev` — šalje samo na Mihajlov mejl).
 
 **Test podaci u bazi:**
 - Salon `demo` (Salon Demo, objavljen, "plaćen" do 2.8.2026) — usluge, 2 frizera
@@ -118,6 +121,14 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
   varijanta/logo/hero slika + live preview sajta u telefon okviru).
 - **Auth/onboarding**: registracija → onboarding (naziv + slug) → admin.
   Jedan vlasnik = jedan salon (za sada).
+- **Email potvrde (Resend)**: posle uspešnog gost-bookinga sa emailom šalje se
+  potvrda ([src/lib/email.ts](src/lib/email.ts) — HTML šablon na srpskom,
+  .ics prilog, link za otkazivanje; bez `RESEND_API_KEY` slanje se preskače i
+  booking nikad ne pada zbog mejla). Stranica za otkazivanje iz mejla:
+  `/{slug}/otkazivanje/{cancel_token}` (tema salona; stanja: aktivan termin sa
+  dugmetom, već otkazan, prošao, nevažeći link; koristi postojeću `cancelBooking`
+  akciju). Wizard na kraju kaže da je potvrda poslata (`emailSent` u rezultatu
+  `createBooking`). Base URL za link: `NEXT_PUBLIC_APP_URL` ili request headers.
 - **Billing**: 30 dana probe → grace 7 dana → pauza SAMO online zakazivanja
   (sajt nikad ne gasimo). Baner u adminu. `/superadmin` (samo SUPER_ADMIN_EMAIL):
   lista salona + produženje +1/+3/+12 meseci. Logika u
@@ -174,16 +185,16 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
 
 ## 10. Šta je SLEDEĆE (dogovoren redosled)
 
-1. **Email potvrde rezervacija (Resend)** — prvi zadatak koji čeka. Sandbox radi
-   bez domena (šalje samo na Mihajlov mejl) — kod se piše odmah, domen menja samo
-   "from" adresu. `cancel_token` već postoji u šemi; treba: šablon potvrde,
-   slanje po rezervaciji, stranica/ruta za otkazivanje preko linka.
+1. **Resend nalog + `RESEND_API_KEY`** — kod za email potvrde je gotov (vidi
+   sekciju 6), čeka samo Mihajla da napravi nalog na resend.com i upiše ključ u
+   `.env.local` (placeholder postoji). Sandbox šalje samo na njegov mejl; sa
+   domenom se menja još samo `EMAIL_FROM`. Zatim test uživo: booking sa emailom
+   → stigla potvrda → link otkazuje.
 2. **Deploy (Vercel) + domen** (proveriti `terminer.rs`) — uslov za prve klijente.
+   Na deployu postaviti i `NEXT_PUBLIC_APP_URL` (koristi se za linkove u mejlu).
 3. Pre produkcije: obrisati test-admin nalog, uključiti email potvrdu naloga u
    Supabase Auth, politika privatnosti.
-4. **Fakture sa IPS QR** po salonu (Mihajlo ima postojeći invoice-generator skill
-   kao referencu za NBS IPS QR format).
-5. Kasnije (Faza B/C dizajna): "vibe" preseti (font+boja+varijanta u 1 klik),
+4. Kasnije (Faza B/C dizajna): "vibe" preseti (font+boja+varijanta u 1 klik),
    hero layout varijante, redosled sekcija drag&drop, kompresija slika pre
    uploada (WebP), blur placeholderi, video hero, recenzije, SMS/Viber podsetnici,
    subdomeni pa custom domeni, statistika++.

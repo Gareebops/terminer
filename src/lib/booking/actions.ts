@@ -1,7 +1,9 @@
 "use server";
 
+import { headers } from "next/headers";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendBookingConfirmation } from "@/lib/email";
 import {
   generateAvailableSlots,
   toMinutes,
@@ -182,7 +184,7 @@ const createBookingSchema = z.object({
 });
 
 export type CreateBookingResult =
-  | { ok: true; bookingId: string; cancelToken: string }
+  | { ok: true; bookingId: string; cancelToken: string; emailSent: boolean }
   | { ok: false; error: string };
 
 export async function createBooking(
@@ -252,7 +254,39 @@ export async function createBooking(
     return { ok: false, error: "Greška pri zakazivanju. Pokušaj ponovo." };
   }
 
-  return { ok: true, bookingId: booking.id, cancelToken: booking.cancel_token };
+  // Potvrda mejlom (ako je klijent ostavio email) — nikad ne obara booking
+  let emailSent = false;
+  if (input.customerEmail) {
+    const [{ data: settings }, hdrs] = await Promise.all([
+      ctx.db
+        .from("site_settings")
+        .select("address, city, phone")
+        .eq("tenant_id", ctx.tenant.id)
+        .maybeSingle(),
+      headers(),
+    ]);
+    const proto = hdrs.get("x-forwarded-proto") ?? "http";
+    const host = hdrs.get("host") ?? "localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? `${proto}://${host}`;
+
+    const { sent } = await sendBookingConfirmation({
+      to: input.customerEmail,
+      salonName: ctx.tenant.name,
+      serviceName: ctx.service.name,
+      staffName: ctx.staff.name,
+      date: input.date,
+      startTime: input.time,
+      endTime,
+      address: settings
+        ? [settings.address, settings.city].filter(Boolean).join(", ") || null
+        : null,
+      salonPhone: settings?.phone ?? null,
+      cancelUrl: `${baseUrl}/${ctx.tenant.slug}/otkazivanje/${booking.cancel_token}`,
+    });
+    emailSent = sent;
+  }
+
+  return { ok: true, bookingId: booking.id, cancelToken: booking.cancel_token, emailSent };
 }
 
 export async function cancelBooking(input: {

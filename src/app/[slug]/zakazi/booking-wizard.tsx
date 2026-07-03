@@ -150,6 +150,7 @@ export function BookingWizard({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
+  const [emailSent, setEmailSent] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const availableStaff = useMemo(() => {
@@ -191,6 +192,7 @@ export function BookingWizard({
         note,
       });
       if (res.ok) {
+        setEmailSent(res.emailSent);
         setDone(true);
       } else {
         toast.error(res.error);
@@ -245,6 +247,11 @@ export function BookingWizard({
           <p className="font-medium">
             {dateLabel} u {time}
           </p>
+          {emailSent && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Potvrdu sa linkom za otkazivanje smo poslali na {email}.
+            </p>
+          )}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Button
               variant="outline"
