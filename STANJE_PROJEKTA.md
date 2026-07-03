@@ -195,17 +195,22 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
 
 ## 10. Šta je SLEDEĆE (dogovoren put do launcha)
 
-1. **Deploy (Vercel Pro) + domen `terminer.rs`** — Mihajlo: Vercel nalog,
-   domen, env varijable (sve iz `.env.local` + `NEXT_PUBLIC_APP_URL`).
-   Pravne strane, robots i SEO su spremni (vidi checklist ispod).
-2. **Resend** — Mihajlo: nalog, verifikacija domena (DNS), `RESEND_API_KEY` u
+0. ~~Deploy + domen~~ **GOTOVO 3.7.2026**: repo na github.com/Gareebops/terminer
+   (svaki push na main = auto deploy), Vercel projekat "terminer"
+   (`terminer-psi.vercel.app`), domen **terminer.rs** aktivan sa SSL-om.
+   Smoke test prošao na produkciji (rute, RLS 404 za neobjavljene, admin
+   redirect, pravi booking kroz wizard — obrisan posle provere). Env na
+   Vercelu: 4 osnovne varijable; SUPER_ADMIN_EMAIL tamo NEMA test-admin.
+   Čeka još: `NEXT_PUBLIC_APP_URL` env + Supabase Site URL (Mihajlo, u toku;
+   odluka apex vs www kao primarni domen).
+1. **Resend** — Mihajlo: nalog, verifikacija domena (DNS), `RESEND_API_KEY` u
    env (placeholder u `.env.local`), pa `EMAIL_FROM=potvrda@terminer.rs`.
    Kod je gotov; test uživo: booking sa emailom → potvrda → link otkazuje.
-3. **Custom domeni salona** — plan dogovoren (host-based rezolucija u proxy.ts
+2. **Custom domeni salona** — plan dogovoren (host-based rezolucija u proxy.ts
    + `tenants.custom_domain` + Vercel Domains API + kartica "Domen" u
    Podešavanjima); implementacija kreće posle deploya.
-4. **Prvi pravi salon** (Mihajlov frizer, founder cena) → pa šire.
-5. Kasnije (Faza B/C dizajna): "vibe" preseti (font+boja+varijanta u 1 klik),
+3. **Prvi pravi salon** (Mihajlov frizer, founder cena) → pa šire.
+4. Kasnije (Faza B/C dizajna): "vibe" preseti (font+boja+varijanta u 1 klik),
    hero layout varijante, redosled sekcija drag&drop, kompresija slika pre
    uploada (WebP), blur placeholderi, video hero, recenzije, SMS/Viber podsetnici,
    statistika++.
