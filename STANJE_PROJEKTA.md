@@ -10,8 +10,9 @@ potvrda naloga UKLJUČENA u Supabase. (2) Resend RADI NA PRODUKCIJI
 (`potvrda@terminer.rs`, domen verifikovan; ključ u .env.local i na Vercelu).
 (3) Pokušan redizajn šablona salona (MINERVA stil) — Mihajlo tražio REVERT,
 stari šablon mu je draži; commit sa redizajnom postoji u istoriji (27848fc)
-ako ikad zatreba. Umesto toga demo salon dobija vrhunski SADRŽAJ
-(fotografije, imena, usluge) kao ugledni primer.
+ako ikad zatreba. (4) Demo salon pretvoren u ugledni primer "Salon Aura":
+novi sadržaj + 10 AI fotografija (vidi "Test podaci"); verifikovano uživo
+uključujući booking za novu koloristkinju.
 
 ## 1. Šta je Terminer
 
@@ -49,8 +50,12 @@ Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
 `NEXT_PUBLIC_APP_URL=https://terminer.rs`.
 
 **Test podaci u bazi:**
-- Salon `demo` (Salon Demo, objavljen, "plaćen" do 2.8.2026) — usluge, 2 frizera
-  (Đorđe ima šablon smene "Prepodne 09–13"), radno vreme pon–sub, 1 test rezervacija.
+- Salon `demo` = **"Salon Aura"** (objavljen, "plaćen" do 2027) — UGLEDNI PRIMER
+  za prezentacije: 8 usluga sa opisima, 3 zaposlena (Đorđe, Marko, Jovana
+  koloristkinja) sa AI portretima, hero enterijer i 6 slika galerije
+  (Higgsfield soul_2, u storage `{tenant}/site/`), radno vreme pon–sub.
+  NE BRISATI pre launcha — ovo je javni showcase. Ostala je 1 seed
+  rezervacija (Test Testić) — nju obrisati.
 - Salon `studio-test` — Mihajlov probni salon (neobjavljen).
 - Test admin: `test-admin@terminer.dev` / `terminer-test-123` (owner demo salona,
   u SUPER_ADMIN_EMAIL listi). **Obrisati pre produkcije.**
