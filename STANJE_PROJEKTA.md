@@ -129,6 +129,17 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
   poput Paddle tek kod skaliranja van Srbije). Mihajlo ručno produžava na /superadmin.
 - Cenovnik: **1.990 RSD/mes**, **19.900 RSD/god** (2 meseca gratis), founder
   cena 1.490 RSD/mes za prvih ~10 salona (usmeno, nije u kodu).
+- **Fakture su samoposlužne, izdavalac je Čvorište** (Mihajlova firma; podaci
+  hardkodovani u [src/lib/invoice.ts](src/lib/invoice.ts): PIB 114833116,
+  Erste račun 340-0001000228996-85). Tok: vlasnik u Podešavanja → "Pretplata i
+  naplata" upiše podatke za fakturu (tenants.billing_note), klikne
+  mesečna/godišnja → server akcija `createInvoice` (globalna numeracija
+  broj/godina, idempotentna po tenant+plan+period_from) → printabilna A4
+  strana `/faktura/[id]` sa **NBS IPS QR** kodom (paket `qrcode`; payload
+  format u lib/invoice.ts, poziv na broj = 00 + godina + redni broj).
+  Pristup fakturi: član salona (RLS) ili superadmin. Admin baner vodi na
+  Podešavanja#pretplata; superadmin lista sve izdate fakture po salonu.
+  Period fakture kreće od danas ili od dana posle postojećeg paid_until.
 
 ## 8. Poznati gotchas
 

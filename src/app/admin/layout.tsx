@@ -31,9 +31,12 @@ function SubscriptionBanner({
       className={`mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl px-5 py-3 text-sm font-semibold ${styles[status]}`}
     >
       <span>{text[status]}</span>
-      <span className="text-xs font-medium opacity-80">
-        Produženje: 1.990 RSD/mes ili 19.900 RSD/god — javi se za fakturu.
-      </span>
+      <Link
+        href="/admin/podesavanja#pretplata"
+        className="rounded-full bg-black/10 px-4 py-1.5 text-xs font-bold underline-offset-2 hover:underline"
+      >
+        Preuzmi fakturu →
+      </Link>
     </div>
   );
 }

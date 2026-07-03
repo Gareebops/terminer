@@ -5,6 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
 const RESERVED = new Set([
   "admin",
   "superadmin",
+  "faktura",
   "prijava",
   "registracija",
   "onboarding",

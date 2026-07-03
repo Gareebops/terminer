@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { subscriptionInfo } from "@/lib/billing";
+import { formatAmount, invoiceLabel, type Invoice } from "@/lib/invoice";
 import type { Tenant } from "@/lib/types";
 import { assertSuperAdmin } from "./actions";
 import { ExtendButtons } from "./extend-buttons";
@@ -18,14 +19,22 @@ export default async function SuperAdminPage() {
   if (!me) notFound();
 
   const db = createAdminClient();
-  const { data: tenants } = await db
-    .from("tenants")
-    .select("*")
-    .order("created_at");
+  const [{ data: tenants }, { data: allInvoices }] = await Promise.all([
+    db.from("tenants").select("*").order("created_at"),
+    db.from("invoices").select("*").order("created_at", { ascending: false }),
+  ]);
+
+  const invoicesByTenant = new Map<string, Invoice[]>();
+  for (const inv of (allInvoices ?? []) as Invoice[]) {
+    const list = invoicesByTenant.get(inv.tenant_id) ?? [];
+    list.push(inv);
+    invoicesByTenant.set(inv.tenant_id, list);
+  }
 
   const rows = ((tenants ?? []) as Tenant[]).map((t) => ({
     tenant: t,
     sub: subscriptionInfo(t),
+    invoices: invoicesByTenant.get(t.id) ?? [],
   }));
 
   return (
@@ -37,13 +46,14 @@ export default async function SuperAdminPage() {
         </p>
 
         <div className="mt-6 space-y-3">
-          {rows.map(({ tenant, sub }) => {
+          {rows.map(({ tenant, sub, invoices }) => {
             const s = statusLabels[sub.status];
             return (
               <div
                 key={tenant.id}
-                className="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-[0_4px_24px_rgba(20,25,20,0.06)]"
+                className="rounded-2xl bg-white p-4 shadow-[0_4px_24px_rgba(20,25,20,0.06)]"
               >
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="min-w-40">
                   <p className="font-bold">{tenant.name}</p>
                   <Link
@@ -70,6 +80,23 @@ export default async function SuperAdminPage() {
                 <div className="ml-auto">
                   <ExtendButtons tenantId={tenant.id} />
                 </div>
+              </div>
+              {invoices.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-ink/5 pt-2 text-xs font-medium text-ink/60">
+                  {invoices.slice(0, 6).map((inv) => (
+                    <Link
+                      key={inv.id}
+                      href={`/faktura/${inv.id}`}
+                      target="_blank"
+                      className="hover:underline"
+                    >
+                      Faktura {invoiceLabel(inv)} ·{" "}
+                      {formatAmount(Number(inv.amount))} RSD ·{" "}
+                      {new Date(inv.created_at).toLocaleDateString("sr-RS")}
+                    </Link>
+                  ))}
+                </div>
+              )}
               </div>
             );
           })}

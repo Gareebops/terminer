@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { fromMinutes, toMinutes } from "@/lib/booking/slots";
 import { zonedToUtc } from "@/lib/booking/timezone";
+import { PLANS, type PlanId } from "@/lib/invoice";
 import type { BookingStatus } from "@/lib/types";
 
 // Sve admin akcije koriste session klijent — RLS propušta samo redove
@@ -629,6 +631,97 @@ export async function deleteGalleryImage(id: string): Promise<ActionResult> {
   revalidatePath("/admin/galerija");
   revalidatePath(`/${tenant.slug}`);
   return { ok: true };
+}
+
+export async function updateBillingInfo(info: string): Promise<ActionResult> {
+  const parsed = z.string().trim().max(500).safeParse(info);
+  if (!parsed.success) return { ok: false, error: "Neispravni podaci." };
+
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("tenants")
+    .update({ billing_note: parsed.data || null })
+    .eq("id", tenant.id);
+  if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+  revalidatePath("/admin/podesavanja");
+  return { ok: true };
+}
+
+function addMonths(dateStr: string, months: number): string {
+  const d = new Date(`${dateStr}T12:00:00`);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+
+// Samoposlužna faktura: kreira (ili ponovo koristi) fakturu za naredni
+// period. Numeracija je globalna po godini pa ide preko service-role klijenta;
+// članstvo je već potvrđeno kroz getAdminContext.
+export async function createInvoice(
+  plan: PlanId
+): Promise<{ ok: true; invoiceId: string } | { ok: false; error: string }> {
+  if (!(plan in PLANS)) return { ok: false, error: "Nepoznat plan." };
+  const { tenant } = await getAdminContext();
+  const db = createAdminClient();
+
+  // Period počinje danas, ili dan posle postojećeg isteka ako je još plaćen
+  const today = new Date().toISOString().slice(0, 10);
+  const periodFrom =
+    tenant.paid_until && tenant.paid_until >= today
+      ? new Date(new Date(`${tenant.paid_until}T12:00:00`).getTime() + 86400000)
+          .toISOString()
+          .slice(0, 10)
+      : today;
+  const periodTo = addMonths(periodFrom, PLANS[plan].months);
+
+  // Ako već postoji faktura za isti plan i period, ne izdaji novu
+  const { data: existing } = await db
+    .from("invoices")
+    .select("id")
+    .eq("tenant_id", tenant.id)
+    .eq("plan", plan)
+    .eq("period_from", periodFrom)
+    .maybeSingle();
+  if (existing) return { ok: true, invoiceId: existing.id };
+
+  const year = new Date().getFullYear();
+  const { data: maxRow } = await db
+    .from("invoices")
+    .select("number")
+    .eq("year", year)
+    .order("number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  let nextNumber = (maxRow?.number ?? 0) + 1;
+
+  // Retry na sudar numeracije (paralelno izdavanje)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: created, error } = await db
+      .from("invoices")
+      .insert({
+        tenant_id: tenant.id,
+        number: nextNumber,
+        year,
+        plan,
+        amount: PLANS[plan].amount,
+        period_from: periodFrom,
+        period_to: periodTo,
+        buyer_info: tenant.billing_note || tenant.name,
+      })
+      .select("id")
+      .single();
+    if (!error) {
+      revalidatePath("/admin/podesavanja");
+      return { ok: true, invoiceId: created.id };
+    }
+    if (error.code === "23505") {
+      nextNumber += 1;
+      continue;
+    }
+    console.error("createInvoice failed:", error);
+    return { ok: false, error: "Izdavanje fakture nije uspelo." };
+  }
+  return { ok: false, error: "Izdavanje fakture nije uspelo. Pokušaj ponovo." };
 }
 
 const settingsSchema = z.object({
