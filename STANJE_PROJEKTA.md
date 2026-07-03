@@ -4,15 +4,14 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
-**Novo od 4.7:** registracija traži ime/telefon + verifikaciju mejla
-(`/auth/callback` ruta, "Proveri sanduče" ekran, ponovno slanje linka; email
-potvrda naloga UKLJUČENA u Supabase). Resend radi na produkciji
-(`potvrda@terminer.rs`, domen verifikovan u Resendu). Šablon salona
-redizajniran (MINERVA inspiracija): split hero sa velikom slikom, usluge kao
-kartice, tim portret kartice, sekcija radnog vremena (unija `working_hours` po
-danu → `getTenantSite().openHours`, "Danas 09–16" chip u heru), CTA traka u
-boji brenda pre footera. Demo salonu još fale kvalitetne fotografije
-(hero/tim/galerija) da bude prava prezentacija.
+**Novo od 4.7:** (1) Registracija traži ime/telefon + verifikaciju mejla —
+`/auth/callback` ruta, "Proveri sanduče" ekran, ponovno slanje linka; email
+potvrda naloga UKLJUČENA u Supabase. (2) Resend RADI NA PRODUKCIJI
+(`potvrda@terminer.rs`, domen verifikovan; ključ u .env.local i na Vercelu).
+(3) Pokušan redizajn šablona salona (MINERVA stil) — Mihajlo tražio REVERT,
+stari šablon mu je draži; commit sa redizajnom postoji u istoriji (27848fc)
+ako ikad zatreba. Umesto toga demo salon dobija vrhunski SADRŽAJ
+(fotografije, imena, usluge) kao ugledni primer.
 
 ## 1. Šta je Terminer
 
@@ -45,9 +44,9 @@ supabase db push       # migracije — MORA pokrenuti Mihajlo (traži DB lozinku
 `.env.local` (postoji, popunjen): `NEXT_PUBLIC_SUPABASE_URL`,
 `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
 `SUPER_ADMIN_EMAIL` (pristup /superadmin, zarez-separisano).
-Zakomentarisani i čekaju Mihajla: `RESEND_API_KEY` (bez njega se email
-potvrde samo preskaču uz warn u logu), `EMAIL_FROM` (podrazumevano
-Resend sandbox `onboarding@resend.dev` — šalje samo na Mihajlov mejl).
+Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
+`EMAIL_FROM="Terminer <potvrda@terminer.rs>"`; na Vercelu još
+`NEXT_PUBLIC_APP_URL=https://terminer.rs`.
 
 **Test podaci u bazi:**
 - Salon `demo` (Salon Demo, objavljen, "plaćen" do 2.8.2026) — usluge, 2 frizera

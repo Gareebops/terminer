@@ -15,9 +15,6 @@ export interface TenantSite {
   staff: Staff[];
   staffServices: { staff_id: string; service_id: string }[];
   gallery: Gallery[];
-  /** Radno vreme salona po danu (0=nedelja..6=subota): unija radnih vremena
-   *  aktivnih zaposlenih, null = neradan dan. */
-  openHours: ({ start: string; end: string } | null)[];
 }
 
 // Jedina tačka u aplikaciji koja rezoluje tenant-a iz slug-a.
@@ -34,7 +31,7 @@ export const getTenantSite = cache(
 
     if (!tenant) return null;
 
-    const [settings, services, staff, staffServices, gallery, workingHours] =
+    const [settings, services, staff, staffServices, gallery] =
       await Promise.all([
         supabase.from("site_settings").select("*").eq("tenant_id", tenant.id).maybeSingle(),
         supabase
@@ -58,27 +55,7 @@ export const getTenantSite = cache(
           .select("*")
           .eq("tenant_id", tenant.id)
           .order("sort_order"),
-        supabase
-          .from("working_hours")
-          .select("day_of_week, start_time, end_time, is_working")
-          .eq("tenant_id", tenant.id),
       ]);
-
-    // Radno vreme salona = unija radnih vremena zaposlenih po danu
-    const openHours: ({ start: string; end: string } | null)[] = Array.from(
-      { length: 7 },
-      () => null
-    );
-    for (const wh of workingHours.data ?? []) {
-      if (!wh.is_working) continue;
-      const start = wh.start_time.slice(0, 5);
-      const end = wh.end_time.slice(0, 5);
-      const cur = openHours[wh.day_of_week];
-      openHours[wh.day_of_week] = {
-        start: cur && cur.start < start ? cur.start : start,
-        end: cur && cur.end > end ? cur.end : end,
-      };
-    }
 
     return {
       tenant: tenant as Tenant,
@@ -87,7 +64,6 @@ export const getTenantSite = cache(
       staff: (staff.data as Staff[]) ?? [],
       staffServices: staffServices.data ?? [],
       gallery: (gallery.data as Gallery[]) ?? [],
-      openHours,
     };
   }
 );
