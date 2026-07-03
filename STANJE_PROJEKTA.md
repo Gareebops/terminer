@@ -1,8 +1,18 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 3. jul 2026. (pre-launch: pravne strane, SEO, checklist) Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 4. jul 2026. Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
+
+**Novo od 4.7:** registracija traži ime/telefon + verifikaciju mejla
+(`/auth/callback` ruta, "Proveri sanduče" ekran, ponovno slanje linka; email
+potvrda naloga UKLJUČENA u Supabase). Resend radi na produkciji
+(`potvrda@terminer.rs`, domen verifikovan u Resendu). Šablon salona
+redizajniran (MINERVA inspiracija): split hero sa velikom slikom, usluge kao
+kartice, tim portret kartice, sekcija radnog vremena (unija `working_hours` po
+danu → `getTenantSite().openHours`, "Danas 09–16" chip u heru), CTA traka u
+boji brenda pre footera. Demo salonu još fale kvalitetne fotografije
+(hero/tim/galerija) da bude prava prezentacija.
 
 ## 1. Šta je Terminer
 
