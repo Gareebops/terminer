@@ -158,6 +158,12 @@
 .admin-scope [data-slot="dialog-content"] {
   border-radius: 1.5rem;
 }
+/* Polja za unos: podrazumevani border-input je preslab na belim karticama */
+.admin-scope [data-slot="input"],
+.admin-scope [data-slot="textarea"],
+.admin-scope [data-slot="select-trigger"] {
+  border-color: rgba(23, 24, 26, 0.18);
+}
 
 /* Sajt salona — izbor dizajna dugmadi (theme.button_style).
    "rounded" je podrazumevani izgled (rounded-lg iz Button komponente). */
