@@ -1,6 +1,6 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 3. jul 2026. (dizajn dugmadi salona + revizija izdavanja faktura) Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 3. jul 2026. (pre-launch: pravne strane, SEO, checklist) Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
@@ -131,6 +131,12 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
   dugmetom, već otkazan, prošao, nevažeći link; koristi postojeću `cancelBooking`
   akciju). Wizard na kraju kaže da je potvrda poslata (`emailSent` u rezultatu
   `createBooking`). Base URL za link: `NEXT_PUBLIC_APP_URL` ili request headers.
+- **Pre-launch paket**: pravne strane `/privatnost` i `/uslovi` (zajednički
+  okvir [src/components/legal-page.tsx](src/components/legal-page.tsx), podaci
+  firme se vuku iz `ISSUER` u lib/invoice.ts; linkovi u footeru landinga),
+  `robots.ts` (blokira /admin, /superadmin, /faktura/, /onboarding),
+  `generateMetadata` po salonu u `[slug]/layout.tsx` (naslov/opis salona
+  umesto Terminerovog).
 - **Billing**: 30 dana probe → grace 7 dana → pauza SAMO online zakazivanja
   (sajt nikad ne gasimo). Baner u adminu. `/superadmin` (samo SUPER_ADMIN_EMAIL):
   lista salona + produženje +1/+3/+12 meseci. Logika u
@@ -187,21 +193,35 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
 - On donosi odluke o obimu; AI predlaže sa preporukom pa on kaže "kreni".
 - AI memorija (van repoa) postoji u `~/.claude/projects/...Terminer/memory/`.
 
-## 10. Šta je SLEDEĆE (dogovoren redosled)
+## 10. Šta je SLEDEĆE (dogovoren put do launcha)
 
-1. **Resend nalog + `RESEND_API_KEY`** — kod za email potvrde je gotov (vidi
-   sekciju 6), čeka samo Mihajla da napravi nalog na resend.com i upiše ključ u
-   `.env.local` (placeholder postoji). Sandbox šalje samo na njegov mejl; sa
-   domenom se menja još samo `EMAIL_FROM`. Zatim test uživo: booking sa emailom
-   → stigla potvrda → link otkazuje.
-2. **Deploy (Vercel) + domen** (proveriti `terminer.rs`) — uslov za prve klijente.
-   Na deployu postaviti i `NEXT_PUBLIC_APP_URL` (koristi se za linkove u mejlu).
-3. Pre produkcije: obrisati test-admin nalog, uključiti email potvrdu naloga u
-   Supabase Auth, politika privatnosti.
-4. Kasnije (Faza B/C dizajna): "vibe" preseti (font+boja+varijanta u 1 klik),
+1. **Deploy (Vercel Pro) + domen `terminer.rs`** — Mihajlo: Vercel nalog,
+   domen, env varijable (sve iz `.env.local` + `NEXT_PUBLIC_APP_URL`).
+   Pravne strane, robots i SEO su spremni (vidi checklist ispod).
+2. **Resend** — Mihajlo: nalog, verifikacija domena (DNS), `RESEND_API_KEY` u
+   env (placeholder u `.env.local`), pa `EMAIL_FROM=potvrda@terminer.rs`.
+   Kod je gotov; test uživo: booking sa emailom → potvrda → link otkazuje.
+3. **Custom domeni salona** — plan dogovoren (host-based rezolucija u proxy.ts
+   + `tenants.custom_domain` + Vercel Domains API + kartica "Domen" u
+   Podešavanjima); implementacija kreće posle deploya.
+4. **Prvi pravi salon** (Mihajlov frizer, founder cena) → pa šire.
+5. Kasnije (Faza B/C dizajna): "vibe" preseti (font+boja+varijanta u 1 klik),
    hero layout varijante, redosled sekcija drag&drop, kompresija slika pre
    uploada (WebP), blur placeholderi, video hero, recenzije, SMS/Viber podsetnici,
-   subdomeni pa custom domeni, statistika++.
+   statistika++.
+
+### Pre-launch checklist (uraditi UZ deploy, pre prvog klijenta)
+
+- [ ] Obrisati test podatke iz baze: `test-admin@terminer.dev` (Supabase Auth +
+      `tenant_members`), test fakture br. 1 i 3 iz 2026, test rezervacije.
+      Odluka za Mihajla: da li salon `demo` ostaje kao javni showcase (onda mu
+      prebaciti vlasništvo na Mihajlov nalog) ili se briše ceo tenant.
+- [ ] Supabase Auth: uključiti email potvrdu naloga (dashboard podešavanje).
+- [ ] `CONTACT_EMAIL` u [src/components/legal-page.tsx](src/components/legal-page.tsx)
+      prebaciti sa gmail-a na kontakt@terminer.rs kad domen legne.
+- [ ] Pravne strane pregledati očima vlasnika: `/privatnost` i `/uslovi`
+      (nacrt pisao AI 3.7.2026 — proveriti PIB/MB i formulacije).
+- [ ] OG slika za deljenje linka (dizajnerski zadatak, može i posle launcha).
 
 ## 11. Kako da nastaviš (uputstvo za AI)
 

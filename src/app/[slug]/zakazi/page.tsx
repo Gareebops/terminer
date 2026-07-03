@@ -1,5 +1,9 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
+// Kroz template iz [slug]/layout postaje "Zakaži termin | {salon}"
+export const metadata: Metadata = { title: "Zakaži termin" };
 import { ArrowLeft } from "lucide-react";
 import { getTenantSite } from "@/lib/tenant";
 import { BookingWizard } from "./booking-wizard";

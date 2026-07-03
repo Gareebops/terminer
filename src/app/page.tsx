@@ -168,8 +168,16 @@ export default function HomePage() {
         </p>
       </section>
 
-      <footer className="mx-auto flex max-w-5xl items-center justify-between px-4 pb-10 text-sm font-medium text-ink/50">
+      <footer className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 pb-10 text-sm font-medium text-ink/50">
         <span>© {new Date().getFullYear()} Terminer</span>
+        <nav className="flex gap-4">
+          <Link href="/privatnost" className="hover:text-ink hover:underline">
+            Privatnost
+          </Link>
+          <Link href="/uslovi" className="hover:text-ink hover:underline">
+            Uslovi
+          </Link>
+        </nav>
         <span>Napravljeno u Srbiji</span>
       </footer>
     </main>
