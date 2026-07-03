@@ -1,0 +1,181 @@
+# Terminer — stanje projekta (handoff za AI/developera)
+
+> Poslednje ažuriranje: 3. jul 2026. Ovaj dokument je izvor istine o tome šta je
+> urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
+> pa proveri `git log --oneline` za eventualne novije izmene.
+
+## 1. Šta je Terminer
+
+Multi-tenant SaaS za frizerske/beauty salone u Srbiji — "domaći Wix za frizere".
+Vlasnik salona se registruje, prođe onboarding i dobije **mini-sajt sa online
+zakazivanjem** na `terminer.rs/{slug}` + admin panel. Klijenti salona zakazuju
+kao gosti (bez naloga).
+
+- Vlasnik: Mihajlo (milosevicmihajlo13@gmail.com), komunikacija na srpskom.
+- Inspiracija: njegova ranija single-tenant app github.com/Gareebops/akademijadjordje.
+- **Status: komercijalna faza.** MVP prezentovan frizeru (jako zadovoljan),
+  postoji nekoliko sigurnih klijenata. Naplata implementirana (proba + paywall).
+
+## 2. Stack i pokretanje
+
+| | |
+|---|---|
+| Framework | Next.js 16 (App Router, Turbopack), TypeScript, `src/` layout |
+| UI | Tailwind 4, shadcn/ui (radix base), lucide-react, sonner, motion |
+| Baza/Auth/Storage | Supabase (cloud projekat `hmsvyoyjlwkdhevsbavh`, region Frankfurt) |
+| Fontovi | Geist (default), Plus Jakarta Sans (Terminer brend), + 4 para za salone |
+
+```bash
+npm run dev            # localhost:3000
+npm run build          # mora proći pre svakog commita
+npx tsc --noEmit       # brza provera tipova (ignoriši greške iz .next/)
+supabase db push       # migracije — MORA pokrenuti Mihajlo (traži DB lozinku koju samo on zna)
+```
+
+`.env.local` (postoji, popunjen): `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`,
+`SUPER_ADMIN_EMAIL` (pristup /superadmin, zarez-separisano).
+
+**Test podaci u bazi:**
+- Salon `demo` (Salon Demo, objavljen, "plaćen" do 2.8.2026) — usluge, 2 frizera
+  (Đorđe ima šablon smene "Prepodne 09–13"), radno vreme pon–sub, 1 test rezervacija.
+- Salon `studio-test` — Mihajlov probni salon (neobjavljen).
+- Test admin: `test-admin@terminer.dev` / `terminer-test-123` (owner demo salona,
+  u SUPER_ADMIN_EMAIL listi). **Obrisati pre produkcije.**
+- Seed za novu bazu: `supabase/seed.sql`.
+
+## 3. Arhitektura — ključne odluke (NE menjati bez razloga)
+
+1. **Jedna baza, `tenant_id` na svemu + RLS.** Javno čitanje samo za objavljene
+   salone; rezervacije i klijenti NIKAD javno čitljivi.
+2. **Tenant rezolucija je centralizovana**: path-based (`/{slug}`) u
+   [src/proxy.ts](src/proxy.ts) (Next 16 konvencija umesto middleware) +
+   [src/lib/tenant.ts](src/lib/tenant.ts) (`getTenantSite`, React cache).
+   Prelazak na subdomene = izmena samo ta dva mesta.
+3. **Javne booking operacije idu kroz server akcije sa service-role klijentom**
+   ([src/lib/booking/actions.ts](src/lib/booking/actions.ts)) — RLS nema javni
+   write; server validira sve. Klijentski kod NIKAD ne odlučuje o dostupnosti.
+4. **Duplo zakazivanje brani Postgres exclusion constraint** (`bookings_no_overlap`,
+   btree_gist, tstzrange po staff_id, samo pending/confirmed). Insert koji pukne
+   sa kodom `23P01` = termin zauzet.
+5. **Gost-booking**: ime + telefon (+ opciono email); `customers` se upsertuje po
+   `(tenant_id, phone)`; `cancel_token` na rezervaciji čeka email funkcionalnost.
+6. **Neobjavljen salon**: vlasnik ga vidi i može da testira ceo booking (anonimni
+   ne mogu ni do stranice zbog RLS); žuti baner podseća da objavi.
+7. **Vremena**: baza čuva `date + start/end time` (lokalno vreme salona) I
+   `starts_at/ends_at` (UTC, za constraint). Konverzija u
+   [src/lib/booking/timezone.ts](src/lib/booking/timezone.ts), zona `Europe/Belgrade`.
+
+## 4. Šema baze (3 migracije u `supabase/migrations/`)
+
+- `20260701000001_init.sql` — sve tabele + RLS + storage bucket `tenant-media`
+  (putanja fajla mora počinjati tenant_id-jem; javno čitanje, upis samo članovi):
+  `tenants`, `tenant_members` (owner/admin/staff), `site_settings`, `services`,
+  `staff`, `staff_services`, `working_hours` (nedeljni default, dow 0=nedelja),
+  `shift_templates` + `shift_assignments` (smena za datum GAZI working_hours;
+  `is_off` = slobodan dan), `customers`, `bookings`, `blocked_slots`
+  (staff_id null = ceo salon), `gallery`. Helper funkcije `is_member`,
+  `has_tenant_role` (security definer).
+- `20260702000001_theme.sql` — `site_settings.theme` jsonb (`font_pair`, `mode`).
+- `20260703000001_billing.sql` — `tenants.trial_ends_at` (default now()+30d),
+  `paid_until`, `billing_note`.
+
+**Logika slobodnih termina** (server): okno = smena za taj datum ILI working_hours
+→ minus aktivne rezervacije i blokade → slotovi na 30 min u zoni salona
+([src/lib/booking/slots.ts](src/lib/booking/slots.ts) je čista, testabilna logika).
+
+## 5. Dva dizajn sistema — VAŽNO razlikovanje
+
+1. **Terminer brend** (admin, landing, auth, superadmin): fintech DS iz
+   `~/Downloads/design-system.html`. Tokeni u globals.css: `bg-canvas` #E4E9E0,
+   `bg-ink` #17181A, `bg-mint` #A6F5A6 (pozitivno/CTA), `bg-lavender` #B7A9F2
+   (sekundarno), `bg-surface-light`. Font: Plus Jakarta Sans (`font-display`).
+   Pravila: spoljne kartice 32px radius (`rounded-[2rem]`), unutrašnje 16px,
+   dugmad/bedževi/selecti pill, JEDNA tamna kartica po ekranu, hatch šara =
+   nedostupno/blokirano. `.admin-scope` CSS u globals.css automatski stilizuje
+   shadcn komponente u adminu.
+2. **Brend salona** (javni sajt + booking): svaki salon bira boju (auto kontrast
+   + korekcija za tamnu podlogu u [src/lib/color.ts](src/lib/color.ts)), font par
+   (5 kuriranih u [src/lib/fonts.ts](src/lib/fonts.ts)), svetlu/tamnu varijantu.
+   Primena u [src/app/[slug]/layout.tsx](src/app/[slug]/layout.tsx) preko CSS
+   varijabli (`--primary`, `--app-font-*`) i `.dark` klase.
+   **NIKAD ne gurati mint/lavandu u šablone salona.**
+
+## 6. Šta je implementirano (po commitima)
+
+Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživo:
+
+- **Javni deo**: landing sa WOW hero animacijom (telefon u kome se booking sam
+  odigrava u petlji — [src/components/landing/hero-demo.tsx](src/components/landing/hero-demo.tsx))
+  + cenovnik sekcija; mini-sajt salona (hero, cenovnik, tim, galerija, kontakt,
+  scroll animacije — [src/components/animate.tsx](src/components/animate.tsx));
+  booking čarobnjak sa koracima, trakom 14 dana, animacijama i ICS "Dodaj u kalendar".
+- **Admin** (`/admin/*`): Početna (dashboard statistika), Kalendar (dnevni grid
+  po zaposlenima, ručno zakazivanje za telefonske klijente, blokade), Rezervacije
+  (statusi), Usluge (CRUD), Zaposleni (CRUD + po zaposlenom: fotografija/upload,
+  usluge checkbox, radno vreme po danu, šabloni smena), Smene (nedeljni grid
+  dodele), Galerija (multi-upload), Podešavanja (sadržaj + Izgled: boja/font/
+  varijanta/logo/hero slika + live preview sajta u telefon okviru).
+- **Auth/onboarding**: registracija → onboarding (naziv + slug) → admin.
+  Jedan vlasnik = jedan salon (za sada).
+- **Billing**: 30 dana probe → grace 7 dana → pauza SAMO online zakazivanja
+  (sajt nikad ne gasimo). Baner u adminu. `/superadmin` (samo SUPER_ADMIN_EMAIL):
+  lista salona + produženje +1/+3/+12 meseci. Logika u
+  [src/lib/billing.ts](src/lib/billing.ts), enforcement u booking akcijama.
+
+## 7. Naplata — poslovni model
+
+- **Faktura + IPS QR + prenos na račun** (Stripe NE radi za srpske firme; MoR
+  poput Paddle tek kod skaliranja van Srbije). Mihajlo ručno produžava na /superadmin.
+- Cenovnik: **1.990 RSD/mes**, **19.900 RSD/god** (2 meseca gratis), founder
+  cena 1.490 RSD/mes za prvih ~10 salona (usmeno, nije u kodu).
+
+## 8. Poznati gotchas
+
+- **Turbopack keš**: promene u `globals.css` @theme tokenima ponekad ne stignu
+  do browsera → `rm -rf .next` + restart dev servera.
+- `supabase db push` je interaktivan (DB lozinka) — može ga pokrenuti samo
+  Mihajlo; AI treba da pripremi migraciju i zamoli ga.
+- Zod `.uuid()` odbija ne-RFC UUID-jeve (seed koristi `000...0101`) — koristi se
+  permisivni regex (`uuidSchema` u booking actions).
+- Novi shadcn `init` ume da upiše cirkularni `--font-sans: var(--font-sans)` —
+  već popravljeno, ali paziti kod dodavanja komponenti.
+- `create-next-app` odbija velika slova u imenu foldera (Terminer) — scaffold
+  rađen kroz temp folder.
+- Preview/dev: booking wizard koristi datum browsera za "Danas/Sutra" traku;
+  server računa u zoni salona.
+
+## 9. Radni dogovori sa Mihajlom
+
+- Komunikacija i UI na **srpskom**; commit poruke na srpskom.
+- Posle svake celine: **verifikacija uživo kroz preview** (klik kroz flow,
+  screenshot za vizuelne izmene) → `npm run build` → commit. Test podatke
+  počistiti iz baze posle verifikacije.
+- On donosi odluke o obimu; AI predlaže sa preporukom pa on kaže "kreni".
+- AI memorija (van repoa) postoji u `~/.claude/projects/...Terminer/memory/`.
+
+## 10. Šta je SLEDEĆE (dogovoren redosled)
+
+1. **Email potvrde rezervacija (Resend)** — prvi zadatak koji čeka. Sandbox radi
+   bez domena (šalje samo na Mihajlov mejl) — kod se piše odmah, domen menja samo
+   "from" adresu. `cancel_token` već postoji u šemi; treba: šablon potvrde,
+   slanje po rezervaciji, stranica/ruta za otkazivanje preko linka.
+2. **Deploy (Vercel) + domen** (proveriti `terminer.rs`) — uslov za prve klijente.
+3. Pre produkcije: obrisati test-admin nalog, uključiti email potvrdu naloga u
+   Supabase Auth, politika privatnosti.
+4. **Fakture sa IPS QR** po salonu (Mihajlo ima postojeći invoice-generator skill
+   kao referencu za NBS IPS QR format).
+5. Kasnije (Faza B/C dizajna): "vibe" preseti (font+boja+varijanta u 1 klik),
+   hero layout varijante, redosled sekcija drag&drop, kompresija slika pre
+   uploada (WebP), blur placeholderi, video hero, recenzije, SMS/Viber podsetnici,
+   subdomeni pa custom domeni, statistika++.
+
+## 11. Kako da nastaviš (uputstvo za AI)
+
+1. Pročitaj ovaj fajl + `git log --oneline -15` + eventualno README.md.
+2. Pokreni dev server (`.claude/launch.json` ima konfiguraciju `terminer-dev`).
+3. Za admin testiranje uloguj se kao test-admin (kredencijali gore).
+4. Drži se arhitektonskih odluka iz sekcije 3 i dizajn podele iz sekcije 5.
+5. Za izmene baze: napravi migracioni fajl pa traži od Mihajla `supabase db push`.
+6. Verifikuj → build → commit (poruka na srpskom, Co-Authored-By Claude) →
+   ažuriraj ovaj fajl ako se stanje bitno promenilo.
