@@ -9,9 +9,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
+import { readableForeground } from "@/lib/color";
 import { FONT_PAIRS, type FontPairId } from "@/lib/fonts";
-import type { SiteTheme } from "@/lib/types";
+import type { ButtonStyle, SiteTheme } from "@/lib/types";
 import { updateAppearance, updateSiteImage } from "../actions";
+
+const BUTTON_STYLES: { id: ButtonStyle; label: string; radius: string }[] = [
+  { id: "rounded", label: "Zaobljena", radius: "0.5rem" },
+  { id: "pill", label: "Pil", radius: "999px" },
+  { id: "square", label: "Uglasta", radius: "0.25rem" },
+];
 
 const PRESETS: { name: string; value: string }[] = [
   { name: "Ugalj", value: "#18181b" },
@@ -159,6 +166,9 @@ export function AppearanceForm({
     (theme?.font_pair as FontPairId) ?? "geist"
   );
   const [darkMode, setDarkMode] = useState(theme?.mode === "dark");
+  const [buttonStyle, setButtonStyle] = useState<ButtonStyle>(
+    theme?.button_style ?? "rounded"
+  );
   const [pending, startTransition] = useTransition();
 
   function saveColor(next: string) {
@@ -180,6 +190,19 @@ export function AppearanceForm({
       const res = await updateAppearance({ fontPair: next });
       if (res.ok) {
         toast.success("Fontovi su sačuvani.");
+        onSaved?.();
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
+    });
+  }
+
+  function saveButtonStyle(next: ButtonStyle) {
+    setButtonStyle(next);
+    startTransition(async () => {
+      const res = await updateAppearance({ buttonStyle: next });
+      if (res.ok) {
+        toast.success("Dizajn dugmadi je sačuvan.");
         onSaved?.();
       } else {
         toast.error(res.error ?? "Greška.");
@@ -266,6 +289,37 @@ export function AppearanceForm({
               >
                 <p className="text-sm font-semibold">{p.label}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">{p.description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <Label>Dizajn dugmadi</Label>
+          <p className="mb-3 mt-1 text-xs text-muted-foreground">
+            Oblik dugmadi na sajtu i pri zakazivanju.
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {BUTTON_STYLES.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                disabled={pending}
+                onClick={() => saveButtonStyle(s.id)}
+                data-active={buttonStyle === s.id}
+                className="flex flex-col items-center gap-2 rounded-lg border p-3 transition hover:bg-accent data-[active=true]:border-ring data-[active=true]:ring-1 data-[active=true]:ring-ring"
+              >
+                <span
+                  className="flex h-7 w-full max-w-24 items-center justify-center text-xs font-medium"
+                  style={{
+                    backgroundColor: color,
+                    color: readableForeground(color),
+                    borderRadius: s.radius,
+                  }}
+                >
+                  Zakaži
+                </span>
+                <span className="text-xs font-medium">{s.label}</span>
               </button>
             ))}
           </div>

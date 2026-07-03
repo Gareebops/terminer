@@ -26,6 +26,7 @@ export default async function SalonLayout({
 
   return (
     <div
+      data-button-style={theme.button_style ?? "rounded"}
       className={`flex min-h-screen flex-1 flex-col bg-background text-foreground ${fontPair.className} ${mode === "dark" ? "dark" : ""}`}
       style={{
         ["--primary" as string]: accent,

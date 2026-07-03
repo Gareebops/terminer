@@ -158,3 +158,12 @@
 .admin-scope [data-slot="dialog-content"] {
   border-radius: 1.5rem;
 }
+
+/* Sajt salona — izbor dizajna dugmadi (theme.button_style).
+   "rounded" je podrazumevani izgled (rounded-lg iz Button komponente). */
+[data-button-style="pill"] [data-slot="button"] {
+  border-radius: 999px;
+}
+[data-button-style="square"] [data-slot="button"] {
+  border-radius: 0.25rem;
+}

@@ -6,6 +6,14 @@ import { FileText } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -39,7 +47,10 @@ export function BillingCard({
 }) {
   const router = useRouter();
   const [info, setInfo] = useState(billingInfo);
+  const [confirmPlan, setConfirmPlan] = useState<PlanId | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const infoFilled = info.trim().length > 0;
 
   function saveInfo() {
     startTransition(async () => {
@@ -49,10 +60,15 @@ export function BillingCard({
     });
   }
 
-  function issue(plan: PlanId) {
+  // Izdavanje ide u dva koraka: izbor plana otvara dijalog sa rezimeom,
+  // pa tek eksplicitna potvrda pravi fakturu (numerisana, briše se samo stornom)
+  function issue() {
+    const plan = confirmPlan;
+    if (!plan) return;
     startTransition(async () => {
       const res = await createInvoice(plan);
       if (res.ok) {
+        setConfirmPlan(null);
         router.push(`/faktura/${res.invoiceId}`);
       } else {
         toast.error(res.error);
@@ -105,19 +121,79 @@ export function BillingCard({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button disabled={pending} onClick={() => issue("monthly")}>
+          <Button
+            variant="outline"
+            disabled={pending}
+            onClick={() => setConfirmPlan("monthly")}
+          >
             <FileText className="size-4" />
-            Faktura — mesečna ({formatAmount(PLANS.monthly.amount)} RSD)
+            Mesečna — {formatAmount(PLANS.monthly.amount)} RSD
           </Button>
-          <Button variant="outline" disabled={pending} onClick={() => issue("yearly")}>
+          <Button
+            variant="outline"
+            disabled={pending}
+            onClick={() => setConfirmPlan("yearly")}
+          >
             <FileText className="size-4" />
-            Godišnja ({formatAmount(PLANS.yearly.amount)} RSD)
+            Godišnja — {formatAmount(PLANS.yearly.amount)} RSD
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Faktura sadrži NBS IPS QR kod — plaćanje skeniranjem iz m-banking
-          aplikacije. Po evidentiranoj uplati pretplata se produžava.
+          Izborom plana otvara se pregled fakture pre izdavanja. Faktura sadrži
+          NBS IPS QR kod — plaćanje skeniranjem iz m-banking aplikacije. Po
+          evidentiranoj uplati pretplata se produžava.
         </p>
+
+        <Dialog
+          open={confirmPlan !== null}
+          onOpenChange={(open) => {
+            if (!open) setConfirmPlan(null);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Izdavanje fakture</DialogTitle>
+              <DialogDescription>
+                Faktura dobija redni broj i ne može se obrisati (samo stornirati).
+                Proveri podatke pre izdavanja.
+              </DialogDescription>
+            </DialogHeader>
+            {confirmPlan && (
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <span className="font-medium">{PLANS[confirmPlan].label}</span>
+                  <span className="font-bold">
+                    {formatAmount(PLANS[confirmPlan].amount)} RSD
+                  </span>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Kupac</p>
+                  {infoFilled ? (
+                    <p className="mt-1 whitespace-pre-line">{info.trim()}</p>
+                  ) : (
+                    <p className="mt-1 text-amber-700">
+                      Podaci za fakturu nisu upisani — zatvori ovaj prozor i
+                      popuni polje &bdquo;Podaci za fakturu&ldquo;.
+                    </p>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Period važenja kreće od danas, ili od isteka postojeće
+                  pretplate ako je još aktivna.
+                </p>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => setConfirmPlan(null)}>
+                Odustani
+              </Button>
+              <Button disabled={pending || !infoFilled} onClick={issue}>
+                <FileText className="size-4" />
+                {pending ? "Izdavanje…" : "Izdaj fakturu"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {invoices.length > 0 && (
           <div>

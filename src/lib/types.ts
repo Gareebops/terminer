@@ -21,9 +21,12 @@ export interface Tenant {
   billing_note: string | null;
 }
 
+export type ButtonStyle = "rounded" | "pill" | "square";
+
 export interface SiteTheme {
   font_pair?: string; // FontPairId
   mode?: "light" | "dark";
+  button_style?: ButtonStyle;
 }
 
 export interface SiteSettings {

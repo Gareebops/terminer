@@ -30,20 +30,20 @@ export default async function SettingsPage() {
       <p className="mt-1 text-sm font-medium text-ink/50">
         Sadržaj tvog sajta na adresi /{tenant.slug}
       </p>
-      <div className="mt-6 max-w-xl">
-        <BillingCard
-          sub={subscriptionInfo(tenant)}
-          paidUntil={tenant.paid_until}
-          billingInfo={tenant.billing_note ?? ""}
-          invoices={(invoices ?? []) as Invoice[]}
-        />
-      </div>
       <div className="mt-6">
         <SettingsShell
           tenantId={tenant.id}
           slug={tenant.slug}
           isPublished={tenant.is_published}
           settings={settings as SiteSettings | null}
+        />
+      </div>
+      <div className="mt-6 max-w-xl">
+        <BillingCard
+          sub={subscriptionInfo(tenant)}
+          paidUntil={tenant.paid_until}
+          billingInfo={tenant.billing_note ?? ""}
+          invoices={(invoices ?? []) as Invoice[]}
         />
       </div>
     </div>

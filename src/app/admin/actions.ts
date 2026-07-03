@@ -528,6 +528,7 @@ const appearanceSchema = z.object({
     .optional(),
   fontPair: z.enum(["geist", "elegant", "modern", "warm", "classic"]).optional(),
   mode: z.enum(["light", "dark"]).optional(),
+  buttonStyle: z.enum(["rounded", "pill", "square"]).optional(),
 });
 
 export async function updateAppearance(
@@ -543,7 +544,7 @@ export async function updateAppearance(
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (parsed.data.primaryColor) patch.primary_color = parsed.data.primaryColor;
 
-  if (parsed.data.fontPair || parsed.data.mode) {
+  if (parsed.data.fontPair || parsed.data.mode || parsed.data.buttonStyle) {
     const { data: current } = await supabase
       .from("site_settings")
       .select("theme")
@@ -553,6 +554,7 @@ export async function updateAppearance(
       ...((current?.theme as object) ?? {}),
       ...(parsed.data.fontPair ? { font_pair: parsed.data.fontPair } : {}),
       ...(parsed.data.mode ? { mode: parsed.data.mode } : {}),
+      ...(parsed.data.buttonStyle ? { button_style: parsed.data.buttonStyle } : {}),
     };
   }
 
@@ -662,6 +664,15 @@ export async function createInvoice(
 ): Promise<{ ok: true; invoiceId: string } | { ok: false; error: string }> {
   if (!(plan in PLANS)) return { ok: false, error: "Nepoznat plan." };
   const { tenant } = await getAdminContext();
+
+  // Faktura mora imati kupca — bez podataka nema izdavanja
+  if (!tenant.billing_note?.trim()) {
+    return {
+      ok: false,
+      error: "Prvo upiši podatke za fakturu (naziv i adresa), pa izdaj fakturu.",
+    };
+  }
+
   const db = createAdminClient();
 
   // Period počinje danas, ili dan posle postojećeg isteka ako je još plaćen

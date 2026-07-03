@@ -1,6 +1,6 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 3. jul 2026. (email potvrde + otkazivanje preko linka) Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 3. jul 2026. (dizajn dugmadi salona + revizija izdavanja faktura) Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
@@ -99,7 +99,9 @@ Resend sandbox `onboarding@resend.dev` — šalje samo na Mihajlov mejl).
    shadcn komponente u adminu.
 2. **Brend salona** (javni sajt + booking): svaki salon bira boju (auto kontrast
    + korekcija za tamnu podlogu u [src/lib/color.ts](src/lib/color.ts)), font par
-   (5 kuriranih u [src/lib/fonts.ts](src/lib/fonts.ts)), svetlu/tamnu varijantu.
+   (5 kuriranih u [src/lib/fonts.ts](src/lib/fonts.ts)), svetlu/tamnu varijantu
+   i dizajn dugmadi (`theme.button_style`: rounded/pill/square — CSS pravila u
+   globals.css preko `data-button-style` atributa na wrapperu u [slug]/layout).
    Primena u [src/app/[slug]/layout.tsx](src/app/[slug]/layout.tsx) preko CSS
    varijabli (`--primary`, `--app-font-*`) i `.dark` klase.
    **NIKAD ne gurati mint/lavandu u šablone salona.**
@@ -143,8 +145,10 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
 - **Fakture su samoposlužne, izdavalac je Čvorište** (Mihajlova firma; podaci
   hardkodovani u [src/lib/invoice.ts](src/lib/invoice.ts): PIB 114833116,
   Erste račun 340-0001000228996-85). Tok: vlasnik u Podešavanja → "Pretplata i
-  naplata" upiše podatke za fakturu (tenants.billing_note), klikne
-  mesečna/godišnja → server akcija `createInvoice` (globalna numeracija
+  naplata" (kartica na dnu stranice) upiše podatke za fakturu
+  (tenants.billing_note), izabere mesečna/godišnja → **dijalog sa rezimeom**
+  (plan, iznos, kupac; bez podataka kupca izdavanje je blokirano i klijentski
+  i u `createInvoice`) → potvrda → server akcija `createInvoice` (globalna numeracija
   broj/godina, idempotentna po tenant+plan+period_from) → printabilna A4
   strana `/faktura/[id]` sa **NBS IPS QR** kodom (paket `qrcode`; payload
   format u lib/invoice.ts, poziv na broj = 00 + godina + redni broj).
