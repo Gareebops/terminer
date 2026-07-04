@@ -11,6 +11,7 @@ import {
 } from "@/lib/invoice";
 import type { Tenant } from "@/lib/types";
 import { assertSuperAdmin } from "./actions";
+import { AccountControls } from "./account-controls";
 import { InvoiceActions } from "./invoice-actions";
 import { TenantActions } from "./tenant-actions";
 
@@ -32,18 +33,28 @@ export default async function SuperAdminPage() {
   if (!me) notFound();
 
   const db = createAdminClient();
-  const [{ data: tenants }, { data: allInvoices }, { data: owners }] =
+  const [{ data: tenants }, { data: allInvoices }, { data: owners }, { data: auditLog }] =
     await Promise.all([
       db.from("tenants").select("*").order("created_at"),
       db.from("invoices").select("*, tenants(name, slug)").order("created_at", { ascending: false }),
       db.from("tenant_members").select("tenant_id, user_id").eq("role", "owner"),
+      db
+        .from("superadmin_audit_log")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(30),
     ]);
 
-  // Email vlasnika po salonu (za kontakt)
-  const ownerEmails = new Map<string, string>();
+  // Vlasnik po salonu (kontakt + status potvrde naloga)
+  const ownerInfo = new Map<string, { email: string; confirmed: boolean }>();
   for (const o of owners ?? []) {
     const { data } = await db.auth.admin.getUserById(o.user_id);
-    if (data.user?.email) ownerEmails.set(o.tenant_id, data.user.email);
+    if (data.user?.email) {
+      ownerInfo.set(o.tenant_id, {
+        email: data.user.email,
+        confirmed: !!data.user.email_confirmed_at,
+      });
+    }
   }
 
   const invoices = (allInvoices ?? []) as (Invoice & {
@@ -120,19 +131,25 @@ export default async function SuperAdminPage() {
                       <Link href={`/${tenant.slug}`} target="_blank" className="hover:underline">
                         /{tenant.slug}
                       </Link>
-                      {ownerEmails.get(tenant.id) && (
+                      {ownerInfo.get(tenant.id) && (
                         <>
                           {" · "}
                           <a
-                            href={`mailto:${ownerEmails.get(tenant.id)}`}
+                            href={`mailto:${ownerInfo.get(tenant.id)!.email}`}
                             className="hover:underline"
                           >
-                            {ownerEmails.get(tenant.id)}
+                            {ownerInfo.get(tenant.id)!.email}
                           </a>
+                          {!ownerInfo.get(tenant.id)!.confirmed && " · nalog nepotvrđen"}
                         </>
                       )}
                     </p>
                   </div>
+                  {tenant.suspended_at && (
+                    <span className="rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">
+                      SUSPENDOVAN
+                    </span>
+                  )}
                   <span className={`rounded-full px-3 py-1 text-xs font-bold ${s.cls}`}>
                     {s.label}
                     {sub.status !== "expired" && ` · ${sub.daysLeft}d`}
@@ -150,6 +167,17 @@ export default async function SuperAdminPage() {
                     tenantId={tenant.id}
                     status={sub.status}
                     paidUntil={tenant.paid_until}
+                  />
+                </div>
+                <div className="mt-2 border-t border-ink/5 pt-2">
+                  <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-ink/40">
+                    Nalog
+                  </p>
+                  <AccountControls
+                    tenantId={tenant.id}
+                    slug={tenant.slug}
+                    suspended={!!tenant.suspended_at}
+                    ownerConfirmed={ownerInfo.get(tenant.id)?.confirmed ?? true}
                   />
                 </div>
               </div>
@@ -198,6 +226,37 @@ export default async function SuperAdminPage() {
           {invoices.length === 0 && (
             <p className="rounded-2xl border border-dashed border-ink/20 p-8 text-center text-ink/50">
               Još nema izdatih faktura.
+            </p>
+          )}
+        </div>
+
+        {/* Dnevnik superadmin akcija */}
+        <h2 className="mt-10 text-xl font-extrabold tracking-tight">
+          Dnevnik akcija
+        </h2>
+        <div className="mt-4 overflow-hidden rounded-2xl bg-white shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
+          {(auditLog ?? []).map((entry) => (
+            <div
+              key={entry.id}
+              className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink/5 px-4 py-2.5 text-sm last:border-0"
+            >
+              <span className="text-xs tabular-nums text-ink/40">
+                {new Date(entry.created_at).toLocaleString("sr-RS")}
+              </span>
+              <span className="font-bold">{entry.action}</span>
+              {entry.tenant_label && (
+                <span className="text-ink/60">{entry.tenant_label}</span>
+              )}
+              {entry.details && (
+                <span className="truncate text-xs text-ink/40">
+                  {JSON.stringify(entry.details)}
+                </span>
+              )}
+            </div>
+          ))}
+          {(auditLog ?? []).length === 0 && (
+            <p className="p-8 text-center text-ink/50">
+              Još nema zabeleženih akcija.
             </p>
           )}
         </div>

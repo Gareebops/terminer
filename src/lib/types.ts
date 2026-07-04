@@ -19,6 +19,8 @@ export interface Tenant {
   trial_ends_at: string;
   paid_until: string | null;
   billing_note: string | null;
+  suspended_at: string | null;
+  suspended_reason: string | null;
 }
 
 export type ButtonStyle = "rounded" | "pill" | "square";

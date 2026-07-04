@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logAdminAction } from "@/lib/audit";
 
 // Superadmin = vlasnik platforme (SUPER_ADMIN_EMAIL u env).
 export async function assertSuperAdmin(): Promise<{ email: string } | null> {
@@ -24,7 +25,8 @@ type ActionResult = { ok: boolean; error?: string };
 // Plaćena faktura je izvor istine: produžava pretplatu tačno do kraja
 // perioda sa fakture (ili zadržava kasniji postojeći datum).
 export async function markInvoicePaid(invoiceId: string): Promise<ActionResult> {
-  if (!(await assertSuperAdmin())) return { ok: false, error: "Nemaš pristup." };
+  const me = await assertSuperAdmin();
+  if (!me) return { ok: false, error: "Nemaš pristup." };
   const db = createAdminClient();
 
   const { data: invoice } = await db
@@ -57,12 +59,19 @@ export async function markInvoicePaid(invoiceId: string): Promise<ActionResult> 
     .update({ paid_until: newPaidUntil })
     .eq("id", invoice.tenant_id);
 
+  await logAdminAction({
+    adminEmail: me.email,
+    action: "faktura označena plaćenom",
+    tenantId: invoice.tenant_id,
+    details: { invoice_id: invoiceId, paid_until: newPaidUntil },
+  });
   revalidatePath("/superadmin");
   return { ok: true };
 }
 
 export async function cancelInvoice(invoiceId: string): Promise<ActionResult> {
-  if (!(await assertSuperAdmin())) return { ok: false, error: "Nemaš pristup." };
+  const me = await assertSuperAdmin();
+  if (!me) return { ok: false, error: "Nemaš pristup." };
   const db = createAdminClient();
 
   // Samo neplaćene fakture se storniraju; za plaćenu prvo korekcija datuma
@@ -76,6 +85,11 @@ export async function cancelInvoice(invoiceId: string): Promise<ActionResult> {
   if (error || !data) {
     return { ok: false, error: "Storniranje nije uspelo (možda je već plaćena?)." };
   }
+  await logAdminAction({
+    adminEmail: me.email,
+    action: "faktura stornirana",
+    details: { invoice_id: invoiceId },
+  });
   revalidatePath("/superadmin");
   return { ok: true };
 }
@@ -86,7 +100,8 @@ export async function extendTrial(
 ): Promise<ActionResult> {
   const parsed = z.number().int().min(1).max(90).safeParse(days);
   if (!parsed.success) return { ok: false, error: "Neispravan broj dana." };
-  if (!(await assertSuperAdmin())) return { ok: false, error: "Nemaš pristup." };
+  const me = await assertSuperAdmin();
+  if (!me) return { ok: false, error: "Nemaš pristup." };
 
   const db = createAdminClient();
   const { data: tenant } = await db
@@ -104,6 +119,12 @@ export async function extendTrial(
     .update({ trial_ends_at: next })
     .eq("id", tenantId);
   if (error) return { ok: false, error: "Izmena nije uspela." };
+  await logAdminAction({
+    adminEmail: me.email,
+    action: "produžena proba",
+    tenantId,
+    details: { days: parsed.data, until: next },
+  });
   revalidatePath("/superadmin");
   return { ok: true };
 }
@@ -116,7 +137,8 @@ export async function setPaidUntil(
   if (date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return { ok: false, error: "Neispravan datum." };
   }
-  if (!(await assertSuperAdmin())) return { ok: false, error: "Nemaš pristup." };
+  const me = await assertSuperAdmin();
+  if (!me) return { ok: false, error: "Nemaš pristup." };
 
   const db = createAdminClient();
   const { error } = await db
@@ -124,6 +146,12 @@ export async function setPaidUntil(
     .update({ paid_until: date })
     .eq("id", tenantId);
   if (error) return { ok: false, error: "Izmena nije uspela." };
+  await logAdminAction({
+    adminEmail: me.email,
+    action: "ručna korekcija plaćeno-do",
+    tenantId,
+    details: { paid_until: date },
+  });
   revalidatePath("/superadmin");
   return { ok: true };
 }
@@ -139,7 +167,8 @@ export async function extendSubscription(input: {
 }): Promise<{ ok: boolean; error?: string }> {
   const parsed = extendSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Neispravni podaci." };
-  if (!(await assertSuperAdmin())) return { ok: false, error: "Nemaš pristup." };
+  const me = await assertSuperAdmin();
+  if (!me) return { ok: false, error: "Nemaš pristup." };
 
   const db = createAdminClient();
   const { data: tenant } = await db
@@ -164,6 +193,12 @@ export async function extendSubscription(input: {
     .eq("id", parsed.data.tenantId);
   if (error) return { ok: false, error: "Izmena nije uspela." };
 
+  await logAdminAction({
+    adminEmail: me.email,
+    action: "produžena pretplata",
+    tenantId: parsed.data.tenantId,
+    details: { months: parsed.data.months, paid_until: paidUntil },
+  });
   revalidatePath("/superadmin");
   return { ok: true };
 }

@@ -44,6 +44,11 @@ async function loadBookingContext(
     .maybeSingle();
   if (!tenant) return { error: "Salon nije pronađen." };
 
+  // Suspendovan salon: nema zakazivanja ni za koga
+  if (tenant.suspended_at) {
+    return { error: "Salon trenutno nije dostupan." };
+  }
+
   // Istekla pretplata pauzira samo online zakazivanje - sajt ostaje živ
   if (isBookingPaused(tenant as Tenant)) {
     return { error: "Online zakazivanje je trenutno pauzirano. Pozovi salon telefonom." };

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { getAdminContext } from "@/lib/admin";
 import { subscriptionInfo } from "@/lib/billing";
+import { CONTACT_EMAIL } from "@/components/legal-page";
 import { AdminNav } from "./admin-nav";
 import { LogoutButton } from "./logout-button";
 
@@ -76,6 +77,13 @@ export default async function AdminLayout({
         </div>
       </aside>
       <main className="min-w-0 flex-1 py-2 pr-2">
+        {tenant.suspended_at && (
+          <div className="mb-4 rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white">
+            Salon je suspendovan i sajt nije javno dostupan.
+            {tenant.suspended_reason && ` Razlog: ${tenant.suspended_reason}.`}{" "}
+            Kontaktiraj podršku: {CONTACT_EMAIL}
+          </div>
+        )}
         <SubscriptionBanner status={sub.status} daysLeft={sub.daysLeft} />
         {children}
       </main>

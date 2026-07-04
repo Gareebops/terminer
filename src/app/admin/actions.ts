@@ -784,6 +784,10 @@ export async function updateSettings(
 
 export async function setPublished(published: boolean): Promise<ActionResult> {
   const { tenant } = await getAdminContext();
+  // Suspendovan salon ne može nazad na javni internet dok traje suspenzija
+  if (published && tenant.suspended_at) {
+    return { ok: false, error: "Salon je suspendovan - objava nije moguća. Kontaktiraj podršku." };
+  }
   const supabase = await createClient();
   const { error } = await supabase
     .from("tenants")

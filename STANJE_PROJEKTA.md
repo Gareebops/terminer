@@ -95,7 +95,12 @@ Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
   `has_tenant_role` (security definer).
 - `20260702000001_theme.sql` — `site_settings.theme` jsonb (`font_pair`, `mode`).
 - `20260703000001_billing.sql` — `tenants.trial_ends_at` (default now()+30d),
-  `paid_until`, `billing_note`.
+  `paid_until`, `billing_note`. (+ `20260703000002/3` fakture i status)
+- `20260704000001_superadmin.sql` — `tenants.suspended_at/suspended_reason`,
+  tabela `superadmin_audit_log` (RLS bez policy = samo service role) i
+  kolonske privilegije na `tenants` (authenticated: update samo
+  name/is_published/billing_note, insert samo name/slug — zatvara rupu gde je
+  vlasnik REST-om mogao da menja svoj paid_until).
 
 **Logika slobodnih termina** (server): okno = smena za taj datum ILI working_hours
 → minus aktivne rezervacije i blokade → slotovi na 30 min u zoni salona
@@ -182,6 +187,21 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
   (aktivni/proba/naplaćeno u godini/fakture na čekanju), email vlasnika po
   salonu, "Proba +14d", gratis +1/+3/+12 mes i ručni "Datum…" za korekcije.
   Salon u BillingCard vidi status svake fakture (Na čekanju/Plaćena/Stornirana).
+- **Superadmin kontrola naloga** (4.7, tri nivoa — akcije u
+  [superadmin/account-actions.ts](src/app/superadmin/account-actions.ts), UI u
+  account-controls.tsx): suspenzija (skida sajt + blokira objavu + baner
+  vlasniku; ukidanje NE vraća objavu automatski), trajno brisanje (potvrda
+  slugom; storage + kaskada + auth nalog vlasnika ako ne vodi drugi salon),
+  reset lozinke / ponovna potvrda (superadmin NIKAD ne postavlja lozinku),
+  promena email adrese vlasnika (uz proveru identiteta telefonom), prenos
+  vlasništva (na postojeći potvrđen nalog bez salona), izvoz svih podataka
+  tenanta (JSON download), impersonacija "Uđi kao vlasnik" (magiclink +
+  verifyOtp = zamena sesije uz upozorenje; povratak = odjava/prijava).
+  SVE akcije (i postojeće za naplatu) pišu u `superadmin_audit_log`;
+  poslednjih 30 se vidi na dnu panela. **ČEKA `supabase db push` (Mihajlo)**
+  — do tada nove kontrole vraćaju grešku na upotrebi. Posle push-a:
+  verifikovati uživo suspend/izvoz/impersonaciju; u uslove korišćenja
+  dodati odredbu o impersonaciji uz saglasnost.
 
 ## 8. Poznati gotchas
 

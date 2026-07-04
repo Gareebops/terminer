@@ -30,6 +30,8 @@ export const getTenantSite = cache(
       .maybeSingle();
 
     if (!tenant) return null;
+    // Suspendovan salon ne postoji za javnost (admin i dalje radi, uz baner)
+    if (tenant.suspended_at) return null;
 
     const [settings, services, staff, staffServices, gallery] =
       await Promise.all([
