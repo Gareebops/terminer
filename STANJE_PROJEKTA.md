@@ -198,10 +198,14 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
   tenanta (JSON download), impersonacija "Uđi kao vlasnik" (magiclink +
   verifyOtp = zamena sesije uz upozorenje; povratak = odjava/prijava).
   SVE akcije (i postojeće za naplatu) pišu u `superadmin_audit_log`;
-  poslednjih 30 se vidi na dnu panela. **ČEKA `supabase db push` (Mihajlo)**
-  — do tada nove kontrole vraćaju grešku na upotrebi. Posle push-a:
-  verifikovati uživo suspend/izvoz/impersonaciju; u uslove korišćenja
-  dodati odredbu o impersonaciji uz saglasnost.
+  poslednjih 30 se vidi na dnu panela. Migracija primenjena 4.7;
+  VERIFIKOVANO UŽIVO: suspenzija (javni 404 + booking blok + baner vlasniku
+  + bedž), ukidanje (sajt ostaje neobjavljen dok ga vlasnik ne objavi),
+  kolonske privilegije (42501 na paid_until/suspended_at, billing_note
+  prolazi), izvoz, audit log, impersonacija (upozorenje → zamena sesije →
+  /admin). Namerno NEtestirani na živim podacima: brisanje, promena mejla,
+  prenos vlasništva (destruktivni; validacije na mestu). U uslove
+  korišćenja dodati odredbu o impersonaciji uz saglasnost (checklist).
 
 ## 8. Poznati gotchas
 
