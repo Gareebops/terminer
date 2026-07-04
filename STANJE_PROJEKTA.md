@@ -11,7 +11,7 @@ potvrda naloga UKLJUČENA u Supabase. (2) Resend RADI NA PRODUKCIJI
 (3) Pokušan redizajn šablona salona (MINERVA stil) — Mihajlo tražio REVERT,
 stari šablon mu je draži; commit sa redizajnom postoji u istoriji (27848fc)
 ako ikad zatreba. (4) Demo salon pretvoren u ugledni primer "Salon Aura":
-novi sadržaj + 10 AI fotografija (vidi "Test podaci"); verifikovano uživo
+novi sadržaj + 12 AI fotografija uklj. zlatni logo monogram (vidi "Test podaci"); adresa Svetogorska 27 Beograd, zlatna #b45309, pill dugmad; verifikovano uživo
 uključujući booking za novu koloristkinju.
 
 ## 1. Šta je Terminer
