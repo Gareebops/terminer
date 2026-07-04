@@ -841,7 +841,12 @@ export async function preparePayment(plan: PlanId): Promise<PreparePaymentResult
     invoiceNumber: invoice.number,
     invoiceYear: invoice.year,
   });
-  const qrDataUrl = await QRCode.toDataURL(ipsString, { margin: 1, width: 320 });
+  // Nivo H (30% korekcije) - dozvoljava Terminer logo preko sredine koda
+  const qrDataUrl = await QRCode.toDataURL(ipsString, {
+    margin: 1,
+    width: 320,
+    errorCorrectionLevel: "H",
+  });
 
   return {
     ok: true,

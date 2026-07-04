@@ -15,6 +15,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { TerminerMark } from "@/components/terminer-logo";
 import { formatAmount, PLANS, type PlanId } from "@/lib/invoice";
 import {
   preparePayment,
@@ -79,16 +80,18 @@ export function PaymentModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="rounded-[2rem] font-display sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Plaćanje članarine</DialogTitle>
+          <DialogTitle className="text-xl font-extrabold tracking-tight">
+            Plaćanje članarine
+          </DialogTitle>
           <DialogDescription>
             Skeniraj QR kod iz svoje m-banking aplikacije - svi podaci za uplatu
             se popune sami.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Izbor plana */}
+        {/* Izbor plana - aktivan je jedina tamna kartica (DS pravilo) */}
         <div className="grid grid-cols-2 gap-2">
           {(Object.keys(PLANS) as PlanId[]).map((p) => (
             <button
@@ -97,14 +100,20 @@ export function PaymentModal({
               disabled={pending}
               onClick={() => switchPlan(p)}
               data-active={plan === p}
-              className="rounded-xl border p-3 text-left transition data-[active=true]:border-ring data-[active=true]:ring-1 data-[active=true]:ring-ring"
+              className="rounded-2xl border-2 border-ink/10 p-3.5 text-left transition-colors data-[active=true]:border-ink data-[active=true]:bg-ink data-[active=true]:text-white"
             >
-              <p className="text-sm font-bold">
-                {p === "monthly" ? "Mesečna" : "Godišnja"}
-              </p>
-              <p className="text-xs text-muted-foreground">
+              <div className="flex items-center justify-between gap-1">
+                <p className="text-sm font-bold">
+                  {p === "monthly" ? "Mesečna" : "Godišnja"}
+                </p>
+                {p === "yearly" && (
+                  <span className="rounded-full bg-mint px-2 py-0.5 text-[10px] font-bold text-ink">
+                    2 mes. gratis
+                  </span>
+                )}
+              </div>
+              <p className="mt-0.5 text-xs opacity-60">
                 {formatAmount(PLANS[p].amount)} RSD
-                {p === "yearly" && " · 2 meseca gratis"}
               </p>
             </button>
           ))}
@@ -131,25 +140,48 @@ export function PaymentModal({
           </div>
         ) : result?.ok ? (
           <div className="flex flex-col items-center text-center">
-            <img
-              src={result.qrDataUrl}
-              alt="NBS IPS QR kod za plaćanje"
-              width={260}
-              height={260}
-              className="rounded-xl border p-2"
-            />
-            <p className="mt-3 text-3xl font-extrabold tracking-tight">
-              {formatAmount(result.amount)} <span className="text-base font-bold text-muted-foreground">RSD</span>
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {result.plan === "monthly" ? "Mesečna" : "Godišnja"} članarina ·
-              važi {fmt(result.periodFrom)} - {fmt(result.periodTo)}
-            </p>
-            <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-              Otvori m-banking → izaberi &bdquo;IPS skeniraj&ldquo; → skeniraj →
-              potvrdi. Po evidentiranoj uplati pretplata se produžava.
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
+            {/* QR na canvas podlozi, sa Terminer znakom u sredini
+                (nivo korekcije H - logo ne smeta skeniranju) */}
+            <div className="flex w-full flex-col items-center rounded-[1.5rem] bg-canvas p-5">
+              <div className="relative rounded-2xl bg-white p-3 shadow-[0_4px_24px_rgba(20,25,20,0.08)]">
+                <img
+                  src={result.qrDataUrl}
+                  alt="NBS IPS QR kod za plaćanje"
+                  width={232}
+                  height={232}
+                />
+                <span className="absolute left-1/2 top-1/2 flex size-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-xl bg-white">
+                  <TerminerMark className="size-9" />
+                </span>
+              </div>
+              <p className="mt-4 text-3xl font-extrabold tracking-tight text-ink">
+                {formatAmount(result.amount)}{" "}
+                <span className="text-base font-bold text-ink/50">RSD</span>
+              </p>
+              <p className="mt-0.5 text-sm font-medium text-ink/60">
+                {result.plan === "monthly" ? "Mesečna" : "Godišnja"} članarina
+              </p>
+              <span className="mt-2 rounded-full bg-mint px-3 py-1 text-xs font-bold text-ink">
+                važi {fmt(result.periodFrom)} - {fmt(result.periodTo)}
+              </span>
+            </div>
+
+            <ol className="mt-4 flex w-full flex-col gap-1.5 text-left text-xs font-medium text-ink/70">
+              {[
+                "Otvori svoju m-banking aplikaciju",
+                "Izaberi „IPS skeniraj“ i skeniraj kod",
+                "Potvrdi - po evidentiranoj uplati pretplata se produžava",
+              ].map((step, i) => (
+                <li key={step} className="flex items-center gap-2.5">
+                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-white">
+                    {i + 1}
+                  </span>
+                  {step}
+                </li>
+              ))}
+            </ol>
+
+            <p className="mt-3 text-xs text-muted-foreground">
               Faktura {result.invoiceLabel} · poziv na broj {result.refNumber} ·{" "}
               <Link
                 href={`/faktura/${result.invoiceId}`}
