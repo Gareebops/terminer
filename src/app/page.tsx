@@ -49,9 +49,10 @@ export default function HomePage() {
           >
             Prijava
           </Link>
+          {/* Na mobilnom je suvišno - hero odmah ispod ima "Kreni besplatno" */}
           <Link
             href="/registracija"
-            className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
+            className="hidden rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-85 sm:block"
           >
             Napravi svoj salon
           </Link>
