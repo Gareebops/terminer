@@ -9,7 +9,8 @@ import { buildICS } from "@/lib/booking/ics";
 const FROM_FALLBACK = "Terminer <onboarding@resend.dev>";
 
 function dateLabelSr(date: string): string {
-  return new Intl.DateTimeFormat("sr-RS", {
+  // sr-Latn — podrazumevani "sr-RS" daje ćirilicu, a sajt je na latinici
+  return new Intl.DateTimeFormat("sr-Latn-RS", {
     weekday: "long",
     day: "numeric",
     month: "long",
