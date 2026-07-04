@@ -87,8 +87,8 @@ export function BookingsTable({ bookings }: { bookings: Row[] }) {
                 {b.customer_phone}
               </a>
             </TableCell>
-            <TableCell>{b.services?.name ?? "—"}</TableCell>
-            <TableCell>{b.staff?.name ?? "—"}</TableCell>
+            <TableCell>{b.services?.name ?? "-"}</TableCell>
+            <TableCell>{b.staff?.name ?? "-"}</TableCell>
             <TableCell>
               <Badge className={`border-0 font-semibold ${statusStyles[b.status]}`}>
                 {statusLabels[b.status]}

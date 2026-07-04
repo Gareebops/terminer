@@ -36,10 +36,10 @@ export default function TermsPage() {
       </p>
       <ul>
         <li>
-          mesečna članarina — {formatAmount(PLANS.monthly.amount)} RSD;
+          mesečna članarina - {formatAmount(PLANS.monthly.amount)} RSD;
         </li>
         <li>
-          godišnja članarina — {formatAmount(PLANS.yearly.amount)} RSD (dva
+          godišnja članarina - {formatAmount(PLANS.yearly.amount)} RSD (dva
           meseca gratis).
         </li>
       </ul>
@@ -51,7 +51,7 @@ export default function TermsPage() {
       <h2>Šta se dešava kad pretplata istekne</h2>
       <p>
         Po isteku plaćenog perioda salon ima još 7 dana počeka. Nakon toga se
-        pauzira samo online zakazivanje — sajt salona ostaje dostupan
+        pauzira samo online zakazivanje - sajt salona ostaje dostupan
         posetiocima, a svi podaci ostaju sačuvani. Uplatom po novoj fakturi sve
         se odmah nastavlja.
       </p>
@@ -71,14 +71,14 @@ export default function TermsPage() {
       <h2>Dostupnost usluge</h2>
       <p>
         Trudimo se da Terminer radi pouzdano i neprekidno, ali ne možemo
-        garantovati stopostotnu dostupnost — kratki prekidi zbog održavanja ili
+        garantovati stopostotnu dostupnost - kratki prekidi zbog održavanja ili
         okolnosti van naše kontrole su mogući. Bitne izmene i planirane radove
         najavljujemo unapred.
       </p>
 
       <h2>Raskid</h2>
       <p>
-        Salon može prestati sa korišćenjem u svakom trenutku — dovoljno je da
+        Salon može prestati sa korišćenjem u svakom trenutku - dovoljno je da
         ne produži pretplatu. Na zahtev brišemo nalog i sve podatke salona
         (osim faktura, koje čuvamo u zakonskom roku). Zadržavamo pravo da
         ukinemo nalog koji grubo krši ove uslove, uz prethodno upozorenje.

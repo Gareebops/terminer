@@ -178,7 +178,7 @@ export default async function SuperAdminPage() {
                 {invoiceLabel(inv)}
               </Link>
               <span className="min-w-32 text-sm font-semibold">
-                {inv.tenants?.name ?? "—"}
+                {inv.tenants?.name ?? "-"}
               </span>
               <span className="text-sm text-ink/60">
                 {PLANS[inv.plan].label} · {formatAmount(Number(inv.amount))} RSD ·{" "}

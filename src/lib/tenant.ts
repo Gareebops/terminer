@@ -18,7 +18,7 @@ export interface TenantSite {
 }
 
 // Jedina tačka u aplikaciji koja rezoluje tenant-a iz slug-a.
-// Kod prelaska na subdomene menja se samo middleware — ovo ostaje isto.
+// Kod prelaska na subdomene menja se samo middleware - ovo ostaje isto.
 export const getTenantSite = cache(
   async (slug: string): Promise<TenantSite | null> => {
     const supabase = await createClient();

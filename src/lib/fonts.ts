@@ -7,7 +7,7 @@ import {
   Space_Grotesk,
 } from "next/font/google";
 
-// Kurirani font parovi za sajtove salona. preload: false — fajlovi se
+// Kurirani font parovi za sajtove salona. preload: false - fajlovi se
 // povlače tek kada je par stvarno primenjen na stranici salona.
 
 const inter = Inter({
@@ -64,7 +64,7 @@ export const FONT_PAIRS: FontPair[] = [
   {
     id: "geist",
     label: "Čisto",
-    description: "Geist — neutralno i moderno (podrazumevano)",
+    description: "Geist - neutralno i moderno (podrazumevano)",
     className: "",
     headingVar: "var(--font-geist-sans)",
     sansVar: "var(--font-geist-sans)",
@@ -72,7 +72,7 @@ export const FONT_PAIRS: FontPair[] = [
   {
     id: "elegant",
     label: "Elegantno",
-    description: "Playfair Display + Inter — otmeno, za beauty salone",
+    description: "Playfair Display + Inter - otmeno, za beauty salone",
     className: `${playfair.variable} ${inter.variable}`,
     headingVar: "var(--font-playfair)",
     sansVar: "var(--font-inter)",
@@ -80,7 +80,7 @@ export const FONT_PAIRS: FontPair[] = [
   {
     id: "modern",
     label: "Moderno",
-    description: "Space Grotesk + Inter — oštro, za barbershope",
+    description: "Space Grotesk + Inter - oštro, za barbershope",
     className: `${spaceGrotesk.variable} ${inter.variable}`,
     headingVar: "var(--font-space-grotesk)",
     sansVar: "var(--font-inter)",
@@ -88,7 +88,7 @@ export const FONT_PAIRS: FontPair[] = [
   {
     id: "warm",
     label: "Toplo",
-    description: "Fraunces + Inter — meko i prijateljski",
+    description: "Fraunces + Inter - meko i prijateljski",
     className: `${fraunces.variable} ${inter.variable}`,
     headingVar: "var(--font-fraunces)",
     sansVar: "var(--font-inter)",
@@ -96,7 +96,7 @@ export const FONT_PAIRS: FontPair[] = [
   {
     id: "classic",
     label: "Klasično",
-    description: "DM Serif + DM Sans — bezvremenska kombinacija",
+    description: "DM Serif + DM Sans - bezvremenska kombinacija",
     className: `${dmSerif.variable} ${dmSans.variable}`,
     headingVar: "var(--font-dm-serif)",
     sansVar: "var(--font-dm-sans)",

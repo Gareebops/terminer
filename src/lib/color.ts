@@ -27,7 +27,7 @@ export function luminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-// Beli ili tamni tekst na datoj pozadini — šta god ima bolji kontrast
+// Beli ili tamni tekst na datoj pozadini - šta god ima bolji kontrast
 export function readableForeground(bgHex: string): string {
   return luminance(bgHex) > 0.4 ? "#18181b" : "#ffffff";
 }

@@ -102,7 +102,7 @@ export function GalleryManager({
       </div>
       {images.length === 0 && (
         <p className="mt-6 rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-          Još nema fotografija. Dodaj najbolje radove — to prodaje.
+          Još nema fotografija. Dodaj najbolje radove - to prodaje.
         </p>
       )}
     </div>

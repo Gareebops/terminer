@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin", "latin-ext"],
 });
 
-// Terminer brend font (admin, landing, auth) — sajtovi salona imaju svoje parove
+// Terminer brend font (admin, landing, auth) - sajtovi salona imaju svoje parove
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin", "latin-ext"],
@@ -21,7 +21,7 @@ const jakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: {
-    default: "Terminer — online zakazivanje za salone",
+    default: "Terminer - online zakazivanje za salone",
     template: "%s | Terminer",
   },
   description:

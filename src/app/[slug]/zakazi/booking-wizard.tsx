@@ -62,7 +62,7 @@ function StepIndicator({ step, done }: { step: Step; done: boolean }) {
   );
 }
 
-// Traka narednih 14 dana — brže od punog kalendara
+// Traka narednih 14 dana - brže od punog kalendara
 function DayStrip({
   selected,
   onSelect,
@@ -259,7 +259,7 @@ export function BookingWizard({
                 downloadICS(
                   `termin-${date}.ics`,
                   buildICS({
-                    title: `${service.name} — ${salonName}`,
+                    title: `${service.name} - ${salonName}`,
                     description: `Kod: ${member.name}`,
                     location: address ?? undefined,
                     date,

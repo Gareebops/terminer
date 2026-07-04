@@ -2,14 +2,14 @@ import { Resend } from "resend";
 import { buildICS } from "@/lib/booking/ics";
 
 // Slanje mejlova preko Resend-a. Bez RESEND_API_KEY sve funkcije samo
-// preskoče slanje (uz warn u logu) — booking flow nikad ne sme da padne
+// preskoče slanje (uz warn u logu) - booking flow nikad ne sme da padne
 // zbog mejla. Sandbox Resend nalog šalje isključivo na mejl vlasnika
 // naloga; pravi domen menja samo EMAIL_FROM adresu.
 
 const FROM_FALLBACK = "Terminer <onboarding@resend.dev>";
 
 function dateLabelSr(date: string): string {
-  // sr-Latn — podrazumevani "sr-RS" daje ćirilicu, a sajt je na latinici
+  // sr-Latn - podrazumevani "sr-RS" daje ćirilicu, a sajt je na latinici
   return new Intl.DateTimeFormat("sr-Latn-RS", {
     weekday: "long",
     day: "numeric",
@@ -89,12 +89,12 @@ export async function sendBookingConfirmation(
 ): Promise<{ sent: boolean }> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
-    console.warn("RESEND_API_KEY nije podešen — potvrda mejlom preskočena.");
+    console.warn("RESEND_API_KEY nije podešen - potvrda mejlom preskočena.");
     return { sent: false };
   }
 
   const ics = buildICS({
-    title: `${input.serviceName} — ${input.salonName}`,
+    title: `${input.serviceName} - ${input.salonName}`,
     description: `Kod: ${input.staffName}`,
     location: input.address ?? undefined,
     date: input.date,
@@ -107,7 +107,7 @@ export async function sendBookingConfirmation(
     const { error } = await resend.emails.send({
       from: process.env.EMAIL_FROM ?? FROM_FALLBACK,
       to: input.to,
-      subject: `Potvrda termina — ${input.salonName}, ${dateLabelSr(input.date)} u ${input.startTime}`,
+      subject: `Potvrda termina - ${input.salonName}, ${dateLabelSr(input.date)} u ${input.startTime}`,
       html: confirmationHtml(input),
       attachments: [{ filename: "termin.ics", content: Buffer.from(ics).toString("base64") }],
     });

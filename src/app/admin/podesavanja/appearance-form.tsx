@@ -275,7 +275,7 @@ export function AppearanceForm({
         <div>
           <Label>Fontovi</Label>
           <p className="mb-3 mt-1 text-xs text-muted-foreground">
-            Karakter sajta — naslovi i tekst. Promena se vidi u pregledu desno.
+            Karakter sajta - naslovi i tekst. Promena se vidi u pregledu desno.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             {FONT_PAIRS.map((p) => (
@@ -329,7 +329,7 @@ export function AppearanceForm({
           <div>
             <Label htmlFor="site-dark">Tamna varijanta sajta</Label>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Tamna pozadina i svetao tekst — barbershop atmosfera.
+              Tamna pozadina i svetao tekst - barbershop atmosfera.
             </p>
           </div>
           <Switch

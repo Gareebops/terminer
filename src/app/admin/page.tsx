@@ -74,7 +74,7 @@ export default async function AdminDashboardPage() {
   const byService = new Map<string, { name: string; count: number }>();
   for (const r of monthRows) {
     const entry = byService.get(r.service_id) ?? {
-      name: r.services?.name ?? "—",
+      name: r.services?.name ?? "-",
       count: 0,
     };
     entry.count += 1;
@@ -105,7 +105,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        {/* Tamna hero kartica — današnji dan */}
+        {/* Tamna hero kartica - današnji dan */}
         <div className="rounded-[2rem] bg-ink p-7 text-white">
           <div className="flex items-start justify-between">
             <div>

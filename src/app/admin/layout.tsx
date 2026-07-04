@@ -20,8 +20,8 @@ function SubscriptionBanner({
     expired: "bg-red-500 text-white",
   };
   const text: Record<string, string> = {
-    trial: `Probni period — još ${daysLeft} ${daysLeft === 1 ? "dan" : "dana"} besplatnog korišćenja.`,
-    grace: `Pretplata je istekla — online zakazivanje se pauzira za ${daysLeft} ${daysLeft === 1 ? "dan" : "dana"}.`,
+    trial: `Probni period - još ${daysLeft} ${daysLeft === 1 ? "dan" : "dana"} besplatnog korišćenja.`,
+    grace: `Pretplata je istekla - online zakazivanje se pauzira za ${daysLeft} ${daysLeft === 1 ? "dan" : "dana"}.`,
     expired:
       "Pretplata je istekla i online zakazivanje je pauzirano. Tvoj sajt je i dalje aktivan.",
   };

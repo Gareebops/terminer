@@ -29,7 +29,7 @@ function LoginForm() {
     if (error) {
       if (error.message.toLowerCase().includes("not confirmed")) {
         setUnconfirmed(true);
-        toast.error("Nalog još nije potvrđen — proveri mejl.");
+        toast.error("Nalog još nije potvrđen - proveri mejl.");
       } else {
         toast.error("Pogrešan email ili lozinka.");
       }
@@ -58,7 +58,7 @@ function LoginForm() {
       <CardContent>
         {justConfirmed && (
           <p className="mb-4 rounded-lg bg-mint px-3 py-2 text-sm font-semibold text-ink">
-            Nalog je potvrđen — prijavi se i nastavi sa podešavanjem salona.
+            Nalog je potvrđen - prijavi se i nastavi sa podešavanjem salona.
           </p>
         )}
         <form onSubmit={onSubmit} className="space-y-4">

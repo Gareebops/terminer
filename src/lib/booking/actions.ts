@@ -44,7 +44,7 @@ async function loadBookingContext(
     .maybeSingle();
   if (!tenant) return { error: "Salon nije pronađen." };
 
-  // Istekla pretplata pauzira samo online zakazivanje — sajt ostaje živ
+  // Istekla pretplata pauzira samo online zakazivanje - sajt ostaje živ
   if (isBookingPaused(tenant as Tenant)) {
     return { error: "Online zakazivanje je trenutno pauzirano. Pozovi salon telefonom." };
   }
@@ -254,7 +254,7 @@ export async function createBooking(
     return { ok: false, error: "Greška pri zakazivanju. Pokušaj ponovo." };
   }
 
-  // Potvrda mejlom (ako je klijent ostavio email) — nikad ne obara booking
+  // Potvrda mejlom (ako je klijent ostavio email) - nikad ne obara booking
   let emailSent = false;
   if (input.customerEmail) {
     const [{ data: settings }, hdrs] = await Promise.all([

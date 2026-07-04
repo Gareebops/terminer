@@ -10,7 +10,7 @@ import { zonedToUtc } from "@/lib/booking/timezone";
 import { PLANS, type PlanId } from "@/lib/invoice";
 import type { BookingStatus } from "@/lib/types";
 
-// Sve admin akcije koriste session klijent — RLS propušta samo redove
+// Sve admin akcije koriste session klijent - RLS propušta samo redove
 // salona čiji je korisnik član, pa tenant_id sa klijenta ne primamo nigde.
 
 type ActionResult = { ok: boolean; error?: string };
@@ -90,7 +90,7 @@ export async function deleteService(id: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.from("services").delete().eq("id", id);
   if (error) {
-    // 23503 = FK sa bookings — usluga ima istoriju, samo je deaktiviraj
+    // 23503 = FK sa bookings - usluga ima istoriju, samo je deaktiviraj
     if (error.code === "23503") {
       await supabase.from("services").update({ is_active: false }).eq("id", id);
       revalidatePath("/admin/usluge");
@@ -380,7 +380,7 @@ const adminBookingSchema = z.object({
 });
 
 // Ručno zakazivanje za klijente koji zovu telefonom. Namerno ne proverava
-// radno vreme/smene — salon zna šta radi; jedino preklapanje termina brani baza.
+// radno vreme/smene - salon zna šta radi; jedino preklapanje termina brani baza.
 export async function adminCreateBooking(
   input: z.infer<typeof adminBookingSchema>
 ): Promise<ActionResult> {
@@ -626,7 +626,7 @@ export async function deleteGalleryImage(id: string): Promise<ActionResult> {
   const { error } = await supabase.from("gallery").delete().eq("id", id);
   if (error) return { ok: false, error: "Brisanje nije uspelo." };
 
-  // Počisti i fajl iz storage-a (ako ne uspe, red je već obrisan — nije kritično)
+  // Počisti i fajl iz storage-a (ako ne uspe, red je već obrisan - nije kritično)
   const path = row?.image_url?.split("/tenant-media/")[1];
   if (path) await supabase.storage.from("tenant-media").remove([path]);
 
@@ -665,7 +665,7 @@ export async function createInvoice(
   if (!(plan in PLANS)) return { ok: false, error: "Nepoznat plan." };
   const { tenant } = await getAdminContext();
 
-  // Faktura mora imati kupca — bez podataka nema izdavanja
+  // Faktura mora imati kupca - bez podataka nema izdavanja
   if (!tenant.billing_note?.trim()) {
     return {
       ok: false,
@@ -686,7 +686,7 @@ export async function createInvoice(
   const periodTo = addMonths(periodFrom, PLANS[plan].months);
 
   // Ako već postoji aktivna faktura za isti plan i period, ne izdaji novu
-  // (stornirane se ignorišu — za njih sme nova)
+  // (stornirane se ignorišu - za njih sme nova)
   const { data: existing } = await db
     .from("invoices")
     .select("id")

@@ -116,7 +116,7 @@ export function CancelCard({
         ) : (
           <p className="mt-4 text-sm text-muted-foreground">
             {booking.customerName.split(" ")[0]}, ako ti termin ne odgovara, otkaži ga
-            ovde — mesto se odmah oslobađa.
+            ovde - mesto se odmah oslobađa.
           </p>
         )}
 

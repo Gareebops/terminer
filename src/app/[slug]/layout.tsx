@@ -16,13 +16,13 @@ export async function generateMetadata({
   if (!site) return {};
   return {
     title: {
-      // absolute: bez root "%s | Terminer" šablona — sajt salona nosi svoj brend
-      absolute: `${site.tenant.name} — online zakazivanje`,
+      // absolute: bez root "%s | Terminer" šablona - sajt salona nosi svoj brend
+      absolute: `${site.tenant.name} - online zakazivanje`,
       template: `%s | ${site.tenant.name}`,
     },
     description:
       site.settings?.hero_subtitle ??
-      `${site.tenant.name} — zakaži svoj termin online, brzo i bez poziva.`,
+      `${site.tenant.name} - zakaži svoj termin online, brzo i bez poziva.`,
   };
 }
 

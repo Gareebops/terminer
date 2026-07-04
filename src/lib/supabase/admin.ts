@@ -1,6 +1,6 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-// Service-role klijent — zaobilazi RLS. SME da se koristi SAMO na serveru
+// Service-role klijent - zaobilazi RLS. SME da se koristi SAMO na serveru
 // (server actions / route handlers), nikad u klijentskom kodu.
 export function createAdminClient() {
   return createSupabaseClient(

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 // Odredište linka za potvrdu naloga (emailRedirectTo iz registracije).
 // Supabase verify endpoint potvrdi email pa preusmeri ovde sa ?code=...;
 // razmena koda pravi sesiju u ovom browseru. Ako razmena ne uspe (npr. link
-// otvoren u drugom browseru — PKCE verifier ne postoji), nalog je svejedno
+// otvoren u drugom browseru - PKCE verifier ne postoji), nalog je svejedno
 // potvrđen, pa korisnika šaljemo na prijavu sa porukom.
 export async function GET(request: Request) {
   const url = new URL(request.url);

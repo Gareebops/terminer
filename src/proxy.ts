@@ -23,7 +23,7 @@ export default async function proxy(request: NextRequest) {
   // --- Tenant rezolucija ---
   // MVP: path-based (terminer.rs/{slug}). Kada pređemo na subdomene,
   // ovde se iz request.headers.get("host") izvuče slug i uradi rewrite
-  // na /{slug}/... — ostatak aplikacije se ne menja.
+  // na /{slug}/... - ostatak aplikacije se ne menja.
   const firstSegment = request.nextUrl.pathname.split("/")[1] ?? "";
   if (firstSegment && !RESERVED.has(firstSegment)) {
     response.headers.set("x-tenant-slug", firstSegment);

@@ -30,7 +30,7 @@ import { createInvoice, updateBillingInfo } from "../actions";
 const statusText: Record<string, string> = {
   trial: "Probni period",
   active: "Aktivna pretplata",
-  grace: "Istekla — grace period",
+  grace: "Istekla - grace period",
   expired: "Istekla",
 };
 
@@ -127,7 +127,7 @@ export function BillingCard({
             onClick={() => setConfirmPlan("monthly")}
           >
             <FileText className="size-4" />
-            Mesečna — {formatAmount(PLANS.monthly.amount)} RSD
+            Mesečna - {formatAmount(PLANS.monthly.amount)} RSD
           </Button>
           <Button
             variant="outline"
@@ -135,12 +135,12 @@ export function BillingCard({
             onClick={() => setConfirmPlan("yearly")}
           >
             <FileText className="size-4" />
-            Godišnja — {formatAmount(PLANS.yearly.amount)} RSD
+            Godišnja - {formatAmount(PLANS.yearly.amount)} RSD
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
           Izborom plana otvara se pregled fakture pre izdavanja. Faktura sadrži
-          NBS IPS QR kod — plaćanje skeniranjem iz m-banking aplikacije. Po
+          NBS IPS QR kod - plaćanje skeniranjem iz m-banking aplikacije. Po
           evidentiranoj uplati pretplata se produžava.
         </p>
 
@@ -172,7 +172,7 @@ export function BillingCard({
                     <p className="mt-1 whitespace-pre-line">{info.trim()}</p>
                   ) : (
                     <p className="mt-1 text-amber-700">
-                      Podaci za fakturu nisu upisani — zatvori ovaj prozor i
+                      Podaci za fakturu nisu upisani - zatvori ovaj prozor i
                       popuni polje &bdquo;Podaci za fakturu&ldquo;.
                     </p>
                   )}

@@ -147,7 +147,7 @@ export default async function InvoicePage({
               <tr className="border-b border-ink/10">
                 <td className="py-3">
                   <p className="font-semibold">
-                    Terminer — {plan.label.toLowerCase()}
+                    Terminer - {plan.label.toLowerCase()}
                   </p>
                   <p className="text-xs text-ink/50">
                     Salon: {invoice.tenants?.name} · period {fmt(invoice.period_from)} –{" "}

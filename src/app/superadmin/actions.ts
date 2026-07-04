@@ -96,7 +96,7 @@ export async function extendTrial(
     .maybeSingle();
   if (!tenant) return { ok: false, error: "Salon nije pronađen." };
 
-  // Od postojećeg isteka ili od sada — šta god je kasnije
+  // Od postojećeg isteka ili od sada - šta god je kasnije
   const base = Math.max(new Date(tenant.trial_ends_at).getTime(), Date.now());
   const next = new Date(base + parsed.data * 86400000).toISOString();
   const { error } = await db
@@ -149,7 +149,7 @@ export async function extendSubscription(input: {
     .maybeSingle();
   if (!tenant) return { ok: false, error: "Salon nije pronađen." };
 
-  // Produžetak ide od danas ili od postojećeg isteka — šta god je kasnije
+  // Produžetak ide od danas ili od postojećeg isteka - šta god je kasnije
   const today = new Date();
   const base =
     tenant.paid_until && new Date(tenant.paid_until) > today

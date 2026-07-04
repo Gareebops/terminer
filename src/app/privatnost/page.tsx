@@ -30,7 +30,7 @@ export default function PrivacyPage() {
       <ul>
         <li>email adresu i lozinku (lozinka se čuva isključivo u zaštićenom, heširanom obliku);</li>
         <li>naziv salona i sadržaj koji sam uneseš (usluge, cene, tim, fotografije, kontakt podaci);</li>
-        <li>podatke za izdavanje fakture (naziv pravnog lica, adresa, PIB) — ako ih uneseš;</li>
+        <li>podatke za izdavanje fakture (naziv pravnog lica, adresa, PIB) - ako ih uneseš;</li>
         <li>izdate fakture, koje po zakonu čuvamo 10 godina.</li>
       </ul>
 
@@ -38,7 +38,7 @@ export default function PrivacyPage() {
       <p>
         Kada klijent zakaže termin na sajtu salona, unosi ime i prezime, broj
         telefona i, po želji, email adresu. Ove podatke prikuplja salon kod
-        koga se termin zakazuje — salon je rukovalac tim podacima, a Terminer
+        koga se termin zakazuje - salon je rukovalac tim podacima, a Terminer
         ih čuva i obrađuje u ime salona, isključivo radi:
       </p>
       <ul>
@@ -54,14 +54,14 @@ export default function PrivacyPage() {
       <p>Za rad platforme koristimo proverene pružaoce usluga:</p>
       <ul>
         <li>
-          <strong>Supabase</strong> — baza podataka i prijava, serveri u
+          <strong>Supabase</strong> - baza podataka i prijava, serveri u
           Evropskoj uniji (Frankfurt, Nemačka);
         </li>
         <li>
-          <strong>Vercel</strong> — hosting aplikacije;
+          <strong>Vercel</strong> - hosting aplikacije;
         </li>
         <li>
-          <strong>Resend</strong> — slanje email potvrda termina.
+          <strong>Resend</strong> - slanje email potvrda termina.
         </li>
       </ul>
 
@@ -75,7 +75,7 @@ export default function PrivacyPage() {
 
       <h2>Kolačići</h2>
       <p>
-        Koristimo samo neophodne kolačiće — one bez kojih prijava na nalog ne
+        Koristimo samo neophodne kolačiće - one bez kojih prijava na nalog ne
         može da radi. Nemamo marketinške ni analitičke kolačiće trećih strana.
       </p>
 

@@ -1,4 +1,4 @@
-// Generisanje .ics fajla za "Dodaj u kalendar" — floating lokalno vreme,
+// Generisanje .ics fajla za "Dodaj u kalendar" - floating lokalno vreme,
 // dovoljno za telefonske kalendare (termin je ionako u zoni salona).
 
 export function buildICS(input: {

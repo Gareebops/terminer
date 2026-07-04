@@ -85,14 +85,14 @@ export function SettingsForm({
             <p className="text-sm">
               {published ? (
                 <>
-                  Sajt je <strong>objavljen</strong> —{" "}
+                  Sajt je <strong>objavljen</strong> -{" "}
                   <Link href={`/${slug}`} target="_blank" className="underline">
                     pogledaj ga
                   </Link>
                 </>
               ) : (
                 <>
-                  Sajt je <strong>sakriven</strong> — vidiš ga samo ti dok si
+                  Sajt je <strong>sakriven</strong> - vidiš ga samo ti dok si
                   prijavljen.
                 </>
               )}

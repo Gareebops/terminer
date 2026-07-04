@@ -380,7 +380,7 @@ export function CalendarView({
                     <button
                       key={b.id}
                       onClick={() => removeBlock(b.id)}
-                      title={`Blokirano${b.reason ? `: ${b.reason}` : ""} — klik za uklanjanje`}
+                      title={`Blokirano${b.reason ? `: ${b.reason}` : ""} - klik za uklanjanje`}
                       className="absolute inset-x-1 rounded-xl bg-ink/[0.04] px-2 py-1 text-left text-xs text-ink/60 ring-1 ring-ink/10 hover:ring-red-400"
                       style={{
                         top: top(s),

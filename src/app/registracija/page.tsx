@@ -88,7 +88,7 @@ export default function RegisterPage() {
             <p className="mt-2 text-sm text-muted-foreground">
               Poslali smo link za potvrdu naloga na{" "}
               <span className="font-semibold text-ink">{email}</span>. Klikni ga
-              da aktiviraš nalog — pa nastavljaš pravo na podešavanje salona.
+              da aktiviraš nalog - pa nastavljaš pravo na podešavanje salona.
             </p>
             <p className="mt-4 text-xs text-muted-foreground">
               Ne vidiš mejl? Pogledaj spam ili promocije.

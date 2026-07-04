@@ -20,7 +20,7 @@ export function InvoiceActions({ invoiceId }: { invoiceId: string }) {
       <button
         disabled={pending}
         onClick={() =>
-          run(() => markInvoicePaid(invoiceId), "Plaćeno — pretplata produžena.")
+          run(() => markInvoicePaid(invoiceId), "Plaćeno - pretplata produžena.")
         }
         className="rounded-full bg-mint px-3 py-1.5 text-xs font-bold text-ink transition-opacity hover:opacity-80 disabled:opacity-40"
       >

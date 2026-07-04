@@ -3,7 +3,7 @@
 import { motion, useReducedMotion } from "motion/react";
 
 // Zajednički animacioni primitivi za javni sajt. Svi poštuju
-// prefers-reduced-motion — tada se sadržaj prikazuje bez pomeranja.
+// prefers-reduced-motion - tada se sadržaj prikazuje bez pomeranja.
 
 export function FadeUp({
   children,

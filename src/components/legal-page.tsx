@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-// Zajednički okvir za statične pravne stranice (privatnost, uslovi) —
+// Zajednički okvir za statične pravne stranice (privatnost, uslovi) -
 // Terminer brend, bez interakcija. Kontakt adresa je na jednom mestu;
 // kad legne domen, zameniti sa kontakt@terminer.rs.
 export const CONTACT_EMAIL = "milosevicmihajlo13@gmail.com";

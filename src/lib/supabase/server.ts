@@ -19,7 +19,7 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // Poziv iz Server Component-a — middleware osvežava sesiju.
+            // Poziv iz Server Component-a - middleware osvežava sesiju.
           }
         },
       },

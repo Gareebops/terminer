@@ -13,7 +13,7 @@ const features = [
   {
     icon: Globe,
     title: "Sajt bez muke",
-    text: "Tvoj salon dobija moderan sajt i web aplikaciju sa cenovnikom, timom i galerijom — bez programera i bez komplikovanog održavanja.",
+    text: "Tvoj salon dobija moderan sajt i web aplikaciju sa cenovnikom, timom i galerijom - bez programera i bez komplikovanog održavanja.",
     surface: "bg-white shadow-[0_4px_24px_rgba(20,25,20,0.06)]",
   },
   {
@@ -25,7 +25,7 @@ const features = [
   {
     icon: Users,
     title: "Smene i tim",
-    text: "Raspored po smenama za svakog zaposlenog — termini se nude samo kada neko stvarno radi.",
+    text: "Raspored po smenama za svakog zaposlenog - termini se nude samo kada neko stvarno radi.",
     surface: "bg-lavender",
   },
   {
@@ -40,7 +40,15 @@ export default function HomePage() {
   return (
     <main className="flex-1 bg-canvas font-display text-ink">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5">
-        <span className="text-xl font-extrabold tracking-tight">Terminer</span>
+        {/* Logo: znak iz favicona + postojeći "Terminer" natpis kao wordmark */}
+        <span className="flex items-center gap-2.5">
+          <svg viewBox="0 0 64 64" className="size-8" aria-hidden>
+            <rect width="64" height="64" rx="14" fill="#17181A" />
+            <rect x="15" y="16" width="34" height="10" rx="5" fill="#A6F5A6" />
+            <rect x="27" y="16" width="10" height="32" rx="5" fill="#A6F5A6" />
+          </svg>
+          <span className="text-xl font-extrabold tracking-tight">Terminer</span>
+        </span>
         <nav className="flex items-center gap-2">
           <Link
             href="/prijava"
@@ -68,12 +76,12 @@ export default function HomePage() {
             </HeroItem>
             <HeroItem>
               <h1 className="mt-5 max-w-xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-                Sajt i online zakazivanje za tvoj salon — za nekoliko minuta
+                Sajt i online zakazivanje za tvoj salon - za nekoliko minuta
               </h1>
             </HeroItem>
             <HeroItem>
               <p className="mt-6 max-w-lg text-lg text-white/60">
-                Registruj salon, unesi usluge i radno vreme, izaberi izgled — i
+                Registruj salon, unesi usluge i radno vreme, izaberi izgled - i
                 klijenti odmah mogu da zakazuju termine online.
               </p>
             </HeroItem>
@@ -124,7 +132,7 @@ export default function HomePage() {
             Jedna cena, sve uključeno
           </h2>
           <p className="mx-auto mt-3 max-w-xl font-medium text-ink/55">
-            Košta te otprilike jedno šišanje mesečno — a pokrije se prvom
+            Košta te otprilike jedno šišanje mesečno - a pokrije se prvom
             rezervacijom.
           </p>
         </div>
@@ -160,7 +168,7 @@ export default function HomePage() {
           </div>
         </div>
         <p className="mt-6 text-center text-sm font-semibold text-ink/60">
-          Prvih <span className="text-ink">30 dana je besplatno</span> — bez
+          Prvih <span className="text-ink">30 dana je besplatno</span> - bez
           kartice, bez obaveze.{" "}
           <Link href="/registracija" className="underline">
             Probaj odmah

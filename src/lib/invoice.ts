@@ -1,4 +1,4 @@
-// Fakture za Terminer članarine — izdavalac Čvorište.
+// Fakture za Terminer članarine - izdavalac Čvorište.
 // NBS IPS QR format po specifikaciji iz postojećeg Čvorište invoice sistema.
 
 export const ISSUER = {

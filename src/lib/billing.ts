@@ -1,5 +1,5 @@
 // Status pretplate salona. Model: 30 dana probe → faktura → paid_until.
-// Posle isteka ide grace period, pa se pauzira SAMO online zakazivanje —
+// Posle isteka ide grace period, pa se pauzira SAMO online zakazivanje -
 // sajt salona ostaje živ uvek.
 
 export const GRACE_DAYS = 7;
@@ -20,7 +20,7 @@ export function subscriptionInfo(tenant: {
 }): SubscriptionInfo {
   const now = Date.now();
   const trialEnd = new Date(tenant.trial_ends_at).getTime();
-  // paid_until je datum — važi do kraja tog dana
+  // paid_until je datum - važi do kraja tog dana
   const paidEnd = tenant.paid_until
     ? new Date(`${tenant.paid_until}T23:59:59`).getTime()
     : 0;

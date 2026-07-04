@@ -8,7 +8,7 @@ import { toMinutes } from "@/lib/booking/slots";
 import { CancelCard } from "./cancel-card";
 
 // Stranica iz mejla potvrde: gost preko cancel_token linka vidi svoju
-// rezervaciju i može da je otkaže. Token je UUID iz mejla — RLS ne pušta
+// rezervaciju i može da je otkaže. Token je UUID iz mejla - RLS ne pušta
 // anonimno čitanje bookinga, pa se red čita service-role klijentom, ali
 // isključivo po (tenant, token) paru.
 
