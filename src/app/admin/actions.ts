@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fromMinutes, toMinutes } from "@/lib/booking/slots";
 import { zonedToUtc } from "@/lib/booking/timezone";
-import { PLANS, type PlanId } from "@/lib/invoice";
+import QRCode from "qrcode";
+import { buildIpsQr, PLANS, type PlanId } from "@/lib/invoice";
 import type { BookingStatus } from "@/lib/types";
 
 // Sve admin akcije koriste session klijent - RLS propušta samo redove
@@ -797,4 +798,60 @@ export async function setPublished(published: boolean): Promise<ActionResult> {
   revalidatePath("/admin/podesavanja");
   revalidatePath(`/${tenant.slug}`);
   return { ok: true };
+}
+
+// Priprema plaćanja za modal: izda (ili ponovo iskoristi - createInvoice je
+// idempotentan) fakturu za izabrani plan i vrati IPS QR spreman za prikaz.
+export type PreparePaymentResult =
+  | {
+      ok: true;
+      qrDataUrl: string;
+      amount: number;
+      plan: PlanId;
+      periodFrom: string;
+      periodTo: string;
+      invoiceId: string;
+      invoiceLabel: string;
+      refNumber: string;
+    }
+  | { ok: false; needBillingInfo?: boolean; error?: string };
+
+export async function preparePayment(plan: PlanId): Promise<PreparePaymentResult> {
+  if (!(plan in PLANS)) return { ok: false, error: "Nepoznat plan." };
+  const { tenant } = await getAdminContext();
+
+  // Faktura mora imati kupca - modal u tom slučaju prvo traži podatke
+  if (!tenant.billing_note?.trim()) {
+    return { ok: false, needBillingInfo: true };
+  }
+
+  const created = await createInvoice(plan);
+  if (!created.ok) return { ok: false, error: created.error };
+
+  const db = createAdminClient();
+  const { data: invoice } = await db
+    .from("invoices")
+    .select("id, number, year, amount, plan, period_from, period_to")
+    .eq("id", created.invoiceId)
+    .single();
+  if (!invoice) return { ok: false, error: "Faktura nije pronađena." };
+
+  const ipsString = buildIpsQr({
+    amount: Number(invoice.amount),
+    invoiceNumber: invoice.number,
+    invoiceYear: invoice.year,
+  });
+  const qrDataUrl = await QRCode.toDataURL(ipsString, { margin: 1, width: 320 });
+
+  return {
+    ok: true,
+    qrDataUrl,
+    amount: Number(invoice.amount),
+    plan: invoice.plan as PlanId,
+    periodFrom: invoice.period_from,
+    periodTo: invoice.period_to,
+    invoiceId: invoice.id,
+    invoiceLabel: `${invoice.number}/${invoice.year}`,
+    refNumber: `00${invoice.year}${String(invoice.number).padStart(3, "0")}`,
+  };
 }

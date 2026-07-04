@@ -169,11 +169,14 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
   cena 1.490 RSD/mes za prvih ~10 salona (usmeno, nije u kodu).
 - **Fakture su samoposlužne, izdavalac je Čvorište** (Mihajlova firma; podaci
   hardkodovani u [src/lib/invoice.ts](src/lib/invoice.ts): PIB 114833116,
-  Erste račun 340-0001000228996-85). Tok: vlasnik u Podešavanja → "Pretplata i
-  naplata" (kartica na dnu stranice) upiše podatke za fakturu
-  (tenants.billing_note), izabere mesečna/godišnja → **dijalog sa rezimeom**
-  (plan, iznos, kupac; bez podataka kupca izdavanje je blokirano i klijentski
-  i u `createInvoice`) → potvrda → server akcija `createInvoice` (globalna numeracija
+  Erste račun 340-0001000228996-85). Tok (redizajn 4.7): plaćanje ide kroz
+  **PaymentModal** ([admin/payment-modal.tsx](src/app/admin/payment-modal.tsx))
+  - veliki IPS QR + iznos + period + uputstvo; otvara se iz banera pri vrhu
+  admina (CTA "Plati članarinu", [admin/subscription-banner.tsx](src/app/admin/subscription-banner.tsx))
+  i sa nove stranice **/admin/pretplata** (status, "Produži članarinu" i za
+  aktivne - period se lančano nastavlja, podaci za fakturu, istorija uplata).
+  Podešavanja su sada čisto izgled/sadržaj (BillingCard obrisan). Modal zove
+  `preparePayment(plan)` → postojeći `createInvoice` (globalna numeracija
   broj/godina, idempotentna po tenant+plan+period_from) → printabilna A4
   strana `/faktura/[id]` sa **NBS IPS QR** kodom (paket `qrcode`; payload
   format u lib/invoice.ts, poziv na broj = 00 + godina + redni broj).
