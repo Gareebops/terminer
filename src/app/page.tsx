@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { HeroItem, HeroStagger } from "@/components/animate";
 import { HeroDemo } from "@/components/landing/hero-demo";
+import { TerminerLogo } from "@/components/terminer-logo";
 
 const features = [
   {
@@ -40,15 +41,7 @@ export default function HomePage() {
   return (
     <main className="flex-1 bg-canvas font-display text-ink">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5">
-        {/* Logo: znak iz favicona + postojeći "Terminer" natpis kao wordmark */}
-        <span className="flex items-center gap-2.5">
-          <svg viewBox="0 0 64 64" className="size-8" aria-hidden>
-            <rect width="64" height="64" rx="14" fill="#17181A" />
-            <rect x="15" y="16" width="34" height="10" rx="5" fill="#A6F5A6" />
-            <rect x="27" y="16" width="10" height="32" rx="5" fill="#A6F5A6" />
-          </svg>
-          <span className="text-xl font-extrabold tracking-tight">Terminer</span>
-        </span>
+        <TerminerLogo />
         <nav className="flex items-center gap-2">
           <Link
             href="/prijava"

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { TerminerLogo } from "@/components/terminer-logo";
 
 function LoginForm() {
   const router = useRouter();
@@ -109,7 +110,8 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <main className="flex flex-1 items-center justify-center bg-canvas px-4 py-16 font-display">
+    <main className="flex flex-1 flex-col items-center justify-center gap-6 bg-canvas px-4 py-16 font-display">
+      <TerminerLogo href="/" />
       <Suspense>
         <LoginForm />
       </Suspense>

@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { TerminerLogo } from "@/components/terminer-logo";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -76,7 +77,8 @@ export default function RegisterPage() {
 
   if (awaitingConfirm) {
     return (
-      <main className="flex flex-1 items-center justify-center bg-canvas px-4 py-16 font-display">
+      <main className="flex flex-1 flex-col items-center justify-center gap-6 bg-canvas px-4 py-16 font-display">
+        <TerminerLogo href="/" />
         <Card className="w-full max-w-sm rounded-3xl border-0 text-center shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
           <CardContent className="pt-10 pb-8">
             <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-mint text-ink">
@@ -108,7 +110,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center bg-canvas px-4 py-16 font-display">
+    <main className="flex flex-1 flex-col items-center justify-center gap-6 bg-canvas px-4 py-16 font-display">
+      <TerminerLogo href="/" />
       <Card className="w-full max-w-sm rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
         <CardHeader>
           <CardTitle>Registruj svoj salon</CardTitle>
