@@ -13,7 +13,7 @@ const features = [
   {
     icon: Globe,
     title: "Sajt bez muke",
-    text: "Tvoj salon dobija moderan sajt sa cenovnikom, timom i galerijom — bez programera i bez održavanja.",
+    text: "Tvoj salon dobija moderan sajt i web aplikaciju sa cenovnikom, timom i galerijom — bez programera i bez komplikovanog održavanja.",
     surface: "bg-white shadow-[0_4px_24px_rgba(20,25,20,0.06)]",
   },
   {
@@ -68,13 +68,13 @@ export default function HomePage() {
             </HeroItem>
             <HeroItem>
               <h1 className="mt-5 max-w-xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
-                Sajt i online zakazivanje za tvoj salon — za par minuta
+                Sajt i online zakazivanje za tvoj salon — za nekoliko minuta
               </h1>
             </HeroItem>
             <HeroItem>
               <p className="mt-6 max-w-lg text-lg text-white/60">
                 Registruj salon, unesi usluge i radno vreme, izaberi izgled — i
-                klijenti odmah mogu da zakazuju online.
+                klijenti odmah mogu da zakazuju termine online.
               </p>
             </HeroItem>
             <HeroItem>
@@ -125,7 +125,7 @@ export default function HomePage() {
           </h2>
           <p className="mx-auto mt-3 max-w-xl font-medium text-ink/55">
             Košta te otprilike jedno šišanje mesečno — a pokrije se prvom
-            rezervacijom koja ti ne bi propala.
+            rezervacijom.
           </p>
         </div>
         <div className="mx-auto mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
