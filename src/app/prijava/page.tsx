@@ -20,6 +20,8 @@ function LoginForm() {
   const [unconfirmed, setUnconfirmed] = useState(false);
   // Dolazak sa linka za potvrdu naloga (auth/callback bez sesije)
   const justConfirmed = search.get("potvrdjen") === "1";
+  // Link iz mejla nije mogao da napravi sesiju (istekao / drugi browser)
+  const brokenLink = search.get("greska") === "link";
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,6 +64,12 @@ function LoginForm() {
             Nalog je potvrđen - prijavi se i nastavi sa podešavanjem salona.
           </p>
         )}
+        {brokenLink && (
+          <p className="mb-4 rounded-lg bg-amber-200 px-3 py-2 text-sm font-semibold text-amber-950">
+            Link iz mejla je istekao ili je otvoren u drugom browseru - prijavi
+            se ili zatraži nov.
+          </p>
+        )}
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -74,7 +82,15 @@ function LoginForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Lozinka</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Lozinka</Label>
+              <Link
+                href="/zaboravljena-lozinka"
+                className="text-xs text-muted-foreground underline hover:text-foreground"
+              >
+                Zaboravljena lozinka?
+              </Link>
+            </div>
             <Input
               id="password"
               type="password"

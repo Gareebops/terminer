@@ -19,5 +19,9 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL("/prijava?potvrdjen=1", url.origin));
+  // Razmena nije uspela. Za potvrdu naloga (podrazumevani next) nalog je
+  // ipak potvrđen - prijava rešava. Za ostale tokove (nova lozinka) link
+  // je neupotrebljiv u ovom browseru, pa kažemo da se zatraži nov.
+  const fallback = next === "/onboarding" ? "/prijava?potvrdjen=1" : "/prijava?greska=link";
+  return NextResponse.redirect(new URL(fallback, url.origin));
 }

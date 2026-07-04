@@ -10,6 +10,8 @@ const RESERVED = new Set([
   "registracija",
   "onboarding",
   "auth",
+  "zaboravljena-lozinka",
+  "nova-lozinka",
   "privatnost",
   "uslovi",
   "api",
