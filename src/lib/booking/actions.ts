@@ -75,12 +75,16 @@ async function loadBookingContext(
 // inače podrazumevano nedeljno radno vreme.
 async function getWorkWindow(
   db: ReturnType<typeof createAdminClient>,
+  tenantId: string,
   staffId: string,
   date: string
 ): Promise<{ start: string; end: string } | null> {
+  // tenant_id filter i ovde iako FK garantuje integritet - service-role
+  // klijent zaobilazi RLS, pa nijedan upit ne sme bez tenant granice
   const { data: assignment } = await db
     .from("shift_assignments")
     .select("is_off, shift_template_id, shift_templates(start_time, end_time)")
+    .eq("tenant_id", tenantId)
     .eq("staff_id", staffId)
     .eq("date", date)
     .maybeSingle();
@@ -99,6 +103,7 @@ async function getWorkWindow(
   const { data: wh } = await db
     .from("working_hours")
     .select("start_time, end_time, is_working")
+    .eq("tenant_id", tenantId)
     .eq("staff_id", staffId)
     .eq("day_of_week", dayOfWeek)
     .maybeSingle();
@@ -117,6 +122,7 @@ async function getBusyRanges(
     db
       .from("bookings")
       .select("start_time, end_time")
+      .eq("tenant_id", tenantId)
       .eq("staff_id", staffId)
       .eq("date", date)
       .in("status", ["pending", "confirmed"]),
@@ -140,7 +146,7 @@ type BookingContext = Exclude<
 >;
 
 async function computeSlots(ctx: BookingContext, date: string): Promise<string[]> {
-  const window = await getWorkWindow(ctx.db, ctx.staff.id, date);
+  const window = await getWorkWindow(ctx.db, ctx.tenant.id, ctx.staff.id, date);
   if (!window) return [];
 
   const now = nowInZone(ctx.tenant.timezone);
