@@ -38,7 +38,9 @@ function LoginForm() {
       }
       return;
     }
-    router.push(search.get("next") ?? "/admin");
+    // Samo relativne putanje - apsolutni URL ili "//host" bi bio open redirect
+    const next = search.get("next") ?? "/admin";
+    router.push(next.startsWith("/") && !next.startsWith("//") ? next : "/admin");
     router.refresh();
   }
 

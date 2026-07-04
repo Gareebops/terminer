@@ -9,7 +9,10 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/onboarding";
+  // Samo relativne putanje - apsolutni URL ili "//host" bi bio open redirect
+  const rawNext = url.searchParams.get("next") ?? "/onboarding";
+  const next =
+    rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/onboarding";
 
   if (code) {
     const supabase = await createClient();
