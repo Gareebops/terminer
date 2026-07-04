@@ -101,14 +101,21 @@ Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
   kolonske privilegije na `tenants` (authenticated: update samo
   name/is_published/billing_note, insert samo name/slug — zatvara rupu gde je
   vlasnik REST-om mogao da menja svoj paid_until).
-- `20260705000001_tenant_integritet.sql` — **ČEKA `supabase db push` (Mihajlo)**.
-  Composite FK-ovi `(tenant_id, staff_id/service_id/...)` na bookings,
-  staff_services, working_hours, shift_templates, shift_assignments,
-  blocked_slots: zatvara cross-tenant rupu gde je vlasnik jednog salona mogao
-  REST-om da ubaci booking/smenu sa tuđim staff_id i blokira tuđi kalendar.
-  Postojeći podaci provereni (4.7.) — nema nepoklapanja, migracija prolazi
-  bezbedno. Uz to su slot upiti u booking akcijama dobili tenant_id filter
-  (odbrana u dubinu — service role zaobilazi RLS).
+- `20260705000001_tenant_integritet.sql` — primenjena 5.7. Composite FK-ovi
+  `(tenant_id, staff_id/service_id/...)` na bookings, staff_services,
+  working_hours, shift_templates, shift_assignments, blocked_slots: zatvara
+  cross-tenant rupu gde je vlasnik jednog salona mogao REST-om da ubaci
+  booking/smenu sa tuđim staff_id i blokira tuđi kalendar. Uz to su slot
+  upiti u booking akcijama dobili tenant_id filter (odbrana u dubinu).
+- `20260705000002_javno_citanje.sql` — **ČEKA `supabase db push` (Mihajlo)**.
+  Sužava javno čitanje: (1) kolonske SELECT privilegije na `tenants` — javni
+  klijenti vide samo id/slug/name/timezone/is_published/suspended_at/
+  created_at, a paid_until/trial_ends_at/billing_note/suspended_reason više
+  ne cure kroz REST; (2) working_hours/shift_templates/shift_assignments
+  čitaju samo članovi (slotove ionako računa server service-role klijentom).
+  Prateće izmene koda (kompatibilne i PRE migracije): `getTenantSite` bira
+  eksplicitne kolone (`PublicTenant` tip), `getAdminContext` čita tenant red
+  service-role klijentom posle provere članstva kroz RLS.
 
 **Logika slobodnih termina** (server): okno = smena za taj datum ILI working_hours
 → minus aktivne rezervacije i blokade → slotovi na 30 min u zoni salona

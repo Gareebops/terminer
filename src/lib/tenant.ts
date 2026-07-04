@@ -2,14 +2,19 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Gallery,
+  PublicTenant,
   Service,
   SiteSettings,
   Staff,
-  Tenant,
 } from "@/lib/types";
 
+// Kolonske SELECT privilegije puštaju javnim klijentima samo ove kolone -
+// select("*") bi pao sa permission denied
+const TENANT_PUBLIC_COLUMNS =
+  "id, slug, name, timezone, is_published, suspended_at, created_at";
+
 export interface TenantSite {
-  tenant: Tenant;
+  tenant: PublicTenant;
   settings: SiteSettings | null;
   services: Service[];
   staff: Staff[];
@@ -25,7 +30,7 @@ export const getTenantSite = cache(
 
     const { data: tenant } = await supabase
       .from("tenants")
-      .select("*")
+      .select(TENANT_PUBLIC_COLUMNS)
       .eq("slug", slug)
       .maybeSingle();
 
@@ -60,7 +65,7 @@ export const getTenantSite = cache(
       ]);
 
     return {
-      tenant: tenant as Tenant,
+      tenant: tenant as PublicTenant,
       settings: (settings.data as SiteSettings) ?? null,
       services: (services.data as Service[]) ?? [],
       staff: (staff.data as Staff[]) ?? [],

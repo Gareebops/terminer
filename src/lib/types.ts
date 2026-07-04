@@ -23,6 +23,14 @@ export interface Tenant {
   suspended_reason: string | null;
 }
 
+// Kolone tenants reda dostupne javnim klijentima (kolonske SELECT
+// privilegije u bazi) - billing/suspension detalji se čitaju isključivo
+// service-role klijentom posle provere članstva.
+export type PublicTenant = Pick<
+  Tenant,
+  "id" | "slug" | "name" | "timezone" | "is_published" | "suspended_at" | "created_at"
+>;
+
 export type ButtonStyle = "rounded" | "pill" | "square";
 
 export interface SiteTheme {
