@@ -145,6 +145,7 @@ export function BookingWizard({
   const [member, setMember] = useState<Staff | null>(null);
   const [date, setDate] = useState<string | null>(null);
   const [slots, setSlots] = useState<string[] | null>(null);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
   const [time, setTime] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -165,10 +166,13 @@ export function BookingWizard({
     if (!service || !member || !date) return;
     setSlots(null);
     setTime(null);
+    setSlotsError(null);
     getAvailableSlots({ slug, staffId: member.id, serviceId: service.id, date }).then(
       (res) => {
         if ("error" in res) {
-          toast.error(res.error);
+          // Trajna poruka umesto toasta - "nema termina" bi bilo obmanjujuće
+          // kad je zakazivanje pauzirano ili salon nedostupan
+          setSlotsError(res.error);
           setSlots([]);
         } else {
           setSlots(res.slots);
@@ -378,7 +382,12 @@ export function BookingWizard({
                     ))}
                   </div>
                 )}
-                {date && slots !== null && slots.length === 0 && (
+                {date && slotsError && (
+                  <p className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-950">
+                    {slotsError}
+                  </p>
+                )}
+                {date && !slotsError && slots !== null && slots.length === 0 && (
                   <p className="text-sm text-muted-foreground">
                     Nema slobodnih termina za ovaj dan. Probaj drugi.
                   </p>
