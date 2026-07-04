@@ -5,6 +5,7 @@ import { subscriptionInfo } from "@/lib/billing";
 import { CONTACT_EMAIL } from "@/components/legal-page";
 import { AdminNav } from "./admin-nav";
 import { LogoutButton } from "./logout-button";
+import { MobileHeader } from "./mobile-header";
 import { SubscriptionBanner } from "./subscription-banner";
 
 export default async function AdminLayout({
@@ -17,10 +18,11 @@ export default async function AdminLayout({
 
   return (
     <div
-      className="admin-scope flex min-h-screen flex-1 gap-4 bg-canvas p-4 font-display text-ink"
+      className="admin-scope flex min-h-screen flex-1 flex-col gap-4 bg-canvas p-4 font-display text-ink lg:flex-row"
       style={{ ["--radius" as string]: "1rem" }}
     >
-      <aside className="sticky top-4 flex h-[calc(100vh-2rem)] w-60 shrink-0 flex-col rounded-3xl bg-ink text-white">
+      <MobileHeader tenantName={tenant.name} slug={tenant.slug} />
+      <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-60 shrink-0 flex-col rounded-3xl bg-ink text-white lg:flex">
         <div className="p-5 pb-2">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">
             Terminer
@@ -41,7 +43,7 @@ export default async function AdminLayout({
           <LogoutButton />
         </div>
       </aside>
-      <main className="min-w-0 flex-1 py-2 pr-2">
+      <main className="min-w-0 flex-1 lg:py-2 lg:pr-2">
         {tenant.suspended_at && (
           <div className="mb-4 rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white">
             Salon je suspendovan i sajt nije javno dostupan.

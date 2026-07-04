@@ -149,7 +149,9 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
   + cenovnik sekcija; mini-sajt salona (hero, cenovnik, tim, galerija, kontakt,
   scroll animacije — [src/components/animate.tsx](src/components/animate.tsx));
   booking čarobnjak sa koracima, trakom 14 dana, animacijama i ICS "Dodaj u kalendar".
-- **Admin** (`/admin/*`): Početna (dashboard statistika), Kalendar (dnevni grid
+- **Admin** (`/admin/*`): responzivan — ispod `lg` sidebar zamenjuje tamna
+  traka sa hamburgerom i drawer ([admin/mobile-header.tsx](src/app/admin/mobile-header.tsx));
+  tabele/gridovi imaju horizontalni scroll. Početna (dashboard statistika), Kalendar (dnevni grid
   po zaposlenima, ručno zakazivanje za telefonske klijente, blokade), Rezervacije
   (statusi), Usluge (CRUD), Zaposleni (CRUD + po zaposlenom: fotografija/upload,
   usluge checkbox, radno vreme po danu, šabloni smena), Smene (nedeljni grid
