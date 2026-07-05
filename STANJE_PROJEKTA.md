@@ -146,7 +146,12 @@ Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
    i dizajn dugmadi (`theme.button_style`: rounded/pill/square — CSS pravila u
    globals.css preko `data-button-style` atributa na wrapperu u [slug]/layout).
    Primena u [src/app/[slug]/layout.tsx](src/app/[slug]/layout.tsx) preko CSS
-   varijabli (`--primary`, `--app-font-*`) i `.dark` klase.
+   varijabli (`--primary`, `--app-font-*`) i `.dark` klase. Boja brenda se
+   na POZADINSKIM površinama renderuje kao suptilan gradijent iste nijanse
+   (`brandGradient` u color.ts, ±7-8% svetline, 135°; pravilo
+   `[data-button-style] .bg-primary` u globals.css) — tekst/ivice ostaju
+   solid, kontrast teksta se računa prema najsvetlijem stopu; swatch-evi u
+   podešavanjima prikazuju isti gradijent.
    **NIKAD ne gurati mint/lavandu u šablone salona.**
 
 ## 6. Šta je implementirano (po commitima)

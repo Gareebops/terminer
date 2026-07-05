@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
-import { readableForeground } from "@/lib/color";
+import { brandGradient, gradientForeground } from "@/lib/color";
 import { FONT_PAIRS, type FontPairId } from "@/lib/fonts";
 import type { ButtonStyle, SiteTheme } from "@/lib/types";
 import { updateAppearance, updateSiteImage } from "../actions";
@@ -244,7 +244,7 @@ export function AppearanceForm({
                 onClick={() => saveColor(p.value)}
                 className="flex size-9 items-center justify-center rounded-full ring-2 ring-transparent transition hover:scale-105 data-[active=true]:ring-ring"
                 data-active={color.toLowerCase() === p.value}
-                style={{ backgroundColor: p.value }}
+                style={{ backgroundColor: p.value, backgroundImage: brandGradient(p.value) }}
               >
                 {color.toLowerCase() === p.value && (
                   <Check className="size-4 text-white" />
@@ -313,7 +313,8 @@ export function AppearanceForm({
                   className="flex h-7 w-full max-w-24 items-center justify-center text-xs font-medium"
                   style={{
                     backgroundColor: color,
-                    color: readableForeground(color),
+                    backgroundImage: brandGradient(color),
+                    color: gradientForeground(color),
                     borderRadius: s.radius,
                   }}
                 >

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { displayColor, readableForeground } from "@/lib/color";
+import { brandGradient, displayColor, gradientForeground } from "@/lib/color";
 import { getFontPair } from "@/lib/fonts";
 import { getTenantSite } from "@/lib/tenant";
 
@@ -53,7 +53,10 @@ export default async function SalonLayout({
       className={`flex min-h-screen flex-1 flex-col bg-background text-foreground ${fontPair.className} ${mode === "dark" ? "dark" : ""}`}
       style={{
         ["--primary" as string]: accent,
-        ["--primary-foreground" as string]: readableForeground(accent),
+        // Suptilan gradijent brenda za pozadinske površine (globals.css);
+        // kontrast teksta se računa prema najsvetlijem stopu gradijenta
+        ["--primary-gradient" as string]: brandGradient(accent),
+        ["--primary-foreground" as string]: gradientForeground(accent),
         ["--ring" as string]: accent,
         ["--app-font-heading" as string]: fontPair.headingVar,
         ["--app-font-sans" as string]: fontPair.sansVar,

@@ -173,3 +173,15 @@
 [data-button-style="square"] [data-slot="button"] {
   border-radius: 0.25rem;
 }
+
+/* Sajt salona — boja brenda kao suptilan gradijent ([slug]/layout postavlja
+   --primary-gradient). Samo pune pozadinske površine; tekst, ivice i
+   prozirne varijante (bg-primary/10) ostaju solid radi čitljivosti.
+   Hover kroz brightness jer background-image prekriva hover:bg-primary/90. */
+[data-button-style] .bg-primary {
+  background-image: var(--primary-gradient);
+}
+[data-button-style] button.bg-primary:hover,
+[data-button-style] a.bg-primary:hover {
+  filter: brightness(1.06);
+}
