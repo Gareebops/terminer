@@ -25,6 +25,7 @@ export default async function SettingsPage() {
         <SettingsShell
           tenantId={tenant.id}
           slug={tenant.slug}
+          customDomain={tenant.custom_domain ?? null}
           settings={settings as SiteSettings | null}
         />
       </div>

@@ -6,15 +6,18 @@ import { ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SiteSettings } from "@/lib/types";
 import { AppearanceForm } from "./appearance-form";
+import { DomainCard } from "./domain-card";
 import { SettingsForm } from "./settings-form";
 
 export function SettingsShell({
   tenantId,
   slug,
+  customDomain,
   settings,
 }: {
   tenantId: string;
   slug: string;
+  customDomain: string | null;
   settings: SiteSettings | null;
 }) {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -32,6 +35,7 @@ export function SettingsShell({
           onSaved={onSaved}
         />
         <SettingsForm settings={settings} onSaved={onSaved} />
+        <DomainCard slug={slug} customDomain={customDomain} />
       </div>
 
       {/* Živi pregled sajta (mobilni prikaz) */}

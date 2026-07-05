@@ -296,9 +296,20 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
 1. **Resend** — Mihajlo: nalog, verifikacija domena (DNS), `RESEND_API_KEY` u
    env (placeholder u `.env.local`), pa `EMAIL_FROM=potvrda@terminer.rs`.
    Kod je gotov; test uživo: booking sa emailom → potvrda → link otkazuje.
-2. **Custom domeni salona** — plan dogovoren (host-based rezolucija u proxy.ts
-   + `tenants.custom_domain` + Vercel Domains API + kartica "Domen" u
-   Podešavanjima); implementacija kreće posle deploya.
+2. **Custom domeni salona** — IMPLEMENTIRANO 5.7, čeka aktivaciju:
+   (1) migracija `20260705000005_custom_domain.sql` (kolona + javno čitanje;
+   ČEKA `supabase db push`); (2) env `VERCEL_TOKEN` + `VERCEL_PROJECT_ID`
+   (+ opciono `VERCEL_TEAM_ID`) u .env.local i na Vercelu — bez njih akcije
+   uredno javljaju da funkcija nije aktivirana. Arhitektura: kartica "Domen"
+   u Podešavanjima ([podesavanja/domain-card.tsx](src/app/admin/podesavanja/domain-card.tsx))
+   → server akcije ([admin/domain-actions.ts](src/app/admin/domain-actions.ts):
+   Vercel Domains API add/remove/status + upis u `tenants.custom_domain`
+   service-rolom, samo owner/admin) → proxy rezolucija hosta
+   ([src/proxy.ts](src/proxy.ts): custom host → slug uz 60s keš po instanci,
+   rewrite na /{slug}/..., a putanje koje već sadrže slug se 308-uju na
+   čistu putanju). Domen radi tek kad je sajt objavljen (RLS). DNS
+   uputstvo u kartici: apex → A 76.76.21.21, poddomen → CNAME
+   cname.vercel-dns.com, TXT za verifikaciju kad Vercel traži.
 3. **Prvi pravi salon** (Mihajlov frizer, founder cena) → pa šire.
 4. Kasnije (Faza B/C dizajna): "vibe" preseti (font+boja+varijanta u 1 klik),
    hero layout varijante, redosled sekcija drag&drop, kompresija slika pre

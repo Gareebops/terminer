@@ -21,6 +21,9 @@ export interface Tenant {
   billing_note: string | null;
   suspended_at: string | null;
   suspended_reason: string | null;
+  // Custom domen salona (null = samo terminer.rs/{slug}); upisuje se
+  // isključivo kroz domain-actions posle Vercel sinhronizacije
+  custom_domain?: string | null;
 }
 
 // Kolone tenants reda dostupne javnim klijentima (kolonske SELECT
