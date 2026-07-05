@@ -296,11 +296,13 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
 1. **Resend** — Mihajlo: nalog, verifikacija domena (DNS), `RESEND_API_KEY` u
    env (placeholder u `.env.local`), pa `EMAIL_FROM=potvrda@terminer.rs`.
    Kod je gotov; test uživo: booking sa emailom → potvrda → link otkazuje.
-2. **Custom domeni salona** — IMPLEMENTIRANO 5.7, čeka aktivaciju:
-   (1) migracija `20260705000005_custom_domain.sql` (kolona + javno čitanje;
-   ČEKA `supabase db push`); (2) env `VERCEL_TOKEN` + `VERCEL_PROJECT_ID`
-   (+ opciono `VERCEL_TEAM_ID`) u .env.local i na Vercelu — bez njih akcije
-   uredno javljaju da funkcija nije aktivirana. Arhitektura: kartica "Domen"
+2. **Custom domeni salona** — GOTOVO, verifikovano end-to-end 6.7. lokalno
+   (povezivanje kroz karticu → Vercel API → proxy rewrite + 308 dedupe →
+   status/DNS uputstvo → uklanjanje sa obe strane). Migracija
+   `20260705000005` primenjena; `VERCEL_TOKEN` + `VERCEL_PROJECT_ID` u
+   .env.local. ZA PRODUKCIJU još: iste 2 env varijable na Vercel projekat
+   + git push (deploy novog proxy-ja) — bez toga akcije uredno javljaju
+   da funkcija nije aktivirana. Arhitektura: kartica "Domen"
    u Podešavanjima ([podesavanja/domain-card.tsx](src/app/admin/podesavanja/domain-card.tsx))
    → server akcije ([admin/domain-actions.ts](src/app/admin/domain-actions.ts):
    Vercel Domains API add/remove/status + upis u `tenants.custom_domain`
