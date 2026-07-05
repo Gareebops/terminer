@@ -1,26 +1,22 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { SiteSettings } from "@/lib/types";
-import { setPublished, updateSettings } from "../actions";
+import { updateSettings } from "../actions";
 
+// Objava sajta više NIJE ovde - "Objavi sajt" dugme živi u admin layoutu
+// (publish-control.tsx), vidljivo na svakoj stranici.
 export function SettingsForm({
   settings,
-  isPublished,
-  slug,
   onSaved,
 }: {
   settings: SiteSettings | null;
-  isPublished: boolean;
-  slug: string;
   onSaved?: () => void;
 }) {
   const [heroTitle, setHeroTitle] = useState(settings?.hero_title ?? "");
@@ -33,7 +29,6 @@ export function SettingsForm({
   const [showTeam, setShowTeam] = useState(settings?.show_team ?? true);
   const [showGallery, setShowGallery] = useState(settings?.show_gallery ?? true);
   const [showPrices, setShowPrices] = useState(settings?.show_prices ?? true);
-  const [published, setPublishedState] = useState(isPublished);
   const [pending, startTransition] = useTransition();
 
   function onSubmit(e: React.FormEvent) {
@@ -60,48 +55,8 @@ export function SettingsForm({
     });
   }
 
-  function togglePublished(next: boolean) {
-    setPublishedState(next);
-    startTransition(async () => {
-      const res = await setPublished(next);
-      if (!res.ok) {
-        setPublishedState(!next);
-        toast.error(res.error ?? "Greška.");
-      } else {
-        toast.success(next ? "Sajt je objavljen!" : "Sajt je sakriven.");
-        onSaved?.();
-      }
-    });
-  }
-
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Status sajta</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-between">
-          <div>
-            <p className="text-sm">
-              {published ? (
-                <>
-                  Sajt je <strong>objavljen</strong> -{" "}
-                  <Link href={`/${slug}`} target="_blank" className="underline">
-                    pogledaj ga
-                  </Link>
-                </>
-              ) : (
-                <>
-                  Sajt je <strong>sakriven</strong> - vidiš ga samo ti dok si
-                  prijavljen.
-                </>
-              )}
-            </p>
-          </div>
-          <Switch checked={published} onCheckedChange={togglePublished} />
-        </CardContent>
-      </Card>
-
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="hero-title">Naslov na sajtu</Label>

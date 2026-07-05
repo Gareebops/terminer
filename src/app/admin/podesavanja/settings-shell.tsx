@@ -11,12 +11,10 @@ import { SettingsForm } from "./settings-form";
 export function SettingsShell({
   tenantId,
   slug,
-  isPublished,
   settings,
 }: {
   tenantId: string;
   slug: string;
-  isPublished: boolean;
   settings: SiteSettings | null;
 }) {
   const [refreshKey, setRefreshKey] = useState(0);
@@ -33,12 +31,7 @@ export function SettingsShell({
           theme={settings?.theme ?? null}
           onSaved={onSaved}
         />
-        <SettingsForm
-          settings={settings}
-          isPublished={isPublished}
-          slug={slug}
-          onSaved={onSaved}
-        />
+        <SettingsForm settings={settings} onSaved={onSaved} />
       </div>
 
       {/* Živi pregled sajta (mobilni prikaz) */}

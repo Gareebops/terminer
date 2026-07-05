@@ -6,6 +6,7 @@ import { CONTACT_EMAIL } from "@/components/legal-page";
 import { AdminNav } from "./admin-nav";
 import { LogoutButton } from "./logout-button";
 import { MobileHeader } from "./mobile-header";
+import { PublishControl } from "./publish-control";
 import { SubscriptionBanner } from "./subscription-banner";
 
 export default async function AdminLayout({
@@ -21,7 +22,12 @@ export default async function AdminLayout({
       className="admin-scope flex min-h-screen flex-1 flex-col gap-4 bg-canvas p-4 font-display text-ink lg:flex-row"
       style={{ ["--radius" as string]: "1rem" }}
     >
-      <MobileHeader tenantName={tenant.name} slug={tenant.slug} />
+      <MobileHeader
+        tenantName={tenant.name}
+        slug={tenant.slug}
+        isPublished={tenant.is_published}
+        suspended={!!tenant.suspended_at}
+      />
       <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-60 shrink-0 flex-col rounded-3xl bg-ink text-white lg:flex">
         <div className="p-5 pb-2">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">
@@ -37,6 +43,14 @@ export default async function AdminLayout({
           >
             /{tenant.slug} <ExternalLink className="size-3" />
           </Link>
+        </div>
+        <div className="px-3 pt-2">
+          <PublishControl
+            slug={tenant.slug}
+            isPublished={tenant.is_published}
+            suspended={!!tenant.suspended_at}
+            variant="sidebar"
+          />
         </div>
         <AdminNav />
         <div className="border-t border-white/10 p-3">

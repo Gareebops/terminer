@@ -27,9 +27,9 @@ export default async function SalonPage({
       {/* Neobjavljen sajt vide samo članovi salona (RLS) - podseti ih */}
       {!tenant.is_published && (
         <div className="bg-amber-500 px-4 py-2 text-center text-sm font-medium text-amber-950">
-          Sajt još nije objavljen - vidiš ga samo ti. Objavi ga u{" "}
-          <Link href="/admin/podesavanja" className="underline">
-            Podešavanjima
+          Sajt još nije objavljen - vidiš ga samo ti. Klikni „Objavi sajt“ u{" "}
+          <Link href="/admin" className="underline">
+            admin panelu
           </Link>
           .
         </div>

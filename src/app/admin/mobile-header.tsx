@@ -6,15 +6,20 @@ import { usePathname } from "next/navigation";
 import { ExternalLink, Menu, X } from "lucide-react";
 import { AdminNav } from "./admin-nav";
 import { LogoutButton } from "./logout-button";
+import { PublishControl } from "./publish-control";
 
 // Mobilno zaglavlje admina (ispod lg): tamna traka sa hamburgerom koja
 // otvara drawer sa istom navigacijom kao desktop sidebar.
 export function MobileHeader({
   tenantName,
   slug,
+  isPublished,
+  suspended,
 }: {
   tenantName: string;
   slug: string;
+  isPublished: boolean;
+  suspended: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
@@ -44,14 +49,22 @@ export function MobileHeader({
           </p>
           <p className="truncate text-base font-bold tracking-tight">{tenantName}</p>
         </div>
-        <button
-          onClick={() => setOpen(true)}
-          aria-label="Otvori meni"
-          aria-expanded={open}
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20"
-        >
-          <Menu className="size-5" />
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <PublishControl
+            slug={slug}
+            isPublished={isPublished}
+            suspended={suspended}
+            variant="mobile"
+          />
+          <button
+            onClick={() => setOpen(true)}
+            aria-label="Otvori meni"
+            aria-expanded={open}
+            className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20"
+          >
+            <Menu className="size-5" />
+          </button>
+        </div>
       </div>
 
       {open && (

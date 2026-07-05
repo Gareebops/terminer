@@ -160,7 +160,12 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
   booking čarobnjak sa koracima, trakom 14 dana, animacijama i ICS "Dodaj u kalendar".
 - **Admin** (`/admin/*`): responzivan — ispod `lg` sidebar zamenjuje tamna
   traka sa hamburgerom i drawer ([admin/mobile-header.tsx](src/app/admin/mobile-header.tsx));
-  tabele/gridovi imaju horizontalni scroll. Početna (dashboard statistika), Kalendar (dnevni grid
+  tabele/gridovi imaju horizontalni scroll. **Objava sajta** je stalna
+  kontrola u layoutu ([admin/publish-control.tsx](src/app/admin/publish-control.tsx)):
+  neobjavljen = mint "Objavi sajt" dugme (sidebar + mobilna traka),
+  objavljen = "● Sajt je uživo"; zvaničan dijalog sa adresom, kopiranjem
+  linka i tihim "Skini sajt sa mreže" uz potvrdu (switch iz Podešavanja
+  uklonjen 5.7). Početna (dashboard statistika), Kalendar (dnevni grid
   po zaposlenima, ručno zakazivanje za telefonske klijente, blokade), Rezervacije
   (statusi), Usluge (CRUD), Zaposleni (CRUD + po zaposlenom: fotografija/upload,
   usluge checkbox, radno vreme po danu, šabloni smena), Smene (nedeljni grid
