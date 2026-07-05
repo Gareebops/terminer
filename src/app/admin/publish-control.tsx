@@ -17,7 +17,7 @@ import { setPublished } from "./actions";
 // Objava sajta je NAJVAŽNIJA akcija vlasnika - zato živi u layoutu (vidljiva
 // na svakoj admin stranici), a ne kao switch zakopan u podešavanjima.
 // Neobjavljen sajt: upadljivo mint dugme "Objavi sajt". Objavljen: diskretan
-// status "Sajt je uživo". Oba otvaraju isti zvaničan dijalog.
+// status "Sajt je online". Oba otvaraju isti zvaničan dijalog.
 export function PublishControl({
   slug,
   isPublished,
@@ -68,7 +68,7 @@ export function PublishControl({
       setPublishedState(false);
       setConfirmUnpublish(false);
       setJustPublished(false);
-      toast.success("Sajt je skinut sa mreže.");
+      toast.success("Sajt je sklonjen sa mreže.");
       router.refresh();
     });
   }
@@ -104,7 +104,7 @@ export function PublishControl({
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-mint opacity-60" />
             <span className="relative inline-flex size-2 rounded-full bg-mint" />
           </span>
-          Sajt je uživo
+          Sajt je online
         </button>
       ) : (
         <button
@@ -120,7 +120,7 @@ export function PublishControl({
         aria-label="Status sajta"
         className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white/20"
       >
-        <span className="size-1.5 rounded-full bg-mint" /> Uživo
+        <span className="size-1.5 rounded-full bg-mint" /> Online
       </button>
     ) : (
       <button
@@ -143,7 +143,7 @@ export function PublishControl({
                   {justPublished ? <Rocket className="size-7" /> : <Globe className="size-7" />}
                 </span>
                 <DialogTitle className="text-center text-xl font-extrabold tracking-tight">
-                  {justPublished ? "Sajt je objavljen!" : "Tvoj sajt je uživo"}
+                  {justPublished ? "Sajt je objavljen!" : "Tvoj sajt je online"}
                 </DialogTitle>
                 <DialogDescription className="text-center">
                   {justPublished
@@ -197,7 +197,7 @@ export function PublishControl({
                         disabled={pending}
                         onClick={unpublish}
                       >
-                        {pending ? "Skidanje..." : "Da, skini sajt"}
+                        {pending ? "Sklanjanje..." : "Da, skloni sajt"}
                       </Button>
                     </div>
                   </div>
@@ -206,7 +206,7 @@ export function PublishControl({
                     onClick={() => setConfirmUnpublish(true)}
                     className="text-xs text-muted-foreground underline-offset-2 hover:underline"
                   >
-                    Skini sajt sa mreže
+                    Skloni sajt sa mreže
                   </button>
                 )}
               </div>
@@ -231,7 +231,7 @@ export function PublishControl({
 
               <p className="text-center text-xs text-muted-foreground">
                 Pre objave proveri usluge, radno vreme zaposlenih i kontakt
-                podatke. Sajt možeš u svakom trenutku da skineš sa mreže.
+                podatke. Sajt možeš u svakom trenutku da skloniš sa mreže.
               </p>
 
               <Button
