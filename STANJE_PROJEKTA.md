@@ -54,8 +54,9 @@ Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
   za prezentacije: 8 usluga sa opisima, 3 zaposlena (Đorđe, Marko, Jovana
   koloristkinja) sa AI portretima, hero enterijer i 6 slika galerije
   (Higgsfield soul_2, u storage `{tenant}/site/`), radno vreme pon–sub.
-  NE BRISATI pre launcha — ovo je javni showcase. Ostala je 1 seed
-  rezervacija (Test Testić) — nju obrisati.
+  NE BRISATI pre launcha — ovo je javni showcase. Seed rezervacija
+  (Test Testić) obrisana 5.7; u `customers` je ostao samo seed klijent
+  "Test Testić" (obrisati uz ostale test podatke pre launcha).
 - Salon `studio-test` — Mihajlov probni salon (neobjavljen).
 - Test admin: `test-admin@terminer.dev` / `terminer-test-123` (owner demo salona,
   u SUPER_ADMIN_EMAIL listi). **Obrisati pre produkcije.**
@@ -107,15 +108,14 @@ Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
   cross-tenant rupu gde je vlasnik jednog salona mogao REST-om da ubaci
   booking/smenu sa tuđim staff_id i blokira tuđi kalendar. Uz to su slot
   upiti u booking akcijama dobili tenant_id filter (odbrana u dubinu).
-- `20260705000003_booking_zastita.sql` + `20260705000004_fk_konsolidacija.sql` —
-  **ČEKA `supabase db push` (Mihajlo) — 000004 je HITNA**: migracija 000001 je
-  composite FK-ove dodala pored starih jednokolonskih, pa je PostgREST
-  embedding postao dvosmislen (PGRST201) i od njene primene su na produkciji
-  tiho polomljeni: admin kalendar/početna/rezervacije (prazno), primena smena
-  u slotovima i stranica za otkazivanje. 000004 briše stare FK-ove i ostavlja
-  composite kao jedine (uz očuvano on delete ponašanje; set null (customer_id)
-  traži PG 15+). 000003 dodaje `bookings.created_ip` za IP rate limit
-  (kod radi i bez nje - preskače limit dok kolona ne legne).
+- `20260705000003_booking_zastita.sql` (`bookings.created_ip` za IP rate
+  limit) + `20260705000004_fk_konsolidacija.sql` — primenjene 5.7.
+  000004 je popravila regresiju iz 000001: composite FK-ovi su bili dodati
+  PORED starih jednokolonskih pa je PostgREST embedding bio dvosmislen
+  (PGRST201) i tiho je lomio kalendar/početnu/rezervacije, primenu smena u
+  slotovima i otkazivanje. Sada je composite FK jedina veza po paru tabela
+  (on delete ponašanje očuvano). POUKA za buduće migracije: kad se dodaje
+  composite FK, stari jednokolonski FK se mora ukloniti u ISTOJ migraciji.
 - `20260705000002_javno_citanje.sql` — primenjena 5.7.
   Sužava javno čitanje: (1) kolonske SELECT privilegije na `tenants` — javni
   klijenti vide samo id/slug/name/timezone/is_published/suspended_at/
