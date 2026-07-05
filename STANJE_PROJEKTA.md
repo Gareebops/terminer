@@ -245,6 +245,17 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
 
 ## 8. Poznati gotchas
 
+- **Vercel region funkcija MORA biti fra1** (isti kao Supabase, Frankfurt) —
+  bio je dub1 pa je svaki upit plaćao Dublin↔Frankfurt (~25ms × 5 poziva po
+  kliku). Mihajlo prebacio 5.7; primenjuje se tek na SLEDEĆEM deploy-u.
+  Provera: `curl -sI https://terminer.rs/demo | grep x-vercel-id` →
+  `fra1::fra1::...` je dobro, `fra1::dub1::...` nije.
+- **Brzina admin navigacije**: `admin/loading.tsx` daje trenutni skeleton
+  po kliku; `getAdminContext` koristi `getClaims()` (lokalna JWT verifikacija,
+  ES256) umesto drugog `getUser()` round-tripa i JEDAN spojeni upit
+  (`tenant_members` + embed `tenants(*)` service-rolom). Ne vraćati
+  getUser/odvojene upite bez razloga.
+
 - **Turbopack keš**: promene u `globals.css` @theme tokenima ponekad ne stignu
   do browsera → `rm -rf .next` + restart dev servera.
 - `supabase db push` je interaktivan (DB lozinka) — može ga pokrenuti samo

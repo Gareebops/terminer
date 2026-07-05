@@ -12,37 +12,32 @@ export interface AdminContext {
 
 // Kontekst ulogovanog člana salona. Svi upiti u admin zoni idu preko
 // session klijenta, pa RLS garantuje izolaciju po salonu.
+//
+// Performanse (ovo se izvršava pri SVAKOM kliku u adminu): getClaims()
+// verifikuje JWT lokalno umesto round-tripa do Auth API-ja (sesiju je
+// proxy već osvežio kroz getUser), a članstvo + tenant idu kao JEDAN
+// upit. Service role je bezbedan jer user_id dolazi iz verifikovanog
+// tokena, a billing/suspension kolone tenants-a ionako nisu u javnim
+// SELECT privilegijama pa ih session klijent ne može čitati.
 export const getAdminContext = cache(async (): Promise<AdminContext> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/prijava");
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = claimsData?.claims.sub;
+  if (!userId) redirect("/prijava");
 
-  // Članstvo kroz session klijent (RLS) - to je autorizaciona provera
-  const { data: membership } = await supabase
+  const db = createAdminClient();
+  const { data: membership } = await db
     .from("tenant_members")
-    .select("role, tenant_id")
-    .eq("user_id", user.id)
+    .select("role, tenants(*)")
+    .eq("user_id", userId)
     .limit(1)
     .maybeSingle();
 
-  if (!membership) redirect("/onboarding");
-
-  // Tenant red ide service-role klijentom: billing/suspension kolone nisu
-  // u javnim SELECT privilegijama, a članu salona ovde legitimno trebaju
-  const db = createAdminClient();
-  const { data: tenant } = await db
-    .from("tenants")
-    .select("*")
-    .eq("id", membership.tenant_id)
-    .maybeSingle();
-
-  if (!tenant) redirect("/onboarding");
+  if (!membership?.tenants) redirect("/onboarding");
 
   return {
-    userId: user.id,
+    userId,
     role: membership.role as MemberRole,
-    tenant: tenant as Tenant,
+    tenant: membership.tenants as unknown as Tenant,
   };
 });
