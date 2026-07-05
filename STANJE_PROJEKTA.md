@@ -107,7 +107,16 @@ Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
   cross-tenant rupu gde je vlasnik jednog salona mogao REST-om da ubaci
   booking/smenu sa tuđim staff_id i blokira tuđi kalendar. Uz to su slot
   upiti u booking akcijama dobili tenant_id filter (odbrana u dubinu).
-- `20260705000002_javno_citanje.sql` — **ČEKA `supabase db push` (Mihajlo)**.
+- `20260705000003_booking_zastita.sql` + `20260705000004_fk_konsolidacija.sql` —
+  **ČEKA `supabase db push` (Mihajlo) — 000004 je HITNA**: migracija 000001 je
+  composite FK-ove dodala pored starih jednokolonskih, pa je PostgREST
+  embedding postao dvosmislen (PGRST201) i od njene primene su na produkciji
+  tiho polomljeni: admin kalendar/početna/rezervacije (prazno), primena smena
+  u slotovima i stranica za otkazivanje. 000004 briše stare FK-ove i ostavlja
+  composite kao jedine (uz očuvano on delete ponašanje; set null (customer_id)
+  traži PG 15+). 000003 dodaje `bookings.created_ip` za IP rate limit
+  (kod radi i bez nje - preskače limit dok kolona ne legne).
+- `20260705000002_javno_citanje.sql` — primenjena 5.7.
   Sužava javno čitanje: (1) kolonske SELECT privilegije na `tenants` — javni
   klijenti vide samo id/slug/name/timezone/is_published/suspended_at/
   created_at, a paid_until/trial_ends_at/billing_note/suspended_reason više
@@ -159,6 +168,13 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
   varijanta/logo/hero slika + live preview sajta u telefon okviru).
 - **Auth/onboarding**: registracija → onboarding (naziv + slug) → admin.
   Jedan vlasnik = jedan salon (za sada).
+- **Zaštita gost-bookinga (5.7.)**: honeypot polje u wizardu, limit 3 aktivne
+  rezervacije po telefonu, limit 5 rezervacija/sat po IP-u (koristi
+  `bookings.created_ip`, migracija 000003), server-side horizont 60 dana
+  (`MAX_DAYS_AHEAD` u booking akcijama). Salon dobija email na
+  `site_settings.email` o svakoj novoj i otkazanoj online rezervaciji
+  (`sendOwnerBookingNotice` u lib/email.ts). U /privatnost dodati napomenu
+  o čuvanju IP adrese (checklist).
 - **Email potvrde (Resend)**: posle uspešnog gost-bookinga sa emailom šalje se
   potvrda ([src/lib/email.ts](src/lib/email.ts) — HTML šablon na srpskom,
   .ics prilog, link za otkazivanje; bez `RESEND_API_KEY` slanje se preskače i

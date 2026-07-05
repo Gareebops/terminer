@@ -84,6 +84,94 @@ function confirmationHtml(input: BookingEmailInput): string {
 </html>`;
 }
 
+// Obaveštenje salonu (site_settings.email) o novoj ili otkazanoj
+// rezervaciji - da vlasnik ne mora da proverava kalendar.
+export interface OwnerNoticeInput {
+  to: string;
+  kind: "new" | "cancelled";
+  salonName: string;
+  serviceName: string;
+  staffName: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  endTime: string; // HH:MM
+  customerName: string;
+  customerPhone: string;
+  note?: string | null;
+}
+
+function ownerNoticeHtml(input: OwnerNoticeInput): string {
+  const rows: [string, string][] = [
+    ["Usluga", input.serviceName],
+    ["Radnik", input.staffName],
+    ["Datum", dateLabelSr(input.date)],
+    ["Vreme", `${input.startTime} – ${input.endTime}`],
+    ["Klijent", input.customerName],
+    ["Telefon", input.customerPhone],
+    ...(input.note ? ([["Napomena", input.note]] as [string, string][]) : []),
+  ];
+  const rowsHtml = rows
+    .map(
+      ([k, v]) => `
+        <tr>
+          <td style="padding:6px 16px 6px 0;color:#71717a;font-size:14px;white-space:nowrap;vertical-align:top;">${k}</td>
+          <td style="padding:6px 0;color:#18181b;font-size:14px;font-weight:600;">${escapeHtml(v)}</td>
+        </tr>`
+    )
+    .join("");
+
+  const title = input.kind === "new" ? "Nova rezervacija ✔" : "Rezervacija je otkazana";
+  const intro =
+    input.kind === "new"
+      ? "Klijent je upravo zakazao termin online."
+      : "Klijent je otkazao termin preko linka iz mejla - termin je ponovo slobodan.";
+
+  return `<!doctype html>
+<html lang="sr">
+<body style="margin:0;padding:24px 12px;background:#f4f4f5;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;">
+    <div style="background:#ffffff;border-radius:16px;padding:32px;">
+      <p style="margin:0;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:#71717a;">${escapeHtml(input.salonName)}</p>
+      <h1 style="margin:8px 0 4px;font-size:22px;color:#18181b;">${title}</h1>
+      <p style="margin:0 0 20px;font-size:14px;color:#52525b;">${intro}</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-top:1px solid #e4e4e7;padding-top:8px;">${rowsHtml}</table>
+    </div>
+    <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#a1a1aa;">
+      Poslato preko <a href="https://terminer.rs" style="color:#a1a1aa;">Terminer</a> zakazivanja.
+    </p>
+  </div>
+</body>
+</html>`;
+}
+
+export async function sendOwnerBookingNotice(
+  input: OwnerNoticeInput
+): Promise<{ sent: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("RESEND_API_KEY nije podešen - obaveštenje salonu preskočeno.");
+    return { sent: false };
+  }
+  const prefix = input.kind === "new" ? "Nova rezervacija" : "Otkazan termin";
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM ?? FROM_FALLBACK,
+      to: input.to,
+      subject: `${prefix} - ${dateLabelSr(input.date)} u ${input.startTime}`,
+      html: ownerNoticeHtml(input),
+    });
+    if (error) {
+      console.error("Resend greška (obaveštenje salonu):", error);
+      return { sent: false };
+    }
+    return { sent: true };
+  } catch (err) {
+    console.error("Slanje obaveštenja salonu nije uspelo:", err);
+    return { sent: false };
+  }
+}
+
 export async function sendBookingConfirmation(
   input: BookingEmailInput
 ): Promise<{ sent: boolean }> {

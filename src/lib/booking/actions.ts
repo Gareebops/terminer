@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendBookingConfirmation } from "@/lib/email";
+import { sendBookingConfirmation, sendOwnerBookingNotice } from "@/lib/email";
 import {
   generateAvailableSlots,
   toMinutes,
@@ -145,12 +145,20 @@ type BookingContext = Exclude<
   { error: string }
 >;
 
-async function computeSlots(ctx: BookingContext, date: string): Promise<string[]> {
-  const window = await getWorkWindow(ctx.db, ctx.tenant.id, ctx.staff.id, date);
-  if (!window) return [];
+// Koliko unapred gost sme da zakaže. Wizard nudi 14 dana, ali akcije
+// primaju proizvoljan datum - server mora imati sopstvenu granicu da
+// niko ne bukira termine za godinu dana unapred.
+const MAX_DAYS_AHEAD = 60;
 
+async function computeSlots(ctx: BookingContext, date: string): Promise<string[]> {
   const now = nowInZone(ctx.tenant.timezone);
   if (date < now.date) return [];
+  const max = new Date(`${now.date}T12:00:00Z`);
+  max.setUTCDate(max.getUTCDate() + MAX_DAYS_AHEAD);
+  if (date > max.toISOString().slice(0, 10)) return [];
+
+  const window = await getWorkWindow(ctx.db, ctx.tenant.id, ctx.staff.id, date);
+  if (!window) return [];
 
   const busy = await getBusyRanges(ctx.db, ctx.tenant.id, ctx.staff.id, date);
 
@@ -192,7 +200,13 @@ const createBookingSchema = z.object({
     .regex(/^\+?[0-9 /-]{6,20}$/, "Unesi ispravan broj telefona."),
   customerEmail: z.string().trim().email("Neispravan email.").max(200).optional().or(z.literal("")),
   note: z.string().trim().max(500).optional(),
+  // Honeypot: skriveno polje koje pravi korisnik nikad ne popunjava
+  website: z.string().max(200).optional(),
 });
+
+// Anti-spam granice za gost-booking (admin zakazuje kroz svoju akciju)
+const MAX_ACTIVE_PER_PHONE = 3;
+const MAX_PER_IP_PER_HOUR = 5;
 
 export type CreateBookingResult =
   | { ok: true; bookingId: string; cancelToken: string; emailSent: boolean }
@@ -207,8 +221,55 @@ export async function createBooking(
   }
   const input = parsed.data;
 
+  // Bot koji je popunio honeypot polje ne prolazi (generička poruka, namerno)
+  if (input.website) {
+    return { ok: false, error: "Greška pri zakazivanju. Pokušaj ponovo." };
+  }
+
   const ctx = await loadBookingContext(input.slug, input.staffId, input.serviceId);
   if ("error" in ctx) return { ok: false, error: ctx.error };
+
+  const now = nowInZone(ctx.tenant.timezone);
+  const hdrs = await headers();
+  const ip = (hdrs.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || null;
+
+  // Limit po telefonu: max aktivnih predstojećih rezervacija u ovom salonu
+  const { count: phoneCount } = await ctx.db
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", ctx.tenant.id)
+    .eq("customer_phone", input.customerPhone)
+    .in("status", ["pending", "confirmed"])
+    .gte("date", now.date);
+  if ((phoneCount ?? 0) >= MAX_ACTIVE_PER_PHONE) {
+    return {
+      ok: false,
+      error: `Sa ovim brojem telefona već postoje ${MAX_ACTIVE_PER_PHONE} aktivne rezervacije. Za dodatni termin pozovi salon.`,
+    };
+  }
+
+  // Limit po IP-u: max novih rezervacija na sat u ovom salonu. Ako kolona
+  // created_ip još ne postoji (migracija nije primenjena), preskoči limit
+  // umesto da oborimo zakazivanje.
+  let trackIp = false;
+  if (ip) {
+    const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const ipRes = await ctx.db
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", ctx.tenant.id)
+      .eq("created_ip", ip)
+      .gte("created_at", since);
+    if (!ipRes.error) {
+      trackIp = true;
+      if ((ipRes.count ?? 0) >= MAX_PER_IP_PER_HOUR) {
+        return {
+          ok: false,
+          error: "Previše pokušaja zakazivanja odjednom. Sačekaj malo ili pozovi salon telefonom.",
+        };
+      }
+    }
+  }
 
   // Termin mora biti među trenutno dostupnim slotovima
   const slots = await computeSlots(ctx, input.date);
@@ -252,6 +313,7 @@ export async function createBooking(
       ends_at: endsAt.toISOString(),
       note: input.note || null,
       status: "confirmed",
+      ...(trackIp ? { created_ip: ip } : {}),
     })
     .select("id, cancel_token")
     .single();
@@ -265,39 +327,56 @@ export async function createBooking(
     return { ok: false, error: "Greška pri zakazivanju. Pokušaj ponovo." };
   }
 
-  // Potvrda mejlom (ako je klijent ostavio email) - nikad ne obara booking
-  let emailSent = false;
-  if (input.customerEmail) {
-    const [{ data: settings }, hdrs] = await Promise.all([
-      ctx.db
-        .from("site_settings")
-        .select("address, city, phone")
-        .eq("tenant_id", ctx.tenant.id)
-        .maybeSingle(),
-      headers(),
-    ]);
-    const proto = hdrs.get("x-forwarded-proto") ?? "http";
-    const host = hdrs.get("host") ?? "localhost:3000";
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? `${proto}://${host}`;
+  // Mejlovi (nikad ne obaraju booking): potvrda klijentu ako je ostavio
+  // email + obaveštenje salonu ako ima kontakt adresu u podešavanjima
+  const { data: settings } = await ctx.db
+    .from("site_settings")
+    .select("address, city, phone, email")
+    .eq("tenant_id", ctx.tenant.id)
+    .maybeSingle();
+  const proto = hdrs.get("x-forwarded-proto") ?? "http";
+  const host = hdrs.get("host") ?? "localhost:3000";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? `${proto}://${host}`;
 
-    const { sent } = await sendBookingConfirmation({
-      to: input.customerEmail,
-      salonName: ctx.tenant.name,
-      serviceName: ctx.service.name,
-      staffName: ctx.staff.name,
-      date: input.date,
-      startTime: input.time,
-      endTime,
-      address: settings
-        ? [settings.address, settings.city].filter(Boolean).join(", ") || null
-        : null,
-      salonPhone: settings?.phone ?? null,
-      cancelUrl: `${baseUrl}/${ctx.tenant.slug}/otkazivanje/${booking.cancel_token}`,
-    });
-    emailSent = sent;
-  }
+  const confirmationP = input.customerEmail
+    ? sendBookingConfirmation({
+        to: input.customerEmail,
+        salonName: ctx.tenant.name,
+        serviceName: ctx.service.name,
+        staffName: ctx.staff.name,
+        date: input.date,
+        startTime: input.time,
+        endTime,
+        address: settings
+          ? [settings.address, settings.city].filter(Boolean).join(", ") || null
+          : null,
+        salonPhone: settings?.phone ?? null,
+        cancelUrl: `${baseUrl}/${ctx.tenant.slug}/otkazivanje/${booking.cancel_token}`,
+      })
+    : Promise.resolve({ sent: false });
+  const ownerNoticeP = settings?.email
+    ? sendOwnerBookingNotice({
+        to: settings.email,
+        kind: "new",
+        salonName: ctx.tenant.name,
+        serviceName: ctx.service.name,
+        staffName: ctx.staff.name,
+        date: input.date,
+        startTime: input.time,
+        endTime,
+        customerName: input.customerName,
+        customerPhone: input.customerPhone,
+        note: input.note || null,
+      })
+    : Promise.resolve({ sent: false });
+  const [confirmation] = await Promise.all([confirmationP, ownerNoticeP]);
 
-  return { ok: true, bookingId: booking.id, cancelToken: booking.cancel_token, emailSent };
+  return {
+    ok: true,
+    bookingId: booking.id,
+    cancelToken: booking.cancel_token,
+    emailSent: confirmation.sent,
+  };
 }
 
 export async function cancelBooking(input: {
@@ -316,11 +395,42 @@ export async function cancelBooking(input: {
     .eq("id", ids.data.bookingId)
     .eq("cancel_token", ids.data.cancelToken)
     .in("status", ["pending", "confirmed"])
-    .select("id")
+    .select("id, tenant_id")
     .maybeSingle();
 
   if (error || !data) {
     return { ok: false, error: "Rezervacija nije pronađena ili je već otkazana." };
   }
+
+  // Obavesti salon da se termin oslobodio - nikad ne obara otkazivanje
+  const [{ data: booking }, { data: settings }] = await Promise.all([
+    db
+      .from("bookings")
+      .select(
+        "date, start_time, end_time, customer_name, customer_phone, note, tenants(name), services(name), staff(name)"
+      )
+      .eq("id", data.id)
+      .maybeSingle(),
+    db.from("site_settings").select("email").eq("tenant_id", data.tenant_id).maybeSingle(),
+  ]);
+  if (booking && settings?.email) {
+    await sendOwnerBookingNotice({
+      to: settings.email,
+      kind: "cancelled",
+      salonName:
+        (booking.tenants as unknown as { name: string } | null)?.name ?? "",
+      serviceName:
+        (booking.services as unknown as { name: string } | null)?.name ?? "Usluga",
+      staffName:
+        (booking.staff as unknown as { name: string } | null)?.name ?? "",
+      date: booking.date,
+      startTime: booking.start_time.slice(0, 5),
+      endTime: booking.end_time.slice(0, 5),
+      customerName: booking.customer_name,
+      customerPhone: booking.customer_phone,
+      note: booking.note,
+    });
+  }
+
   return { ok: true };
 }

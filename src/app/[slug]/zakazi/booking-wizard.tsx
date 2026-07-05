@@ -151,6 +151,9 @@ export function BookingWizard({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
+  // Honeypot: pravi korisnik ga ne vidi ni ne popunjava; bot koji ga
+  // popuni biva odbijen na serveru
+  const [website, setWebsite] = useState("");
   const [emailSent, setEmailSent] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -194,6 +197,7 @@ export function BookingWizard({
         customerPhone: phone,
         customerEmail: email,
         note,
+        website,
       });
       if (res.ok) {
         setEmailSent(res.emailSent);
@@ -445,6 +449,20 @@ export function BookingWizard({
               <div className="space-y-2">
                 <Label htmlFor="note">Napomena</Label>
                 <Textarea id="note" value={note} onChange={(e) => setNote(e.target.value)} />
+              </div>
+              <div
+                aria-hidden="true"
+                className="absolute -left-[9999px] top-auto h-px w-px overflow-hidden"
+              >
+                <Label htmlFor="website">Website</Label>
+                <Input
+                  id="website"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                />
               </div>
               <div className="flex gap-2">
                 <Button variant="ghost" onClick={() => setStep(2)}>

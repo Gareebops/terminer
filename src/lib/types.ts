@@ -129,6 +129,8 @@ export interface Booking {
   cancel_token: string;
   note: string | null;
   created_at: string;
+  // Samo za rate limit gost-bookinga; upisuje je server akcija
+  created_ip?: string | null;
 }
 
 export interface Gallery {
