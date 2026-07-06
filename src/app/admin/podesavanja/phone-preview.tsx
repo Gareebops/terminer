@@ -6,10 +6,10 @@ import { ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { brandGradient } from "@/lib/color";
 
-// Živi pregled sajta u realističnom telefonu: dynamic island, bočna
-// dugmad, odsjaj ekrana i ambijentalni sjaj u boji brenda salona.
-// Svako čuvanje remount-uje iframe (refreshKey) pa se novi izgled
-// "upali" kroz fade - pregled deluje živo.
+// Živi pregled sajta u realističnom telefonu: bočna dugmad, odsjaj
+// ekrana i ambijentalni sjaj u boji brenda salona. Svako čuvanje
+// remount-uje iframe (refreshKey) pa se novi izgled "upali" kroz fade -
+// pregled deluje živo.
 export function PhonePreview({
   slug,
   refreshKey,
@@ -27,6 +27,23 @@ export function PhonePreview({
   useEffect(() => {
     setLoaded(false);
   }, [refreshKey]);
+
+  // Sakrij scrollbarove unutar "ekrana" (skrolovanje i dalje radi) -
+  // iframe je same-origin pa stil možemo da ubacimo direktno
+  function handleLoad(e: React.SyntheticEvent<HTMLIFrameElement>) {
+    try {
+      const doc = e.currentTarget.contentDocument;
+      if (doc?.head) {
+        const style = doc.createElement("style");
+        style.textContent =
+          "html{scrollbar-width:none;-ms-overflow-style:none}::-webkit-scrollbar{display:none}";
+        doc.head.appendChild(style);
+      }
+    } catch {
+      // tuđ origin (custom domen) - preskoči, ništa se ne lomi
+    }
+    setLoaded(true);
+  }
 
   return (
     <div>
@@ -86,17 +103,12 @@ export function PhonePreview({
                 key={refreshKey}
                 src={`/${slug}`}
                 title="Pregled sajta"
-                onLoad={() => setLoaded(true)}
+                onLoad={handleLoad}
                 className={`h-[600px] w-[300px] bg-white transition-opacity duration-500 ${
                   loaded ? "opacity-100" : "opacity-0"
                 }`}
               />
 
-              {/* Dynamic island */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute left-1/2 top-2.5 h-[22px] w-20 -translate-x-1/2 rounded-full bg-ink"
-              />
               {/* Home indikator */}
               <span
                 aria-hidden
