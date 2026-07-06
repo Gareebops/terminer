@@ -17,6 +17,7 @@ import QRCode from "qrcode";
 import { buildIpsQr, PLANS, type PlanId } from "@/lib/invoice";
 import type {
   BookingStatus,
+  OnboardingState,
   ScheduleActionResult,
   ScheduleConflict,
   Staff,
@@ -232,6 +233,93 @@ export async function updateStaffServices(
 
   revalidatePath(`/admin/zaposleni/${staffId}`);
   revalidatePath(`/${tenant.slug}`);
+  return { ok: true };
+}
+
+// ---------- Vodič za pokretanje ----------
+
+const onboardingSchema = z.object({
+  welcomeSeen: z.boolean().optional(),
+  guideHidden: z.boolean().optional(),
+});
+
+export async function updateOnboarding(
+  input: z.infer<typeof onboardingSchema>
+): Promise<ActionResult> {
+  const parsed = onboardingSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Neispravni podaci." };
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+
+  const { data: row } = await supabase
+    .from("site_settings")
+    .select("onboarding")
+    .eq("tenant_id", tenant.id)
+    .maybeSingle();
+  const next: OnboardingState = { ...((row?.onboarding ?? {}) as OnboardingState) };
+  if (parsed.data.welcomeSeen !== undefined) next.welcome_seen = parsed.data.welcomeSeen;
+  if (parsed.data.guideHidden !== undefined) next.guide_hidden = parsed.data.guideHidden;
+
+  const { error } = await supabase
+    .from("site_settings")
+    .update({ onboarding: next })
+    .eq("tenant_id", tenant.id);
+  if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+// Tipičan cenovnik za start - vlasnik menja cene/trajanja umesto da kreće
+// od praznog ekrana. Ubacuje se SAMO u prazan cenovnik.
+const SAMPLE_SERVICES = [
+  { name: "Muško šišanje", duration_minutes: 30, price: 700 },
+  { name: "Žensko šišanje", duration_minutes: 45, price: 1200 },
+  { name: "Dečije šišanje", duration_minutes: 20, price: 500 },
+  { name: "Feniranje", duration_minutes: 30, price: 800 },
+  { name: "Farbanje", duration_minutes: 90, price: 3500 },
+  { name: "Pramenovi", duration_minutes: 120, price: 4500 },
+  { name: "Oblikovanje brade", duration_minutes: 20, price: 400 },
+  { name: "Šišanje + brada", duration_minutes: 45, price: 1000 },
+];
+
+export async function insertSampleServices(): Promise<ActionResult> {
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+
+  const { count } = await supabase
+    .from("services")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenant.id);
+  if ((count ?? 0) > 0) {
+    return { ok: false, error: "Cenovnik nije prazan - primeri se ne ubacuju preko postojećih usluga." };
+  }
+
+  const { data: inserted, error } = await supabase
+    .from("services")
+    .insert(SAMPLE_SERVICES.map((s, i) => ({ tenant_id: tenant.id, sort_order: i, ...s })))
+    .select("id");
+  if (error || !inserted) return { ok: false, error: "Ubacivanje nije uspelo." };
+
+  // Kao i kod ručnog dodavanja: nova usluga se dodeljuje svim zaposlenima
+  const { data: staff } = await supabase
+    .from("staff")
+    .select("id")
+    .eq("tenant_id", tenant.id);
+  if (staff && staff.length > 0) {
+    await supabase.from("staff_services").insert(
+      staff.flatMap((m) =>
+        inserted.map((s) => ({
+          tenant_id: tenant.id,
+          staff_id: m.id,
+          service_id: s.id,
+        }))
+      )
+    );
+  }
+
+  revalidatePath("/admin/usluge");
+  revalidatePath("/admin");
   return { ok: true };
 }
 

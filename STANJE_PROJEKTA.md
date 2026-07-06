@@ -4,7 +4,28 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
-**Novo od 6.7 — RASPORED (migracija primenjena, VERIFIKOVANO UŽIVO):**
+**Novo od 6.7 (2) — VODIČ ZA POKRETANJE (onboarding tutorijal, verifikovano
+uživo end-to-end kroz svež nalog):** posle registracije/onboardinga novog
+korisnika na Početnoj dočeka (1) welcome dijalog sa umanjenim živim
+HeroDemo telefonom (`HeroDemo compact` prop) i (2) kartica "Pokreni svoj
+sajt" ([admin/onboarding-guide.tsx](src/app/admin/onboarding-guide.tsx)) —
+5 koraka koji se SAMI štikliraju iz podataka: nalog / usluge>0 / aktivni
+zaposleni>0 / dirnut izgled (heuristika: logo, hero slika, theme sa
+ključevima — PAZI: `theme` ima default `'{}'` pa se proverava
+`Object.keys().length`, telefon, adresa, ne-default boja) / is_published.
+Korak 5 = "Pogledaj sajt" + objava sa SOPSTVENIM dijalogom i proslavom
+(konfete [components/confetti.tsx](src/components/confetti.tsx) bez
+zavisnosti + Viber/WhatsApp deljenje; ISTO dodato i u publish-control za
+objavu iz sidebara). VAŽNA LEKCIJA: server akcija sa revalidatePath
+osvežava tekuću rutu → komponenta vodiča mora ostati montirana i posle
+objave (`published` prop krije samo karticu), inače proslava nestane usred
+prikaza. Čuvaju se samo flagovi `site_settings.onboarding` jsonb
+(welcome_seen, guide_hidden; migracija `20260706000002` primenjena 6.7),
+sve ostalo se izvodi. Uz to: bogata prazna stanja (Usluge sa "Ubaci
+primere (8 usluga)" — `insertSampleServices`, samo u prazan cenovnik;
+Zaposleni; Galerija). Test nalog/salon obrisan posle verifikacije.
+
+**Novo od 6.7 (1) — RASPORED (migracija primenjena, VERIFIKOVANO UŽIVO):**
 kompletna prerada
 radnog vremena i smena po modelu "pravilo + izuzeci" (Mihajlo tražio
 intuitivnije rešenje). Pravilo po zaposlenom: "isto svake nedelje" ILI
@@ -154,6 +175,9 @@ Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
   eksplicitne kolone (`PublicTenant` tip), `getAdminContext` čita tenant red
   service-role klijentom posle provere članstva kroz RLS.
 
+- `20260706000002_onboarding_vodic.sql` — primenjena 6.7.
+  `site_settings.onboarding jsonb default '{}'` (welcome_seen,
+  guide_hidden za vodič pokretanja).
 - `20260706000001_raspored_pravilo_izuzeci.sql` — primenjena 6.7.
   staff.schedule_mode/rotation_anchor; working_hours.week_parity (unique
   postaje staff_id+dow+parity); shift_assignments.start_time/end_time +

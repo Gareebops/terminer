@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Scissors, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { formatPrice } from "@/lib/booking/slots";
 import type { Service } from "@/lib/types";
-import { deleteService, upsertService } from "../actions";
+import { deleteService, insertSampleServices, upsertService } from "../actions";
 
 function ServiceForm({
   service,
@@ -108,6 +108,15 @@ export function ServicesManager({ services }: { services: Service[] }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Service | undefined>();
   const [, startTransition] = useTransition();
+  const [samplesPending, startSamples] = useTransition();
+
+  function addSamples() {
+    startSamples(async () => {
+      const res = await insertSampleServices();
+      if (res.ok) toast.success("Ubačeno 8 primera - izmeni cene i trajanja po svom cenovniku.");
+      else toast.error(res.error ?? "Greška.");
+    });
+  }
 
   function onDelete(id: string) {
     if (!confirm("Obrisati uslugu?")) return;
@@ -179,9 +188,39 @@ export function ServicesManager({ services }: { services: Service[] }) {
           </div>
         ))}
         {services.length === 0 && (
-          <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-            Još nema usluga. Dodaj prvu da bi klijenti mogli da zakazuju.
-          </p>
+          <div className="rounded-[2rem] border border-dashed p-8 text-center">
+            <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-mint/50 text-ink">
+              <Scissors className="size-5" />
+            </span>
+            <p className="mt-3 text-lg font-bold tracking-tight">Dodaj svoje usluge</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              Sve što radiš - šišanje, farbanje, brada - sa cenom i trajanjem.
+              Trajanje određuje koliko termin zauzima u kalendaru.
+            </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              <Button
+                className="rounded-full"
+                onClick={() => {
+                  setEditing(undefined);
+                  setOpen(true);
+                }}
+              >
+                <Plus className="size-4" /> Dodaj uslugu
+              </Button>
+              <Button
+                variant="outline"
+                className="rounded-full"
+                disabled={samplesPending}
+                onClick={addSamples}
+              >
+                <Sparkles className="size-4" />
+                {samplesPending ? "Ubacivanje..." : "Ubaci primere (8 usluga)"}
+              </Button>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Primere posle izmeni ili obriši - tu su da ne krećeš od nule.
+            </p>
+          </div>
         )}
       </div>
     </div>

@@ -4,6 +4,8 @@ import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { formatPrice } from "@/lib/booking/slots";
 import { nowInZone } from "@/lib/booking/timezone";
+import type { OnboardingState, SiteSettings } from "@/lib/types";
+import { OnboardingGuide } from "./onboarding-guide";
 
 function addDaysISO(dateStr: string, n: number): string {
   const d = new Date(`${dateStr}T12:00:00`);
@@ -28,7 +30,8 @@ export default async function AdminDashboardPage() {
 
   const activeStatuses = ["pending", "confirmed", "completed"];
 
-  const [todayRes, weekRes, monthRes, customersRes] = await Promise.all([
+  const [todayRes, weekRes, monthRes, customersRes, servicesRes, staffRes, settingsRes] =
+    await Promise.all([
     supabase
       .from("bookings")
       .select("id, start_time, customer_name, services(name), staff(name), status")
@@ -54,7 +57,35 @@ export default async function AdminDashboardPage() {
       .from("customers")
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", tenant.id),
+    supabase
+      .from("services")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenant.id),
+    supabase
+      .from("staff")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", tenant.id)
+      .eq("is_active", true),
+    supabase.from("site_settings").select("*").eq("tenant_id", tenant.id).maybeSingle(),
   ]);
+
+  // Vodič za pokretanje: vidljiv dok sajt nije objavljen (ili dok ga vlasnik
+  // ne sakrije); koraci se izvode iz stvarnih podataka
+  const settings = (settingsRes.data ?? null) as SiteSettings | null;
+  const onboarding = (settings?.onboarding ?? {}) as OnboardingState;
+  const appearanceTouched = !!(
+    settings &&
+    (settings.logo_url ||
+      settings.hero_image_url ||
+      // theme ima default '{}' - dirnut je tek kad forma upiše font/mod
+      (settings.theme && Object.keys(settings.theme).length > 0) ||
+      settings.phone ||
+      settings.address ||
+      settings.primary_color !== "#18181b")
+  );
+  // Guide ostaje montiran i kad je sajt objavljen (kartica se sama sakrije) -
+  // tako proslava objave preživi refresh koji server akcija povuče
+  const showGuide = !tenant.suspended_at && !onboarding.guide_hidden;
 
   const todayBookings = (todayRes.data ?? []) as unknown as {
     id: string;
@@ -103,6 +134,18 @@ export default async function AdminDashboardPage() {
           <CalendarDays className="size-4" /> Otvori kalendar
         </Link>
       </div>
+
+      {showGuide && (
+        <OnboardingGuide
+          slug={tenant.slug}
+          salonName={tenant.name}
+          published={tenant.is_published}
+          showWelcome={!onboarding.welcome_seen && !tenant.is_published}
+          servicesCount={servicesRes.count ?? 0}
+          staffCount={staffRes.count ?? 0}
+          appearanceTouched={appearanceTouched}
+        />
+      )}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         {/* Tamna hero kartica - današnji dan */}

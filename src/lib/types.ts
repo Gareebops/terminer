@@ -42,8 +42,16 @@ export interface SiteTheme {
   button_style?: ButtonStyle;
 }
 
+// Stanje vodiča za pokretanje - koraci se izvode iz podataka, čuvaju se
+// samo flagovi koji se ne mogu izvesti
+export interface OnboardingState {
+  welcome_seen?: boolean;
+  guide_hidden?: boolean;
+}
+
 export interface SiteSettings {
   theme?: SiteTheme | null;
+  onboarding?: OnboardingState | null;
   tenant_id: string;
   logo_url: string | null;
   hero_title: string | null;

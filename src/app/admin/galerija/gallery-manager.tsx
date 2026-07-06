@@ -101,9 +101,24 @@ export function GalleryManager({
         ))}
       </div>
       {images.length === 0 && (
-        <p className="mt-6 rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-          Još nema fotografija. Dodaj najbolje radove - to prodaje.
-        </p>
+        <div className="mt-6 rounded-[2rem] border border-dashed p-8 text-center">
+          <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-mint/50 text-ink">
+            <Upload className="size-5" />
+          </span>
+          <p className="mt-3 text-lg font-bold tracking-tight">Pokaži najbolje radove</p>
+          <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+            Fotografije se prikazuju u galeriji na sajtu - dobre slike prodaju
+            bolje od bilo kog teksta. Počni sa 4-6 najboljih.
+          </p>
+          <Button
+            className="mt-5 rounded-full"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload className="size-4" />
+            {uploading ? "Otpremanje..." : "Otpremi fotografije"}
+          </Button>
+        </div>
       )}
     </div>
   );

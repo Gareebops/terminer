@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfettiBurst } from "@/components/confetti";
 import { setPublished } from "./actions";
 
 // Objava sajta je NAJVAŽNIJA akcija vlasnika - zato živi u layoutu (vidljiva
@@ -44,6 +45,9 @@ export function PublishControl({
 
   const siteUrl = `${typeof window !== "undefined" ? window.location.origin : "https://terminer.rs"}/${slug}`;
   const siteLabel = `${host}/${slug}`;
+  const shareText = encodeURIComponent(
+    `Naš salon je sada online - pogledaj i zakaži termin: ${siteUrl}`
+  );
 
   function publish() {
     startTransition(async () => {
@@ -134,6 +138,7 @@ export function PublishControl({
   return (
     <>
       {trigger}
+      {justPublished && open && <ConfettiBurst />}
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="rounded-[2rem] font-display sm:max-w-md">
           {published ? (
@@ -174,6 +179,25 @@ export function PublishControl({
                   </a>
                 </Button>
               </div>
+
+              {justPublished && (
+                <div className="flex flex-wrap justify-center gap-2">
+                  <a
+                    href={`viber://forward?text=${shareText}`}
+                    className="flex items-center gap-1.5 rounded-full bg-[#7360F2] px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90"
+                  >
+                    Podeli na Viber
+                  </a>
+                  <a
+                    href={`https://wa.me/?text=${shareText}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 rounded-full bg-[#25D366] px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90"
+                  >
+                    Podeli na WhatsApp
+                  </a>
+                </div>
+              )}
 
               <div className="mt-2 border-t pt-3 text-center">
                 {confirmUnpublish ? (

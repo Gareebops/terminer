@@ -289,7 +289,8 @@ function FloatingCards() {
   );
 }
 
-export function HeroDemo() {
+// compact: samo telefon, bez sjaja i plutajućih kartica (za welcome dijalog u adminu)
+export function HeroDemo({ compact = false }: { compact?: boolean }) {
   const reduce = useReducedMotion();
   const [phase, setPhase] = useState(0);
   const [tapped, setTapped] = useState(false);
@@ -309,9 +310,11 @@ export function HeroDemo() {
   return (
     <div className="relative mx-auto w-fit">
       {/* Mekani sjaj iza telefona */}
-      <div className="absolute left-1/2 top-1/2 -z-0 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-mint/25 blur-3xl" />
+      {!compact && (
+        <div className="absolute left-1/2 top-1/2 -z-0 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-mint/25 blur-3xl" />
+      )}
 
-      {!reduce && <FloatingCards />}
+      {!reduce && !compact && <FloatingCards />}
 
       {/* Telefon */}
       <div className="relative z-[1] h-[420px] w-[230px] rounded-[2.2rem] bg-ink p-2 shadow-[0_24px_64px_rgba(20,25,20,0.35)]">

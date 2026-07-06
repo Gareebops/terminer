@@ -144,9 +144,26 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
           </div>
         ))}
         {staff.length === 0 && (
-          <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-            Dodaj bar jednog zaposlenog da bi zakazivanje radilo.
-          </p>
+          <div className="rounded-[2rem] border border-dashed p-8 text-center">
+            <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-lavender/60 text-ink">
+              <Plus className="size-5" />
+            </span>
+            <p className="mt-3 text-lg font-bold tracking-tight">Dodaj svoj tim</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              I ako radiš sam - ti si tim. Klijenti biraju kod koga zakazuju, a
+              slobodni termini se prave od radnog vremena. Novi zaposleni odmah
+              dobija pon-sub 09-20, lako se menja.
+            </p>
+            <Button
+              className="mt-5 rounded-full"
+              onClick={() => {
+                setEditing(undefined);
+                setOpen(true);
+              }}
+            >
+              <Plus className="size-4" /> Dodaj zaposlenog
+            </Button>
+          </div>
         )}
       </div>
     </div>
