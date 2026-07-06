@@ -29,11 +29,12 @@ zasebnom modulu jer "use client" izvoz konstante u server komponentu daje
 client-reference, ne niz) + FAQPage JSON-LD za Google; (b) redizajn
 pregleda sajta u Podešavanjima
 ([podesavanja/phone-preview.tsx](src/app/admin/podesavanja/phone-preview.tsx)):
-realističan telefon (dynamic island, bočna dugmad, odsjaj stakla, home
-indikator), ambijentalni blur sjaj u boji brenda salona (prati promenu
-boje posle čuvanja), fade-in ekrana pri svakom osvežavanju + spinner
-"Učitavam sajt...", hover tilt (motion-safe), "Uživo pregled" sa
-pulsirajućom mint tačkom.
+realističan telefon (bočna dugmad, odsjaj stakla, home indikator; dynamic
+island uklonjen na Mihajlov zahtev), scrollbarovi unutar ekrana sakriveni
+ubacivanjem stila u same-origin iframe pri onLoad (skrol radi), ambijentalni
+blur sjaj u boji brenda salona (prati promenu boje posle čuvanja), fade-in
+ekrana pri svakom osvežavanju + spinner "Učitavam sajt...", hover tilt
+(motion-safe), "Uživo pregled" sa pulsirajućom mint tačkom.
 
 **Novo od 6.7 (4) — VELIKI PAKET ISPRAVKI (bagovi + UX, verifikovano kroz
 preview; bez migracija):** detaljna analiza cele app pa ispravke svega nađenog.
