@@ -73,6 +73,8 @@ export interface Service {
   sort_order: number;
 }
 
+export type ScheduleMode = "weekly" | "rotating";
+
 export interface Staff {
   id: string;
   tenant_id: string;
@@ -82,6 +84,10 @@ export interface Staff {
   bio: string | null;
   is_active: boolean;
   sort_order: number;
+  // Pravilo rasporeda: "weekly" = ista nedelja stalno (week_parity 0),
+  // "rotating" = smene A/B; rotation_anchor = ponedeljak neke A-nedelje
+  schedule_mode: ScheduleMode;
+  rotation_anchor: string | null;
 }
 
 export interface WorkingHours {
@@ -92,27 +98,35 @@ export interface WorkingHours {
   start_time: string;
   end_time: string;
   is_working: boolean;
+  week_parity: number; // 0 = nedelja A (i weekly režim), 1 = nedelja B
 }
 
-export interface ShiftTemplate {
-  id: string;
-  tenant_id: string;
-  staff_id: string;
-  name: string;
-  start_time: string;
-  end_time: string;
-  color: string | null;
-  sort_order: number;
-}
-
-export interface ShiftAssignment {
+// Izuzetak za konkretan datum (tabela shift_assignments): gazi pravilo.
+// is_off = ne radi; inače start/end_time nose vreme za taj dan.
+export interface ScheduleException {
   id: string;
   tenant_id: string;
   staff_id: string;
   date: string;
-  shift_template_id: string | null;
   is_off: boolean;
+  start_time: string | null;
+  end_time: string | null;
 }
+
+// Rezervacija koja bi posle izmene rasporeda ostala van radnog vremena;
+// akcije je vraćaju klijentu da vlasnik odluči (premesti/otkaži/sačuvaj svejedno)
+export interface ScheduleConflict {
+  staff_name: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  customer_name: string;
+  service_name: string | null;
+}
+
+export type ScheduleActionResult =
+  | { ok: true }
+  | { ok: false; error?: string; conflicts?: ScheduleConflict[] };
 
 export interface Booking {
   id: string;

@@ -6,10 +6,22 @@ import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fromMinutes, toMinutes } from "@/lib/booking/slots";
-import { zonedToUtc } from "@/lib/booking/timezone";
+import { nowInZone, zonedToUtc } from "@/lib/booking/timezone";
+import {
+  addDaysISO,
+  mondayOf,
+  resolveWindow,
+  type WorkWindow,
+} from "@/lib/booking/schedule";
 import QRCode from "qrcode";
 import { buildIpsQr, PLANS, type PlanId } from "@/lib/invoice";
-import type { BookingStatus } from "@/lib/types";
+import type {
+  BookingStatus,
+  ScheduleActionResult,
+  ScheduleConflict,
+  Staff,
+  WorkingHours,
+} from "@/lib/types";
 
 // Sve admin akcije koriste session klijent - RLS propušta samo redove
 // salona čiji je korisnik član, pa tenant_id sa klijenta ne primamo nigde.
@@ -223,116 +235,218 @@ export async function updateStaffServices(
   return { ok: true };
 }
 
-const workingHoursSchema = z.array(
-  z
-    .object({
-      dayOfWeek: z.number().int().min(0).max(6),
-      isWorking: z.boolean(),
-      startTime: z.string().regex(/^\d{2}:\d{2}$/),
-      endTime: z.string().regex(/^\d{2}:\d{2}$/),
-    })
-    .refine((d) => !d.isWorking || d.startTime < d.endTime, {
-      message: "Početak mora biti pre kraja radnog vremena.",
-    })
-);
+// ---------- Raspored: pravilo (nedeljno / smene A/B) + izuzeci po datumu ----------
 
-export async function updateWorkingHours(
-  staffId: string,
-  hours: z.infer<typeof workingHoursSchema>
-): Promise<ActionResult> {
-  const parsed = workingHoursSchema.safeParse(hours);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
-  }
-  const { tenant } = await getAdminContext();
-  const supabase = await createClient();
+type ConflictBooking = {
+  staff_id: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  customer_name: string;
+  services: { name: string } | null;
+};
 
-  const { error } = await supabase.from("working_hours").upsert(
-    parsed.data.map((h) => ({
-      tenant_id: tenant.id,
-      staff_id: staffId,
-      day_of_week: h.dayOfWeek,
-      start_time: h.startTime,
-      end_time: h.endTime,
-      is_working: h.isWorking,
-    })),
-    { onConflict: "staff_id,day_of_week" }
-  );
-  if (error) return { ok: false, error: "Čuvanje nije uspelo." };
-
-  revalidatePath(`/admin/zaposleni/${staffId}`);
-  return { ok: true };
+async function activeBookings(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tenantId: string,
+  staffIds: string[],
+  from: string,
+  to?: string
+): Promise<ConflictBooking[]> {
+  let q = supabase
+    .from("bookings")
+    .select("staff_id, date, start_time, end_time, customer_name, services(name)")
+    .eq("tenant_id", tenantId)
+    .in("staff_id", staffIds)
+    .in("status", ["pending", "confirmed"])
+    .gte("date", from)
+    .order("date")
+    .order("start_time");
+  if (to) q = q.lte("date", to);
+  const { data } = await q;
+  return (data ?? []) as unknown as ConflictBooking[];
 }
 
-const shiftTemplateSchema = z
+function isOutsideWindow(b: ConflictBooking, window: WorkWindow): boolean {
+  if (!window) return true;
+  return b.start_time.slice(0, 5) < window.start || b.end_time.slice(0, 5) > window.end;
+}
+
+function toConflict(b: ConflictBooking, staffName: string): ScheduleConflict {
+  return {
+    staff_name: staffName,
+    date: b.date,
+    start_time: b.start_time.slice(0, 5),
+    end_time: b.end_time.slice(0, 5),
+    customer_name: b.customer_name,
+    service_name: b.services?.name ?? null,
+  };
+}
+
+const dayRowSchema = z
   .object({
-    id: z.string().optional(),
-    staffId: z.string().min(1),
-    name: z.string().trim().min(1, "Unesi naziv smene.").max(60),
+    dayOfWeek: z.number().int().min(0).max(6),
+    isWorking: z.boolean(),
     startTime: z.string().regex(/^\d{2}:\d{2}$/),
     endTime: z.string().regex(/^\d{2}:\d{2}$/),
   })
-  .refine((d) => d.startTime < d.endTime, {
-    message: "Početak smene mora biti pre kraja.",
+  .refine((d) => !d.isWorking || d.startTime < d.endTime, {
+    message: "Početak mora biti pre kraja radnog vremena.",
   });
 
-export async function upsertShiftTemplate(
-  input: z.infer<typeof shiftTemplateSchema>
-): Promise<ActionResult> {
-  const parsed = shiftTemplateSchema.safeParse(input);
+const staffScheduleSchema = z
+  .object({
+    staffId: z.string().min(1),
+    mode: z.enum(["weekly", "rotating"]),
+    // Kod rotacije: da li je TEKUĆA nedelja A (0) ili B (1) - iz toga se
+    // računa rotation_anchor, pa rotacija dalje teče sama
+    thisWeekParity: z.union([z.literal(0), z.literal(1)]).optional(),
+    weekA: z.array(dayRowSchema).length(7),
+    weekB: z.array(dayRowSchema).length(7).optional(),
+    force: z.boolean().optional(),
+  })
+  .refine((d) => d.mode !== "rotating" || (d.weekB && d.thisWeekParity !== undefined), {
+    message: "Za smene A/B unesi obe nedelje.",
+  });
+
+export async function updateStaffSchedule(
+  input: z.infer<typeof staffScheduleSchema>
+): Promise<ScheduleActionResult> {
+  const parsed = staffScheduleSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
   }
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
+  const { staffId, mode, thisWeekParity, weekA, weekB, force } = parsed.data;
 
-  const row = {
-    tenant_id: tenant.id,
-    staff_id: parsed.data.staffId,
-    name: parsed.data.name,
-    start_time: parsed.data.startTime,
-    end_time: parsed.data.endTime,
-  };
+  const { data: staffRow } = await supabase
+    .from("staff")
+    .select("*")
+    .eq("id", staffId)
+    .eq("tenant_id", tenant.id)
+    .maybeSingle();
+  if (!staffRow) return { ok: false, error: "Zaposleni nije pronađen." };
 
-  const { error } = parsed.data.id
-    ? await supabase.from("shift_templates").update(row).eq("id", parsed.data.id)
-    : await supabase.from("shift_templates").insert(row);
+  const today = nowInZone(tenant.timezone).date;
+  const anchor =
+    mode === "rotating"
+      ? thisWeekParity === 1
+        ? addDaysISO(mondayOf(today), -7)
+        : mondayOf(today)
+      : null;
 
+  const toRows = (days: z.infer<typeof dayRowSchema>[], parity: 0 | 1) =>
+    days.map((h) => ({
+      tenant_id: tenant.id,
+      staff_id: staffId,
+      day_of_week: h.dayOfWeek,
+      week_parity: parity,
+      start_time: h.startTime,
+      end_time: h.endTime,
+      is_working: h.isWorking,
+    }));
+  const rows = [...toRows(weekA, 0), ...(mode === "rotating" ? toRows(weekB!, 1) : [])];
+
+  if (!force) {
+    // Buduće rezervacije koje bi novo pravilo ostavilo van radnog vremena;
+    // datumi sa izuzetkom se preskaču - njih pravilo ne dira
+    const bookings = await activeBookings(supabase, tenant.id, [staffId], today);
+    if (bookings.length > 0) {
+      const { data: exceptions } = await supabase
+        .from("shift_assignments")
+        .select("date")
+        .eq("staff_id", staffId)
+        .gte("date", today);
+      const exceptionDates = new Set((exceptions ?? []).map((e) => e.date));
+      const nextStaff: Staff = {
+        ...(staffRow as Staff),
+        schedule_mode: mode,
+        rotation_anchor: anchor,
+      };
+      const nextHours: WorkingHours[] = rows.map((r) => ({ ...r, id: "" }));
+      const conflicts = bookings
+        .filter(
+          (b) =>
+            !exceptionDates.has(b.date) &&
+            isOutsideWindow(b, resolveWindow(b.date, nextStaff, nextHours, null))
+        )
+        .map((b) => toConflict(b, (staffRow as Staff).name));
+      if (conflicts.length > 0) return { ok: false, conflicts };
+    }
+  }
+
+  const { error } = await supabase
+    .from("working_hours")
+    .upsert(rows, { onConflict: "staff_id,day_of_week,week_parity" });
   if (error) return { ok: false, error: "Čuvanje nije uspelo." };
-  revalidatePath(`/admin/zaposleni/${parsed.data.staffId}`);
-  revalidatePath("/admin/smene");
+
+  const { error: staffError } = await supabase
+    .from("staff")
+    .update({ schedule_mode: mode, rotation_anchor: anchor })
+    .eq("id", staffId);
+  if (staffError) return { ok: false, error: "Čuvanje nije uspelo." };
+
+  revalidatePath(`/admin/zaposleni/${staffId}`);
+  revalidatePath("/admin/raspored");
   return { ok: true };
 }
 
-export async function deleteShiftTemplate(id: string): Promise<ActionResult> {
-  await getAdminContext();
-  const supabase = await createClient();
-  // Brisanjem šablona kaskadno nestaju i njegove dodele po datumima
-  const { error } = await supabase.from("shift_templates").delete().eq("id", id);
-  if (error) return { ok: false, error: "Brisanje nije uspelo." };
-  revalidatePath("/admin/smene");
-  revalidatePath("/admin/zaposleni");
-  return { ok: true };
-}
+const exceptionSchema = z
+  .object({
+    staffId: z.string().min(1),
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    // "custom" = radi drugačije taj dan, "off" = ne radi, "clear" = vrati pravilo
+    kind: z.enum(["custom", "off", "clear"]),
+    startTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    endTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    force: z.boolean().optional(),
+  })
+  .refine(
+    (d) => d.kind !== "custom" || (d.startTime && d.endTime && d.startTime < d.endTime),
+    { message: "Početak mora biti pre kraja." }
+  );
 
-const assignmentSchema = z.object({
-  staffId: z.string().min(1),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  // "default" = obriši dodelu (važi radno vreme), "off" = slobodan dan, inače id šablona
-  value: z.string().min(1),
-});
-
-export async function setShiftAssignment(
-  input: z.infer<typeof assignmentSchema>
-): Promise<ActionResult> {
-  const parsed = assignmentSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Neispravni podaci." };
-
+export async function setScheduleException(
+  input: z.infer<typeof exceptionSchema>
+): Promise<ScheduleActionResult> {
+  const parsed = exceptionSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
+  }
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
-  const { staffId, date, value } = parsed.data;
+  const { staffId, date, kind, startTime, endTime, force } = parsed.data;
 
-  if (value === "default") {
+  const { data: staffRow } = await supabase
+    .from("staff")
+    .select("*")
+    .eq("id", staffId)
+    .eq("tenant_id", tenant.id)
+    .maybeSingle();
+  if (!staffRow) return { ok: false, error: "Zaposleni nije pronađen." };
+
+  let window: WorkWindow = null;
+  if (kind === "custom") {
+    window = { start: startTime!, end: endTime! };
+  } else if (kind === "clear") {
+    // Povratak na pravilo: okno koje bi važilo bez izuzetka
+    const { data: hours } = await supabase
+      .from("working_hours")
+      .select("*")
+      .eq("staff_id", staffId);
+    window = resolveWindow(date, staffRow as Staff, (hours ?? []) as WorkingHours[], null);
+  }
+
+  if (!force) {
+    const bookings = await activeBookings(supabase, tenant.id, [staffId], date, date);
+    const conflicts = bookings
+      .filter((b) => isOutsideWindow(b, window))
+      .map((b) => toConflict(b, (staffRow as Staff).name));
+    if (conflicts.length > 0) return { ok: false, conflicts };
+  }
+
+  if (kind === "clear") {
     const { error } = await supabase
       .from("shift_assignments")
       .delete()
@@ -340,30 +454,82 @@ export async function setShiftAssignment(
       .eq("date", date);
     if (error) return { ok: false, error: "Izmena nije uspela." };
   } else {
-    if (value !== "off") {
-      // Šablon mora pripadati baš ovom zaposlenom
-      const { data: tpl } = await supabase
-        .from("shift_templates")
-        .select("id")
-        .eq("id", value)
-        .eq("staff_id", staffId)
-        .maybeSingle();
-      if (!tpl) return { ok: false, error: "Smena nije pronađena." };
-    }
     const { error } = await supabase.from("shift_assignments").upsert(
       {
         tenant_id: tenant.id,
         staff_id: staffId,
         date,
-        shift_template_id: value === "off" ? null : value,
-        is_off: value === "off",
+        is_off: kind === "off",
+        start_time: kind === "custom" ? startTime : null,
+        end_time: kind === "custom" ? endTime : null,
       },
       { onConflict: "staff_id,date" }
     );
     if (error) return { ok: false, error: "Izmena nije uspela." };
   }
 
-  revalidatePath("/admin/smene");
+  revalidatePath("/admin/raspored");
+  return { ok: true };
+}
+
+const absenceSchema = z
+  .object({
+    staffIds: z.array(z.string().min(1)).min(1, "Izaberi bar jednog zaposlenog."),
+    from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    force: z.boolean().optional(),
+  })
+  .refine((d) => d.from <= d.to, { message: "Datum 'od' mora biti pre 'do'." });
+
+export async function createAbsence(
+  input: z.infer<typeof absenceSchema>
+): Promise<ScheduleActionResult> {
+  const parsed = absenceSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
+  }
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+  const { staffIds, from, to, force } = parsed.data;
+
+  const dates: string[] = [];
+  for (let d = from; d <= to; d = addDaysISO(d, 1)) {
+    dates.push(d);
+    if (dates.length > 92) return { ok: false, error: "Opseg je predugačak (najviše 3 meseca)." };
+  }
+
+  const { data: staffRows } = await supabase
+    .from("staff")
+    .select("id, name")
+    .eq("tenant_id", tenant.id)
+    .in("id", staffIds);
+  if (!staffRows || staffRows.length !== staffIds.length) {
+    return { ok: false, error: "Zaposleni nije pronađen." };
+  }
+  const nameById = new Map(staffRows.map((s) => [s.id, s.name]));
+
+  if (!force) {
+    const bookings = await activeBookings(supabase, tenant.id, staffIds, from, to);
+    const conflicts = bookings.map((b) => toConflict(b, nameById.get(b.staff_id) ?? ""));
+    if (conflicts.length > 0) return { ok: false, conflicts };
+  }
+
+  const rows = staffIds.flatMap((staffId) =>
+    dates.map((date) => ({
+      tenant_id: tenant.id,
+      staff_id: staffId,
+      date,
+      is_off: true,
+      start_time: null,
+      end_time: null,
+    }))
+  );
+  const { error } = await supabase
+    .from("shift_assignments")
+    .upsert(rows, { onConflict: "staff_id,date" });
+  if (error) return { ok: false, error: "Upis nije uspeo." };
+
+  revalidatePath("/admin/raspored");
   return { ok: true };
 }
 

@@ -1,26 +1,35 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
+import { Copy, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import Image from "next/image";
-import { useRef } from "react";
-import { Plus, Trash2, Upload } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  deleteShiftTemplate,
-  updateStaffPhoto,
-  updateStaffServices,
-  updateWorkingHours,
-  upsertShiftTemplate,
-} from "../../actions";
-import { DAY_NAMES_SR, formatPrice } from "@/lib/booking/slots";
-import type { Service, ShiftTemplate, WorkingHours } from "@/lib/types";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { createClient } from "@/lib/supabase/client";
+import { updateStaffPhoto, updateStaffServices, updateStaffSchedule } from "../../actions";
+import { DAY_NAMES_SR, formatDateISO, formatPrice } from "@/lib/booking/slots";
+import { addDaysISO, mondayOf, weekParityFor } from "@/lib/booking/schedule";
+import { ScheduleConflictDialog } from "../../schedule-conflict-dialog";
+import type {
+  ScheduleConflict,
+  ScheduleMode,
+  Service,
+  Staff,
+  WorkingHours,
+} from "@/lib/types";
 
 interface DayRow {
   dayOfWeek: number;
@@ -32,9 +41,10 @@ interface DayRow {
 // Prikaz pon–ned (day_of_week: 0 = nedelja)
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
-function buildDayRows(hours: WorkingHours[]): DayRow[] {
-  return DAY_ORDER.map((dow) => {
-    const h = hours.find((x) => x.day_of_week === dow);
+function buildDayRows(hours: WorkingHours[], parity: 0 | 1, fallback?: DayRow[]): DayRow[] {
+  return DAY_ORDER.map((dow, i) => {
+    const h = hours.find((x) => x.day_of_week === dow && x.week_parity === parity);
+    if (!h && fallback) return { ...fallback[i] };
     return {
       dayOfWeek: dow,
       isWorking: h?.is_working ?? false,
@@ -42,6 +52,15 @@ function buildDayRows(hours: WorkingHours[]): DayRow[] {
       endTime: h?.end_time?.slice(0, 5) ?? "17:00",
     };
   });
+}
+
+function validateDays(days: DayRow[], prefix: string): string | null {
+  for (const d of days) {
+    if (d.isWorking && d.startTime >= d.endTime) {
+      return `${prefix}${DAY_NAMES_SR[d.dayOfWeek]}: početak mora biti pre kraja.`;
+    }
+  }
+  return null;
 }
 
 function PhotoCard({
@@ -140,118 +159,197 @@ function PhotoCard({
   );
 }
 
-function ShiftTemplatesCard({
-  staffId,
-  templates,
+function DayRowsEditor({
+  days,
+  onChange,
 }: {
-  staffId: string;
-  templates: ShiftTemplate[];
+  days: DayRow[];
+  onChange: (days: DayRow[]) => void;
 }) {
-  const [name, setName] = useState("");
-  const [startTime, setStartTime] = useState("09:00");
-  const [endTime, setEndTime] = useState("16:00");
+  function setDay(dow: number, patch: Partial<DayRow>) {
+    onChange(days.map((d) => (d.dayOfWeek === dow ? { ...d, ...patch } : d)));
+  }
+
+  return (
+    <div className="space-y-3">
+      {days.map((d) => (
+        <div key={d.dayOfWeek} className="flex items-center gap-3">
+          <Switch
+            checked={d.isWorking}
+            onCheckedChange={(c) => setDay(d.dayOfWeek, { isWorking: c })}
+          />
+          <Label
+            className="w-24 font-normal"
+            onClick={() => setDay(d.dayOfWeek, { isWorking: !d.isWorking })}
+          >
+            {DAY_NAMES_SR[d.dayOfWeek]}
+          </Label>
+          {d.isWorking ? (
+            <div className="flex items-center gap-2">
+              <Input
+                type="time"
+                className="w-28"
+                value={d.startTime}
+                onChange={(e) => setDay(d.dayOfWeek, { startTime: e.target.value })}
+              />
+              <span className="text-muted-foreground">–</span>
+              <Input
+                type="time"
+                className="w-28"
+                value={d.endTime}
+                onChange={(e) => setDay(d.dayOfWeek, { endTime: e.target.value })}
+              />
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">Ne radi</span>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ScheduleCard({ staff, workingHours }: { staff: Staff; workingHours: WorkingHours[] }) {
+  const today = formatDateISO(new Date());
+  const [mode, setMode] = useState<ScheduleMode>(staff.schedule_mode);
+  const [thisWeekParity, setThisWeekParity] = useState<0 | 1>(
+    staff.schedule_mode === "rotating" && staff.rotation_anchor
+      ? weekParityFor(today, staff.rotation_anchor)
+      : 0
+  );
+  const [weekA, setWeekA] = useState<DayRow[]>(() => buildDayRows(workingHours, 0));
+  const [weekB, setWeekB] = useState<DayRow[]>(() =>
+    buildDayRows(workingHours, 1, buildDayRows(workingHours, 0))
+  );
+  const [conflicts, setConflicts] = useState<ScheduleConflict[] | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function addTemplate(e: React.FormEvent) {
-    e.preventDefault();
+  const monday = mondayOf(today);
+  const sunday = addDaysISO(monday, 6);
+  const weekLabel = `${dayMonth(monday)} – ${dayMonth(sunday)}`;
+
+  function dayMonth(iso: string): string {
+    const d = new Date(`${iso}T12:00:00`);
+    return `${d.getDate()}.${d.getMonth() + 1}.`;
+  }
+
+  function save(force: boolean) {
+    const err =
+      validateDays(weekA, mode === "rotating" ? "Nedelja A — " : "") ??
+      (mode === "rotating" ? validateDays(weekB, "Nedelja B — ") : null);
+    if (err) {
+      toast.error(err);
+      return;
+    }
     startTransition(async () => {
-      const res = await upsertShiftTemplate({ staffId, name, startTime, endTime });
+      const res = await updateStaffSchedule({
+        staffId: staff.id,
+        mode,
+        thisWeekParity: mode === "rotating" ? thisWeekParity : undefined,
+        weekA,
+        weekB: mode === "rotating" ? weekB : undefined,
+        force,
+      });
       if (res.ok) {
-        toast.success("Smena je dodata.");
-        setName("");
+        setConflicts(null);
+        toast.success("Radno vreme je sačuvano.");
+      } else if ("conflicts" in res && res.conflicts) {
+        setConflicts(res.conflicts);
       } else {
         toast.error(res.error ?? "Greška.");
       }
     });
   }
 
-  function remove(id: string) {
-    if (!confirm("Obrisati smenu? Nestaće i sa svih datuma gde je dodeljena.")) return;
-    startTransition(async () => {
-      const res = await deleteShiftTemplate(id);
-      if (!res.ok) toast.error(res.error ?? "Greška.");
-    });
-  }
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Smene (šabloni)</CardTitle>
+        <CardTitle className="text-base">Radno vreme</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        {templates.map((t) => (
-          <div
-            key={t.id}
-            className="flex items-center justify-between rounded-lg border px-3 py-2"
-          >
-            <span className="text-sm">
-              <span className="font-medium">{t.name}</span>{" "}
-              <span className="text-muted-foreground">
-                {t.start_time.slice(0, 5)}–{t.end_time.slice(0, 5)}
-              </span>
-            </span>
-            <Button variant="ghost" size="icon" onClick={() => remove(t.id)}>
-              <Trash2 className="size-4 text-destructive" />
-            </Button>
+      <CardContent className="space-y-4">
+        <Tabs value={mode} onValueChange={(v) => setMode(v as ScheduleMode)}>
+          <TabsList>
+            <TabsTrigger value="weekly">Isto svake nedelje</TabsTrigger>
+            <TabsTrigger value="rotating">Smene A i B</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {mode === "weekly" ? (
+          <DayRowsEditor days={weekA} onChange={setWeekA} />
+        ) : (
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Label className="font-normal">Ova nedelja ({weekLabel}) je:</Label>
+              <Select
+                value={String(thisWeekParity)}
+                onValueChange={(v) => setThisWeekParity(Number(v) as 0 | 1)}
+              >
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Smena A</SelectItem>
+                  <SelectItem value="1">Smena B</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Smene se dalje smenjuju same: posle A ide B, pa opet A — ne moraš
+              ništa da popunjavaš iz nedelje u nedelju.
+            </p>
+            <div className="space-y-3">
+              <p className="text-sm font-medium">Smena A</p>
+              <DayRowsEditor days={weekA} onChange={setWeekA} />
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Smena B</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setWeekB(weekA.map((d) => ({ ...d })))}
+                >
+                  <Copy className="size-3.5" /> Prepiši iz A
+                </Button>
+              </div>
+              <DayRowsEditor days={weekB} onChange={setWeekB} />
+            </div>
           </div>
-        ))}
-        {templates.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            Npr. &quot;Prepodne 09–16&quot; i &quot;Popodne 14–20&quot;. Smene se
-            dodeljuju po datumu na stranici Smene.
-          </p>
         )}
-        <form onSubmit={addTemplate} className="flex flex-wrap items-center gap-2">
-          <Input
-            placeholder="Naziv (npr. Prepodne)"
-            className="w-44"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Input
-            type="time"
-            className="w-28"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-          />
-          <span className="text-muted-foreground">–</span>
-          <Input
-            type="time"
-            className="w-28"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-          />
-          <Button type="submit" disabled={pending} variant="outline">
-            <Plus className="size-4" /> Dodaj
-          </Button>
-        </form>
+
+        <p className="text-xs text-muted-foreground">
+          Slobodan dan, odmor ili drugačije vreme za pojedinačan datum se
+          podešavaju na stranici Raspored.
+        </p>
+        <Button onClick={() => save(false)} disabled={pending} className="mt-2">
+          {pending ? "Čuvanje..." : "Sačuvaj radno vreme"}
+        </Button>
       </CardContent>
+
+      <ScheduleConflictDialog
+        conflicts={conflicts}
+        onCancel={() => setConflicts(null)}
+        onConfirm={() => save(true)}
+        pending={pending}
+      />
     </Card>
   );
 }
 
 export function StaffDetail({
-  staffId,
-  tenantId,
-  photoUrl,
+  staff,
   services,
   assignedServiceIds,
   workingHours,
-  shiftTemplates,
 }: {
-  staffId: string;
-  tenantId: string;
-  photoUrl: string | null;
+  staff: Staff;
   services: Service[];
   assignedServiceIds: string[];
   workingHours: WorkingHours[];
-  shiftTemplates: ShiftTemplate[];
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set(assignedServiceIds));
-  const [days, setDays] = useState<DayRow[]>(() => buildDayRows(workingHours));
   const [savingServices, startServices] = useTransition();
-  const [savingHours, startHours] = useTransition();
 
   function toggleService(id: string, checked: boolean) {
     setSelected((prev) => {
@@ -262,37 +360,17 @@ export function StaffDetail({
     });
   }
 
-  function setDay(dow: number, patch: Partial<DayRow>) {
-    setDays((prev) =>
-      prev.map((d) => (d.dayOfWeek === dow ? { ...d, ...patch } : d))
-    );
-  }
-
   function saveServices() {
     startServices(async () => {
-      const res = await updateStaffServices(staffId, [...selected]);
+      const res = await updateStaffServices(staff.id, [...selected]);
       if (res.ok) toast.success("Usluge su sačuvane.");
-      else toast.error(res.error ?? "Greška.");
-    });
-  }
-
-  function saveHours() {
-    for (const d of days) {
-      if (d.isWorking && d.startTime >= d.endTime) {
-        toast.error(`${DAY_NAMES_SR[d.dayOfWeek]}: početak mora biti pre kraja.`);
-        return;
-      }
-    }
-    startHours(async () => {
-      const res = await updateWorkingHours(staffId, days);
-      if (res.ok) toast.success("Radno vreme je sačuvano.");
       else toast.error(res.error ?? "Greška.");
     });
   }
 
   return (
     <div className="space-y-6">
-      <PhotoCard staffId={staffId} tenantId={tenantId} photoUrl={photoUrl} />
+      <PhotoCard staffId={staff.id} tenantId={staff.tenant_id} photoUrl={staff.photo_url} />
 
       <Card>
         <CardHeader>
@@ -329,53 +407,7 @@ export function StaffDetail({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Radno vreme</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {days.map((d) => (
-            <div key={d.dayOfWeek} className="flex items-center gap-3">
-              <Switch
-                id={`day-${d.dayOfWeek}`}
-                checked={d.isWorking}
-                onCheckedChange={(c) => setDay(d.dayOfWeek, { isWorking: c })}
-              />
-              <Label htmlFor={`day-${d.dayOfWeek}`} className="w-24 font-normal">
-                {DAY_NAMES_SR[d.dayOfWeek]}
-              </Label>
-              {d.isWorking ? (
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="time"
-                    className="w-28"
-                    value={d.startTime}
-                    onChange={(e) => setDay(d.dayOfWeek, { startTime: e.target.value })}
-                  />
-                  <span className="text-muted-foreground">–</span>
-                  <Input
-                    type="time"
-                    className="w-28"
-                    value={d.endTime}
-                    onChange={(e) => setDay(d.dayOfWeek, { endTime: e.target.value })}
-                  />
-                </div>
-              ) : (
-                <span className="text-sm text-muted-foreground">Ne radi</span>
-              )}
-            </div>
-          ))}
-          <p className="text-xs text-muted-foreground">
-            Ovo je podrazumevana nedelja. Smene za konkretan datum (kada stignu)
-            imaju prednost nad ovim rasporedom.
-          </p>
-          <Button onClick={saveHours} disabled={savingHours} className="mt-2">
-            {savingHours ? "Čuvanje..." : "Sačuvaj radno vreme"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <ShiftTemplatesCard staffId={staffId} templates={shiftTemplates} />
+      <ScheduleCard staff={staff} workingHours={workingHours} />
     </div>
   );
 }

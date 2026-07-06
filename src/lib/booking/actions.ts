@@ -11,8 +11,20 @@ import {
   type TimeRange,
 } from "@/lib/booking/slots";
 import { nowInZone, zonedToUtc } from "@/lib/booking/timezone";
+import {
+  dayOfWeek,
+  parityForStaff,
+  resolveWindow,
+  type WorkWindow,
+} from "@/lib/booking/schedule";
 import { isBookingPaused } from "@/lib/billing";
-import type { Service, Staff, Tenant } from "@/lib/types";
+import type {
+  ScheduleException,
+  Service,
+  Staff,
+  Tenant,
+  WorkingHours,
+} from "@/lib/types";
 
 // Sve javne booking operacije idu kroz ove server akcije sa service-role
 // klijentom: RLS ne dozvoljava anonimno čitanje/pisanje rezervacija, pa
@@ -71,45 +83,36 @@ async function loadBookingContext(
   };
 }
 
-// Radno okno za frizera na dati datum: dodeljena smena ima prednost,
-// inače podrazumevano nedeljno radno vreme.
+// Radno okno za frizera na dati datum: izuzetak za datum ima prednost,
+// inače pravilo (nedeljno radno vreme, uz A/B parnost kod rotacije).
 async function getWorkWindow(
   db: ReturnType<typeof createAdminClient>,
   tenantId: string,
-  staffId: string,
+  staff: Staff,
   date: string
-): Promise<{ start: string; end: string } | null> {
+): Promise<WorkWindow> {
   // tenant_id filter i ovde iako FK garantuje integritet - service-role
   // klijent zaobilazi RLS, pa nijedan upit ne sme bez tenant granice
-  const { data: assignment } = await db
+  const { data: exception } = await db
     .from("shift_assignments")
-    .select("is_off, shift_template_id, shift_templates(start_time, end_time)")
+    .select("*")
     .eq("tenant_id", tenantId)
-    .eq("staff_id", staffId)
+    .eq("staff_id", staff.id)
     .eq("date", date)
     .maybeSingle();
 
-  if (assignment) {
-    if (assignment.is_off || !assignment.shift_template_id) return null;
-    const tpl = assignment.shift_templates as unknown as {
-      start_time: string;
-      end_time: string;
-    } | null;
-    if (tpl) return { start: tpl.start_time.slice(0, 5), end: tpl.end_time.slice(0, 5) };
-    return null;
-  }
+  if (exception) return resolveWindow(date, staff, [], exception as ScheduleException);
 
-  const dayOfWeek = new Date(`${date}T12:00:00Z`).getUTCDay();
   const { data: wh } = await db
     .from("working_hours")
-    .select("start_time, end_time, is_working")
+    .select("*")
     .eq("tenant_id", tenantId)
-    .eq("staff_id", staffId)
-    .eq("day_of_week", dayOfWeek)
+    .eq("staff_id", staff.id)
+    .eq("day_of_week", dayOfWeek(date))
+    .eq("week_parity", parityForStaff(date, staff))
     .maybeSingle();
 
-  if (!wh || !wh.is_working) return null;
-  return { start: wh.start_time.slice(0, 5), end: wh.end_time.slice(0, 5) };
+  return resolveWindow(date, staff, wh ? [(wh as WorkingHours)] : [], null);
 }
 
 async function getBusyRanges(
@@ -157,7 +160,7 @@ async function computeSlots(ctx: BookingContext, date: string): Promise<string[]
   max.setUTCDate(max.getUTCDate() + MAX_DAYS_AHEAD);
   if (date > max.toISOString().slice(0, 10)) return [];
 
-  const window = await getWorkWindow(ctx.db, ctx.tenant.id, ctx.staff.id, date);
+  const window = await getWorkWindow(ctx.db, ctx.tenant.id, ctx.staff, date);
   if (!window) return [];
 
   const busy = await getBusyRanges(ctx.db, ctx.tenant.id, ctx.staff.id, date);

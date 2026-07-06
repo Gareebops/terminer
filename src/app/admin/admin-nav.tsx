@@ -20,7 +20,7 @@ const nav = [
   { href: "/admin/rezervacije", label: "Rezervacije", icon: ClipboardList },
   { href: "/admin/usluge", label: "Usluge", icon: Scissors },
   { href: "/admin/zaposleni", label: "Zaposleni", icon: Users },
-  { href: "/admin/smene", label: "Smene", icon: CalendarRange },
+  { href: "/admin/raspored", label: "Raspored", icon: CalendarRange },
   { href: "/admin/galerija", label: "Galerija", icon: Images },
   { href: "/admin/pretplata", label: "Pretplata", icon: CreditCard },
   { href: "/admin/podesavanja", label: "Podešavanja", icon: Settings },

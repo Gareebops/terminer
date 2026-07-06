@@ -4,7 +4,15 @@ import { Button } from "@/components/ui/button";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateISO, DAY_NAMES_SR } from "@/lib/booking/slots";
-import type { BlockedSlot, Booking, Service, Staff } from "@/lib/types";
+import { resolveWindow, type WorkWindow } from "@/lib/booking/schedule";
+import type {
+  BlockedSlot,
+  Booking,
+  ScheduleException,
+  Service,
+  Staff,
+  WorkingHours,
+} from "@/lib/types";
 import { CalendarView } from "./calendar-view";
 
 function addDays(dateStr: string, n: number): string {
@@ -25,7 +33,8 @@ export default async function CalendarPage({
   const day = /^\d{4}-\d{2}-\d{2}$/.test(dan ?? "") ? dan! : formatDateISO(new Date());
   const dayDate = new Date(`${day}T12:00:00`);
 
-  const [staffRes, servicesRes, bookingsRes, blockedRes] = await Promise.all([
+  const [staffRes, servicesRes, bookingsRes, blockedRes, hoursRes, exceptionsRes] =
+    await Promise.all([
     supabase
       .from("staff")
       .select("*")
@@ -50,7 +59,25 @@ export default async function CalendarPage({
       .select("*")
       .eq("tenant_id", tenant.id)
       .eq("date", day),
+    supabase.from("working_hours").select("*").eq("tenant_id", tenant.id),
+    supabase
+      .from("shift_assignments")
+      .select("*")
+      .eq("tenant_id", tenant.id)
+      .eq("date", day),
   ]);
+
+  // Radno okno po zaposlenom za taj dan (izuzetak gazi pravilo) -
+  // vreme van okna se u gridu šrafira, "Ne radi" = cela kolona
+  const staff = (staffRes.data ?? []) as Staff[];
+  const hours = (hoursRes.data ?? []) as WorkingHours[];
+  const exceptions = (exceptionsRes.data ?? []) as ScheduleException[];
+  const windows: Record<string, WorkWindow> = Object.fromEntries(
+    staff.map((m) => [
+      m.id,
+      resolveWindow(day, m, hours, exceptions.find((e) => e.staff_id === m.id) ?? null),
+    ])
+  );
 
   return (
     <div>
@@ -80,12 +107,13 @@ export default async function CalendarPage({
       <div className="mt-6">
         <CalendarView
           day={day}
-          staff={(staffRes.data ?? []) as Staff[]}
+          staff={staff}
           services={(servicesRes.data ?? []) as Service[]}
           bookings={
             (bookingsRes.data ?? []) as (Booking & { services: { name: string } | null })[]
           }
           blockedSlots={(blockedRes.data ?? []) as BlockedSlot[]}
+          windows={windows}
         />
       </div>
     </div>

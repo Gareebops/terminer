@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { Service, ShiftTemplate, Staff, WorkingHours } from "@/lib/types";
+import type { Service, Staff, WorkingHours } from "@/lib/types";
 import { StaffDetail } from "./staff-detail";
 
 export default async function StaffDetailPage({
@@ -15,7 +15,7 @@ export default async function StaffDetailPage({
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
 
-  const [staffRes, servicesRes, linksRes, hoursRes, templatesRes] = await Promise.all([
+  const [staffRes, servicesRes, linksRes, hoursRes] = await Promise.all([
     supabase.from("staff").select("*").eq("id", id).eq("tenant_id", tenant.id).maybeSingle(),
     supabase
       .from("services")
@@ -25,12 +25,6 @@ export default async function StaffDetailPage({
       .order("created_at"),
     supabase.from("staff_services").select("service_id").eq("staff_id", id),
     supabase.from("working_hours").select("*").eq("staff_id", id).order("day_of_week"),
-    supabase
-      .from("shift_templates")
-      .select("*")
-      .eq("staff_id", id)
-      .order("sort_order")
-      .order("start_time"),
   ]);
 
   if (!staffRes.data) notFound();
@@ -48,13 +42,10 @@ export default async function StaffDetailPage({
       </h1>
       <div className="mt-6">
         <StaffDetail
-          staffId={id}
-          tenantId={tenant.id}
-          photoUrl={(staffRes.data as Staff).photo_url}
+          staff={staffRes.data as Staff}
           services={(servicesRes.data ?? []) as Service[]}
           assignedServiceIds={(linksRes.data ?? []).map((l) => l.service_id)}
           workingHours={(hoursRes.data ?? []) as WorkingHours[]}
-          shiftTemplates={(templatesRes.data ?? []) as ShiftTemplate[]}
         />
       </div>
     </div>

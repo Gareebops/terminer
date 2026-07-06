@@ -190,7 +190,6 @@ export async function exportTenantData(
     "staff",
     "staff_services",
     "working_hours",
-    "shift_templates",
     "shift_assignments",
     "customers",
     "bookings",

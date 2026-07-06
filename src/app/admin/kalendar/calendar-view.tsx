@@ -32,6 +32,10 @@ const DAY_START = 7 * 60; // 07:00
 const DAY_END = 22 * 60; // 22:00
 const PX_PER_MIN = 1.1;
 
+// Šrafura = nedostupno (van radnog vremena, isti jezik kao blokade)
+const HATCH =
+  "repeating-linear-gradient(135deg, rgba(0,0,0,0.07) 0 2px, transparent 2px 8px)";
+
 function top(minutes: number): number {
   return (minutes - DAY_START) * PX_PER_MIN;
 }
@@ -287,12 +291,15 @@ export function CalendarView({
   services,
   bookings,
   blockedSlots,
+  windows,
 }: {
   day: string;
   staff: Staff[];
   services: Service[];
   bookings: BookingRow[];
   blockedSlots: BlockedSlot[];
+  // Radno okno po zaposlenom za taj dan; null = ne radi
+  windows: Record<string, { start: string; end: string } | null>;
 }) {
   const [, startTransition] = useTransition();
 
@@ -360,6 +367,9 @@ export function CalendarView({
             const myBlocks = blockedSlots.filter(
               (b) => b.staff_id === m.id || b.staff_id === null
             );
+            const win = windows[m.id] ?? null;
+            const winStart = win ? Math.max(toMinutes(win.start), DAY_START) : 0;
+            const winEnd = win ? Math.min(toMinutes(win.end), DAY_END) : 0;
             return (
               <div
                 key={m.id}
@@ -373,6 +383,28 @@ export function CalendarView({
                     style={{ top: top(h) }}
                   />
                 ))}
+                {win === null ? (
+                  <div className="absolute inset-0" style={{ backgroundImage: HATCH }}>
+                    <span className="absolute left-1/2 top-8 -translate-x-1/2 rounded-full bg-white px-3 py-1 text-xs font-medium text-ink/50 ring-1 ring-ink/10">
+                      Ne radi
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    {winStart > DAY_START && (
+                      <div
+                        className="absolute inset-x-0 top-0"
+                        style={{ height: top(winStart), backgroundImage: HATCH }}
+                      />
+                    )}
+                    {winEnd < DAY_END && (
+                      <div
+                        className="absolute inset-x-0 bottom-0"
+                        style={{ top: top(winEnd), backgroundImage: HATCH }}
+                      />
+                    )}
+                  </>
+                )}
                 {myBlocks.map((b) => {
                   const s = toMinutes(b.start_time.slice(0, 5));
                   const e = toMinutes(b.end_time.slice(0, 5));

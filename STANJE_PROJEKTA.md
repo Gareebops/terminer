@@ -4,6 +4,34 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 6.7 — RASPORED (migracija primenjena, VERIFIKOVANO UŽIVO):**
+kompletna prerada
+radnog vremena i smena po modelu "pravilo + izuzeci" (Mihajlo tražio
+intuitivnije rešenje). Pravilo po zaposlenom: "isto svake nedelje" ILI
+"smene A/B" koje se same smenjuju (staff.schedule_mode + rotation_anchor =
+ponedeljak A-nedelje; working_hours.week_parity 0/1, weekly čita samo 0).
+Izuzetak po datumu: shift_assignments sada nosi SOPSTVENO vreme
+(start_time/end_time) ili is_off — pojam "šablon smene" je UKINUT
+(tabela shift_templates obrisana, vremena dodela prepisana u izuzetke).
+Stranica /admin/smene → **/admin/raspored**: grid prikazuje IZRAČUNATA
+vremena (boje: mint = smena A, lavanda = B, belo = fiksno, deblji okvir =
+izuzetak, šrafura = ne radi), klik na ćeliju = dijalog izuzetka, dugme
+"Odsustvo" upisuje opseg is_off dana (i za sve zaposlene). ZAŠTITA: svaka
+izmena koja sužava dostupnost vraća listu rezervacija koje ispadaju iz
+radnog vremena (ScheduleConflictDialog, "Sačuvaj svejedno" = force flag);
+Kalendar šrafira vreme van radnog okna + "Ne radi" kolonu. Ključni fajlovi:
+[src/lib/booking/schedule.ts](src/lib/booking/schedule.ts) (čista logika,
+resolveWindow/parnost), akcije updateStaffSchedule/setScheduleException/
+createAbsence u admin/actions.ts, migracija `20260706000001_raspored_
+pravilo_izuzeci.sql`. Verifikovano uživo 6.7. kroz preview: grid +
+izuzetak (custom vreme, vrati na uobičajeno), sukob sa rezervacijom
+(izuzetak i odsustvo, force put), rotacija A/B end-to-end (staff strana →
+grid ove/sledeće nedelje → javni booking nudi 14:00+ u B nedelji, 0
+termina na is_off dan), kalendar šrafura + "Ne radi" kolona. Test podaci
+očišćeni (rezervacija, klijent, izuzeci; Marko vraćen na weekly).
+Izuzeci starih test salona (studio-test/ivona/ragazzi) migrirani sa
+vremenima - namerno ostavljeni.
+
 **Novo od 4.7:** (1) Registracija traži ime/telefon + verifikaciju mejla —
 `/auth/callback` ruta, "Proveri sanduče" ekran, ponovno slanje linka; email
 potvrda naloga UKLJUČENA u Supabase. (2) Resend RADI NA PRODUKCIJI
@@ -126,7 +154,14 @@ Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
   eksplicitne kolone (`PublicTenant` tip), `getAdminContext` čita tenant red
   service-role klijentom posle provere članstva kroz RLS.
 
-**Logika slobodnih termina** (server): okno = smena za taj datum ILI working_hours
+- `20260706000001_raspored_pravilo_izuzeci.sql` — primenjena 6.7.
+  staff.schedule_mode/rotation_anchor; working_hours.week_parity (unique
+  postaje staff_id+dow+parity); shift_assignments.start_time/end_time +
+  check (izuzetak nosi svoje vreme), drop shift_template_id; DROP TABLE
+  shift_templates (podaci prepisani u izuzetke).
+
+**Logika slobodnih termina** (server): okno = izuzetak za datum ILI pravilo
+(working_hours uz A/B parnost — [src/lib/booking/schedule.ts](src/lib/booking/schedule.ts))
 → minus aktivne rezervacije i blokade → slotovi na 30 min u zoni salona
 ([src/lib/booking/slots.ts](src/lib/booking/slots.ts) je čista, testabilna logika).
 
@@ -171,11 +206,13 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
   objavljen = "● Sajt je online"; zvaničan dijalog sa adresom, kopiranjem
   linka i tihim "Skloni sajt sa mreže" uz potvrdu (switch iz Podešavanja
   uklonjen 5.7). Početna (dashboard statistika), Kalendar (dnevni grid
-  po zaposlenima, ručno zakazivanje za telefonske klijente, blokade), Rezervacije
-  (statusi), Usluge (CRUD), Zaposleni (CRUD + po zaposlenom: fotografija/upload,
-  usluge checkbox, radno vreme po danu, šabloni smena), Smene (nedeljni grid
-  dodele), Galerija (multi-upload), Podešavanja (sadržaj + Izgled: boja/font/
-  varijanta/logo/hero slika + live preview sajta u telefon okviru).
+  po zaposlenima, ručno zakazivanje za telefonske klijente, blokade, šrafura
+  van radnog okna), Rezervacije (statusi), Usluge (CRUD), Zaposleni (CRUD +
+  po zaposlenom: fotografija/upload, usluge checkbox, radno vreme "isto svake
+  nedelje" ili smene A/B), Raspored (nedeljni grid izračunatih vremena +
+  izuzeci po datumu + odsustva), Galerija (multi-upload), Podešavanja
+  (sadržaj + Izgled: boja/font/varijanta/logo/hero slika + live preview
+  sajta u telefon okviru).
 - **Auth/onboarding**: registracija → onboarding (naziv + slug) → admin.
   Jedan vlasnik = jedan salon (za sada).
 - **Zaštita gost-bookinga (5.7.)**: honeypot polje u wizardu, limit 3 aktivne
