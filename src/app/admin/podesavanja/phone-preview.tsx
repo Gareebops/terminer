@@ -96,9 +96,12 @@ export function PhonePreview({
             className="absolute -right-[3px] top-28 h-16 w-[3px] rounded-r-md bg-ink"
           />
 
-          <div className="relative rounded-[3rem] bg-ink p-[10px] shadow-[0_30px_60px_-15px_rgba(20,25,20,0.45)] ring-1 ring-white/15">
+          {/* Bez ring-a i sa tamnom podlogom ekrana: svetla ivica je na
+              zaobljenim uglovima provirivala ispod iframe-a kao "bagovit"
+              beli outline */}
+          <div className="relative rounded-[3rem] bg-ink p-[10px] shadow-[0_30px_60px_-15px_rgba(20,25,20,0.45)]">
             {/* Ekran */}
-            <div className="relative overflow-hidden rounded-[2.4rem] bg-canvas">
+            <div className="relative overflow-hidden rounded-[2.4rem] bg-ink">
               <iframe
                 key={refreshKey}
                 src={`/${slug}`}
