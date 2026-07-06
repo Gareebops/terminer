@@ -36,6 +36,11 @@ export function PublishControl({
   // Trenutak "upravo objavljeno" - dijalog prikazuje proslavu sa linkom
   const [justPublished, setJustPublished] = useState(false);
   const [confirmUnpublish, setConfirmUnpublish] = useState(false);
+  // Objava bi iznela prazan sajt - server vratio šta nedostaje
+  const [emptyWarning, setEmptyWarning] = useState<{
+    services: number;
+    staff: number;
+  } | null>(null);
   const [copied, setCopied] = useState(false);
   const [host, setHost] = useState("terminer.rs");
   const [pending, startTransition] = useTransition();
@@ -49,13 +54,18 @@ export function PublishControl({
     `Naš salon je sada online - pogledaj i zakaži termin: ${siteUrl}`
   );
 
-  function publish() {
+  function publish(force = false) {
     startTransition(async () => {
-      const res = await setPublished(true);
+      const res = await setPublished(true, force);
       if (!res.ok) {
+        if ("emptySite" in res && res.emptySite) {
+          setEmptyWarning(res.emptySite);
+          return;
+        }
         toast.error(res.error ?? "Objava nije uspela.");
         return;
       }
+      setEmptyWarning(null);
       setPublishedState(true);
       setJustPublished(true);
       router.refresh();
@@ -92,6 +102,7 @@ export function PublishControl({
     if (!next) {
       setConfirmUnpublish(false);
       setJustPublished(false);
+      setEmptyWarning(null);
     }
   }
 
@@ -258,14 +269,48 @@ export function PublishControl({
                 podatke. Sajt možeš u svakom trenutku da skloniš sa mreže.
               </p>
 
-              <Button
-                size="lg"
-                className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85"
-                disabled={pending}
-                onClick={publish}
-              >
-                {pending ? "Objavljivanje..." : "Objavi sajt"}
-              </Button>
+              {emptyWarning ? (
+                <div className="space-y-3 rounded-2xl bg-amber-100 p-4">
+                  <p className="text-center text-sm font-medium text-amber-950">
+                    {emptyWarning.services === 0 && emptyWarning.staff === 0
+                      ? "Sajt još nema nijednu uslugu ni člana tima - klijenti neće imati šta da zakažu."
+                      : emptyWarning.services === 0
+                        ? "Sajt još nema nijednu aktivnu uslugu - klijenti neće imati šta da zakažu."
+                        : "Sajt još nema nijednog aktivnog člana tima - klijenti neće imati kod koga da zakažu."}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button asChild size="sm" className="rounded-full">
+                      <a
+                        href={
+                          emptyWarning.services === 0
+                            ? "/admin/usluge"
+                            : "/admin/zaposleni"
+                        }
+                      >
+                        {emptyWarning.services === 0 ? "Dodaj usluge" : "Dodaj tim"}
+                      </a>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="rounded-full"
+                      disabled={pending}
+                      onClick={() => publish(true)}
+                    >
+                      {pending ? "Objavljivanje..." : "Objavi svejedno"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  size="lg"
+                  className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85"
+                  disabled={pending}
+                  onClick={() => publish()}
+                >
+                  {pending ? "Objavljivanje..." : "Objavi sajt"}
+                </Button>
+              )}
             </>
           )}
         </DialogContent>

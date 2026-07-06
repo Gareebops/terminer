@@ -5,9 +5,10 @@ import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateISO } from "@/lib/booking/slots";
 import { addDaysISO, mondayOf } from "@/lib/booking/schedule";
-import type { ScheduleException, Staff, WorkingHours } from "@/lib/types";
+import type { OnboardingState, ScheduleException, Staff, WorkingHours } from "@/lib/types";
 import { ScheduleGrid } from "./schedule-grid";
 import { AbsenceDialog } from "./absence-dialog";
+import { RasporedIntro } from "./intro-card";
 
 export default async function SchedulePage({
   searchParams,
@@ -25,7 +26,7 @@ export default async function SchedulePage({
   const prevWeek = addDaysISO(monday, -7);
   const nextWeek = addDaysISO(monday, 7);
 
-  const [staffRes, hoursRes, exceptionsRes] = await Promise.all([
+  const [staffRes, hoursRes, exceptionsRes, settingsRes] = await Promise.all([
     supabase
       .from("staff")
       .select("*")
@@ -39,9 +40,15 @@ export default async function SchedulePage({
       .eq("tenant_id", tenant.id)
       .gte("date", weekDates[0])
       .lte("date", weekDates[6]),
+    supabase
+      .from("site_settings")
+      .select("onboarding")
+      .eq("tenant_id", tenant.id)
+      .maybeSingle(),
   ]);
 
   const staff = (staffRes.data ?? []) as Staff[];
+  const onboarding = (settingsRes.data?.onboarding ?? {}) as OnboardingState;
 
   return (
     <div>
@@ -71,6 +78,8 @@ export default async function SchedulePage({
           </Button>
         </div>
       </div>
+
+      {!onboarding.raspored_seen && <RasporedIntro />}
 
       <div className="mt-6 rounded-[2rem] bg-white p-6 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
         <ScheduleGrid

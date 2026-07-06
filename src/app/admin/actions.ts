@@ -123,9 +123,11 @@ const staffSchema = z.object({
   isActive: z.boolean(),
 });
 
+// Vraća id kod kreiranja da klijent odvede vlasnika pravo na stranicu
+// zaposlenog (usluge, radno vreme, fotografija)
 export async function upsertStaff(
   input: z.infer<typeof staffSchema>
-): Promise<ActionResult> {
+): Promise<ActionResult & { id?: string }> {
   const parsed = staffSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
@@ -177,6 +179,9 @@ export async function upsertStaff(
         }))
       ),
     ]);
+
+    revalidatePath("/admin/zaposleni");
+    return { ok: true, id: member.id };
   }
 
   revalidatePath("/admin/zaposleni");
@@ -241,7 +246,32 @@ export async function updateStaffServices(
 const onboardingSchema = z.object({
   welcomeSeen: z.boolean().optional(),
   guideHidden: z.boolean().optional(),
+  scheduleConfirmed: z.boolean().optional(),
+  rasporedSeen: z.boolean().optional(),
 });
+
+// Spoji flagove u site_settings.onboarding; preskače upis kad se ništa
+// ne menja (poziva se i uzgred, npr. iz čuvanja radnog vremena)
+async function mergeOnboarding(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  tenantId: string,
+  patch: Partial<OnboardingState>
+): Promise<boolean> {
+  const { data: row } = await supabase
+    .from("site_settings")
+    .select("onboarding")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  const current = (row?.onboarding ?? {}) as OnboardingState;
+  const entries = Object.entries(patch) as [keyof OnboardingState, boolean][];
+  if (entries.every(([k, v]) => current[k] === v)) return true;
+
+  const { error } = await supabase
+    .from("site_settings")
+    .update({ onboarding: { ...current, ...patch } })
+    .eq("tenant_id", tenantId);
+  return !error;
+}
 
 export async function updateOnboarding(
   input: z.infer<typeof onboardingSchema>
@@ -251,22 +281,18 @@ export async function updateOnboarding(
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
 
-  const { data: row } = await supabase
-    .from("site_settings")
-    .select("onboarding")
-    .eq("tenant_id", tenant.id)
-    .maybeSingle();
-  const next: OnboardingState = { ...((row?.onboarding ?? {}) as OnboardingState) };
-  if (parsed.data.welcomeSeen !== undefined) next.welcome_seen = parsed.data.welcomeSeen;
-  if (parsed.data.guideHidden !== undefined) next.guide_hidden = parsed.data.guideHidden;
+  const patch: Partial<OnboardingState> = {};
+  if (parsed.data.welcomeSeen !== undefined) patch.welcome_seen = parsed.data.welcomeSeen;
+  if (parsed.data.guideHidden !== undefined) patch.guide_hidden = parsed.data.guideHidden;
+  if (parsed.data.scheduleConfirmed !== undefined)
+    patch.schedule_confirmed = parsed.data.scheduleConfirmed;
+  if (parsed.data.rasporedSeen !== undefined) patch.raspored_seen = parsed.data.rasporedSeen;
 
-  const { error } = await supabase
-    .from("site_settings")
-    .update({ onboarding: next })
-    .eq("tenant_id", tenant.id);
-  if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+  const ok = await mergeOnboarding(supabase, tenant.id, patch);
+  if (!ok) return { ok: false, error: "Čuvanje nije uspelo." };
 
   revalidatePath("/admin");
+  revalidatePath("/admin/raspored");
   return { ok: true };
 }
 
@@ -475,8 +501,12 @@ export async function updateStaffSchedule(
     .eq("id", staffId);
   if (staffError) return { ok: false, error: "Čuvanje nije uspelo." };
 
+  // Vlasnik je svesno sačuvao radno vreme - to štiklira korak vodiča
+  await mergeOnboarding(supabase, tenant.id, { schedule_confirmed: true });
+
   revalidatePath(`/admin/zaposleni/${staffId}`);
   revalidatePath("/admin/raspored");
+  revalidatePath("/admin");
   return { ok: true };
 }
 
@@ -1037,13 +1067,42 @@ export async function updateSettings(
   return { ok: true };
 }
 
-export async function setPublished(published: boolean): Promise<ActionResult> {
+// emptySite: objava bi iznela prazan sajt (bez usluga ili bez ikoga ko prima
+// rezervacije) - dijalozi prikazuju upozorenje, "Objavi svejedno" šalje force
+export type PublishResult =
+  | { ok: true }
+  | { ok: false; error?: string; emptySite?: { services: number; staff: number } };
+
+export async function setPublished(
+  published: boolean,
+  force = false
+): Promise<PublishResult> {
   const { tenant } = await getAdminContext();
   // Suspendovan salon ne može nazad na javni internet dok traje suspenzija
   if (published && tenant.suspended_at) {
     return { ok: false, error: "Salon je suspendovan - objava nije moguća. Kontaktiraj podršku." };
   }
   const supabase = await createClient();
+
+  if (published && !force) {
+    const [servicesRes, staffRes] = await Promise.all([
+      supabase
+        .from("services")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenant.id)
+        .eq("is_active", true),
+      supabase
+        .from("staff")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenant.id)
+        .eq("is_active", true),
+    ]);
+    const services = servicesRes.count ?? 0;
+    const staff = staffRes.count ?? 0;
+    if (services === 0 || staff === 0) {
+      return { ok: false, emptySite: { services, staff } };
+    }
+  }
   const { error } = await supabase
     .from("tenants")
     .update({ is_published: published })

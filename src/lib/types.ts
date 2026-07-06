@@ -47,6 +47,12 @@ export interface SiteTheme {
 export interface OnboardingState {
   welcome_seen?: boolean;
   guide_hidden?: boolean;
+  // Radno vreme potvrđeno: ili je vlasnik sačuvao raspored kod zaposlenog,
+  // ili je u vodiču kliknuo "Već je tačno" (default 09-20 se ne može
+  // razlikovati od "nije ni pogledao", pa se traži eksplicitan signal)
+  schedule_confirmed?: boolean;
+  // Jednokratno objašnjenje modela "pravilo + izuzeci" na stranici Raspored
+  raspored_seen?: boolean;
 }
 
 export interface SiteSettings {

@@ -61,9 +61,10 @@ export default async function AdminDashboardPage() {
       .from("services")
       .select("id", { count: "exact", head: true })
       .eq("tenant_id", tenant.id),
+    // Id-jevi (ne samo count): vodič vodi pravo na jedinog zaposlenog
     supabase
       .from("staff")
-      .select("id", { count: "exact", head: true })
+      .select("id")
       .eq("tenant_id", tenant.id)
       .eq("is_active", true),
     supabase.from("site_settings").select("*").eq("tenant_id", tenant.id).maybeSingle(),
@@ -73,6 +74,7 @@ export default async function AdminDashboardPage() {
   // ne sakrije); koraci se izvode iz stvarnih podataka
   const settings = (settingsRes.data ?? null) as SiteSettings | null;
   const onboarding = (settings?.onboarding ?? {}) as OnboardingState;
+  const staffIds = ((staffRes.data ?? []) as { id: string }[]).map((s) => s.id);
   const appearanceTouched = !!(
     settings &&
     (settings.logo_url ||
@@ -142,7 +144,9 @@ export default async function AdminDashboardPage() {
           published={tenant.is_published}
           showWelcome={!onboarding.welcome_seen && !tenant.is_published}
           servicesCount={servicesRes.count ?? 0}
-          staffCount={staffRes.count ?? 0}
+          staffCount={staffIds.length}
+          scheduleConfirmed={!!onboarding.schedule_confirmed}
+          singleStaffId={staffIds.length === 1 ? staffIds[0] : null}
           appearanceTouched={appearanceTouched}
         />
       )}

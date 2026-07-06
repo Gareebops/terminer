@@ -1,7 +1,8 @@
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { SiteSettings } from "@/lib/types";
+import type { OnboardingState, SiteSettings } from "@/lib/types";
 import { SettingsShell } from "./settings-shell";
+import { ShowGuideLink } from "./show-guide-link";
 
 // Podešavanja = izgled i sadržaj sajta. Naplata je namerno odvojena
 // na /admin/pretplata - druga briga, druga stranica.
@@ -14,6 +15,9 @@ export default async function SettingsPage() {
     .select("*")
     .eq("tenant_id", tenant.id)
     .maybeSingle();
+
+  const onboarding = ((settings as SiteSettings | null)?.onboarding ??
+    {}) as OnboardingState;
 
   return (
     <div>
@@ -29,6 +33,7 @@ export default async function SettingsPage() {
           settings={settings as SiteSettings | null}
         />
       </div>
+      {onboarding.guide_hidden && !tenant.is_published && <ShowGuideLink />}
     </div>
   );
 }

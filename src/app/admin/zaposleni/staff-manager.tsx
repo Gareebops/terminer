@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,7 +21,13 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Staff } from "@/lib/types";
 import { deleteStaff, upsertStaff } from "../actions";
 
-function StaffForm({ member, onDone }: { member?: Staff; onDone: () => void }) {
+function StaffForm({
+  member,
+  onDone,
+}: {
+  member?: Staff;
+  onDone: (createdId?: string) => void;
+}) {
   const [name, setName] = useState(member?.name ?? "");
   const [bio, setBio] = useState(member?.bio ?? "");
   const [isActive, setIsActive] = useState(member?.is_active ?? true);
@@ -31,8 +38,12 @@ function StaffForm({ member, onDone }: { member?: Staff; onDone: () => void }) {
     startTransition(async () => {
       const res = await upsertStaff({ id: member?.id, name, bio, isActive });
       if (res.ok) {
-        toast.success("Sačuvano.");
-        onDone();
+        if (!member) {
+          onDone(res.id);
+        } else {
+          toast.success("Sačuvano.");
+          onDone();
+        }
       } else {
         toast.error(res.error ?? "Greška.");
       }
@@ -61,6 +72,7 @@ function StaffForm({ member, onDone }: { member?: Staff; onDone: () => void }) {
 }
 
 export function StaffManager({ staff }: { staff: Staff[] }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Staff | undefined>();
   const [, startTransition] = useTransition();
@@ -94,9 +106,15 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
           <StaffForm
             key={editing?.id ?? "new"}
             member={editing}
-            onDone={() => {
+            onDone={(createdId) => {
               setOpen(false);
               setEditing(undefined);
+              // Nov zaposleni: pravo na njegovu stranicu - tamo su usluge,
+              // radno vreme i fotografija koje treba proveriti
+              if (createdId) {
+                toast.success("Dodato - proveri usluge koje radi i radno vreme.");
+                router.push(`/admin/zaposleni/${createdId}`);
+              }
             }}
           />
         </DialogContent>

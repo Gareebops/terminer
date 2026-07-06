@@ -1,8 +1,34 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 4. jul 2026. Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 6. jul 2026. Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
+
+**Novo od 6.7 (3) — VODIČ: korak za radno vreme/smene + zaštite (verifikovano
+uživo end-to-end kroz svež nalog, test podaci obrisani):** vodič sada ima
+**6 koraka** — korak 3 je samo "Dodaj tim", a novi korak 4 "Proveri radno
+vreme i smene" adresira rupu gde se tim štiklirao a default pon–sub 09–20
+niko nije video. Korak 4 se štiklira na DVA načina: automatski kad prođe
+`updateStaffSchedule` (flag `schedule_confirmed` u `site_settings.onboarding`,
+upis kroz helper `mergeOnboarding` u admin/actions.ts) ili ručno dugmetom
+"Već je tačno" u vodiču (default može stvarno biti tačan pa automatska
+provera ne postoji); CTA vodi pravo na jedinog zaposlenog ako je jedan.
+Prateće izmene: (1) kreiranje zaposlenog sada REDIRECT-uje na njegovu
+stranicu (upsertStaff vraća id) uz toast "proveri usluge i radno vreme";
+(2) `setPublished` brani objavu praznog sajta — bez aktivnih usluga ili
+aktivnog tima vraća `emptySite` pa dijalozi (publish-control i vodič) nude
+"Dodaj usluge/tim" ili "Objavi svejedno" (force flag); (3) toast posle
+ubacivanja primera usluga i posle čuvanja radnog vremena (dok je vodič
+aktivan) nudi akciju "Sledeći korak/Nastavi vodič" nazad na Početnu;
+(4) jednokratna kartica "Kako radi raspored" na /admin/raspored
+([raspored/intro-card.tsx](src/app/admin/raspored/intro-card.tsx), flag
+`raspored_seen`); (5) sakriven vodič se vraća linkom u Podešavanjima
+([podesavanja/show-guide-link.tsx](src/app/admin/podesavanja/show-guide-link.tsx),
+vidljiv samo dok sajt nije objavljen). Bez novih migracija — novi flagovi
+idu u postojeći `onboarding` jsonb. POUKA iz verifikacije: preview browser
+ume da nagomila zaostale tabove (6× "[HMR] connected") pa eval/screenshot
+gađaju RAZLIČITE tabove i daju kontradiktorne nalaze — kad se to desi,
+preview_stop + preview_start pa ispočetka.
 
 **Novo od 6.7 (2) — VODIČ ZA POKRETANJE (onboarding tutorijal, verifikovano
 uživo end-to-end kroz svež nalog):** posle registracije/onboardinga novog

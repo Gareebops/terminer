@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Pencil, Plus, Scissors, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -105,6 +106,7 @@ function ServiceForm({
 }
 
 export function ServicesManager({ services }: { services: Service[] }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Service | undefined>();
   const [, startTransition] = useTransition();
@@ -113,8 +115,15 @@ export function ServicesManager({ services }: { services: Service[] }) {
   function addSamples() {
     startSamples(async () => {
       const res = await insertSampleServices();
-      if (res.ok) toast.success("Ubačeno 8 primera - izmeni cene i trajanja po svom cenovniku.");
-      else toast.error(res.error ?? "Greška.");
+      if (res.ok) {
+        // Primeri se ubacuju samo u prazan cenovnik = praktično uvek tokom
+        // vodiča, pa toast nudi povratak na sledeći korak
+        toast.success("Ubačeno 8 primera - izmeni cene i trajanja po svom cenovniku.", {
+          action: { label: "Sledeći korak", onClick: () => router.push("/admin") },
+        });
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
     });
   }
 

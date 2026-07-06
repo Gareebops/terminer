@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { Service, Staff, WorkingHours } from "@/lib/types";
+import type { OnboardingState, Service, Staff, WorkingHours } from "@/lib/types";
 import { StaffDetail } from "./staff-detail";
 
 export default async function StaffDetailPage({
@@ -15,7 +15,7 @@ export default async function StaffDetailPage({
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
 
-  const [staffRes, servicesRes, linksRes, hoursRes] = await Promise.all([
+  const [staffRes, servicesRes, linksRes, hoursRes, settingsRes] = await Promise.all([
     supabase.from("staff").select("*").eq("id", id).eq("tenant_id", tenant.id).maybeSingle(),
     supabase
       .from("services")
@@ -25,9 +25,19 @@ export default async function StaffDetailPage({
       .order("created_at"),
     supabase.from("staff_services").select("service_id").eq("staff_id", id),
     supabase.from("working_hours").select("*").eq("staff_id", id).order("day_of_week"),
+    supabase
+      .from("site_settings")
+      .select("onboarding")
+      .eq("tenant_id", tenant.id)
+      .maybeSingle(),
   ]);
 
   if (!staffRes.data) notFound();
+
+  // Dok je vodič za pokretanje aktivan, čuvanje radnog vremena nudi
+  // povratak na sledeći korak vodiča
+  const onboarding = (settingsRes.data?.onboarding ?? {}) as OnboardingState;
+  const guideActive = !tenant.is_published && !onboarding.guide_hidden;
 
   return (
     <div className="max-w-2xl">
@@ -46,6 +56,7 @@ export default async function StaffDetailPage({
           services={(servicesRes.data ?? []) as Service[]}
           assignedServiceIds={(linksRes.data ?? []).map((l) => l.service_id)}
           workingHours={(hoursRes.data ?? []) as WorkingHours[]}
+          guideActive={guideActive}
         />
       </div>
     </div>

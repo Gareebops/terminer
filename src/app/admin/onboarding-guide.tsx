@@ -31,6 +31,17 @@ function plural(n: number, forms: [string, string, string]): string {
   return forms[2];
 }
 
+interface GuideStep {
+  title: string;
+  done: boolean;
+  meta?: string;
+  desc?: string;
+  cta?: { href: string; label: string };
+  // Korak radnog vremena: pored CTA nudi i "Već je tačno" (default 09-20
+  // može stvarno biti tačan, pa automatska provera ne postoji)
+  confirm?: boolean;
+}
+
 export function OnboardingGuide({
   slug,
   salonName,
@@ -38,6 +49,8 @@ export function OnboardingGuide({
   showWelcome,
   servicesCount,
   staffCount,
+  scheduleConfirmed,
+  singleStaffId,
   appearanceTouched,
 }: {
   slug: string;
@@ -46,6 +59,8 @@ export function OnboardingGuide({
   showWelcome: boolean;
   servicesCount: number;
   staffCount: number;
+  scheduleConfirmed: boolean;
+  singleStaffId: string | null;
   appearanceTouched: boolean;
 }) {
   const router = useRouter();
@@ -56,6 +71,7 @@ export function OnboardingGuide({
   const [copied, setCopied] = useState(false);
   const [, startTransition] = useTransition();
   const [publishPending, startPublish] = useTransition();
+  const [confirmPending, startConfirm] = useTransition();
 
   // Renderuje se samo posle interakcije (nikad tokom SSR), pa je window tu
   const siteUrl =
@@ -67,13 +83,10 @@ export function OnboardingGuide({
     `Naš salon je sada online - pogledaj i zakaži termin: ${siteUrl}`
   );
 
-  const steps = [
+  const steps: GuideStep[] = [
     {
       title: "Napravi nalog i nazovi salon",
       done: true,
-      meta: undefined as string | undefined,
-      desc: "",
-      cta: null as { href: string; label: string } | null,
     },
     {
       title: "Dodaj usluge i cene",
@@ -86,28 +99,35 @@ export function OnboardingGuide({
       cta: { href: "/admin/usluge", label: "Dodaj usluge" },
     },
     {
-      title: "Dodaj tim i radno vreme",
+      title: "Dodaj tim",
       done: staffCount > 0,
       meta:
         staffCount > 0
           ? `${staffCount} ${plural(staffCount, ["član", "člana", "članova"])}`
           : undefined,
-      desc: "I ako radiš sam - ti si tim. Od radnog vremena se prave slobodni termini.",
+      desc: "I ako radiš sam - ti si tim. Klijenti biraju kod koga zakazuju termin.",
       cta: { href: "/admin/zaposleni", label: "Dodaj tim" },
+    },
+    {
+      title: "Proveri radno vreme i smene",
+      done: scheduleConfirmed,
+      desc: "Novi član tima automatski dobija pon-sub 09-20. Ako salon radi drugačije ili neko radi u smenama, promeni to kod zaposlenog - od radnog vremena se prave slobodni termini.",
+      cta: {
+        href: singleStaffId ? `/admin/zaposleni/${singleStaffId}` : "/admin/zaposleni",
+        label: "Proveri radno vreme",
+      },
+      confirm: true,
     },
     {
       title: "Doteraj izgled sajta",
       done: appearanceTouched,
-      meta: undefined,
       desc: "Boja brenda, slike i kontakt podaci - da sajt liči baš na tvoj salon.",
       cta: { href: "/admin/podesavanja", label: "Otvori izgled" },
     },
     {
       title: "Pogledaj sajt i objavi ga",
       done: false,
-      meta: undefined,
       desc: "Proveri kako izgleda klijentima, pa ga pusti na mrežu jednim klikom.",
-      cta: null,
     },
   ];
   const doneCount = steps.filter((s) => s.done).length;
@@ -131,11 +151,30 @@ export function OnboardingGuide({
     });
   }
 
+  // "Već je tačno" - radno vreme je stvarno pon-sub 09-20, samo potvrdi
+  function confirmSchedule() {
+    startConfirm(async () => {
+      const res = await updateOnboarding({ scheduleConfirmed: true });
+      if (res.ok) {
+        toast.success("Radno vreme je potvrđeno.");
+        router.refresh();
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
+    });
+  }
+
   function publishNow() {
     startPublish(async () => {
       const res = await setPublished(true);
       if (!res.ok) {
-        toast.error(res.error ?? "Objava nije uspela.");
+        // Kroz vodič praktično nemoguće (koraci traže usluge i tim), ali
+        // usluga/zaposleni mogu biti deaktivirani mimo vodiča
+        toast.error(
+          "emptySite" in res && res.emptySite
+            ? "Sajt bi bio prazan - uključi bar jednu uslugu i jednog člana tima, pa objavi."
+            : (res.error ?? "Objava nije uspela.")
+        );
         return;
       }
       setPublishOpen(false);
@@ -226,11 +265,25 @@ export function OnboardingGuide({
                   </span>
                 )}
                 {isCurrent && step.cta && (
-                  <Button asChild size="sm" className="ml-auto shrink-0 rounded-full">
-                    <Link href={step.cta.href}>
-                      {step.cta.label} <ArrowRight className="size-3.5" />
-                    </Link>
-                  </Button>
+                  <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2">
+                    {step.confirm && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full"
+                        disabled={confirmPending}
+                        onClick={confirmSchedule}
+                      >
+                        <Check className="size-3.5" />
+                        {confirmPending ? "Čuvanje..." : "Već je tačno"}
+                      </Button>
+                    )}
+                    <Button asChild size="sm" className="shrink-0 rounded-full">
+                      <Link href={step.cta.href}>
+                        {step.cta.label} <ArrowRight className="size-3.5" />
+                      </Link>
+                    </Button>
+                  </div>
                 )}
                 {isCurrent && i === steps.length - 1 && (
                   <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2">

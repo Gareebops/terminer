@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Copy, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -209,7 +210,16 @@ function DayRowsEditor({
   );
 }
 
-function ScheduleCard({ staff, workingHours }: { staff: Staff; workingHours: WorkingHours[] }) {
+function ScheduleCard({
+  staff,
+  workingHours,
+  guideActive,
+}: {
+  staff: Staff;
+  workingHours: WorkingHours[];
+  guideActive: boolean;
+}) {
+  const router = useRouter();
   const today = formatDateISO(new Date());
   const [mode, setMode] = useState<ScheduleMode>(staff.schedule_mode);
   const [thisWeekParity, setThisWeekParity] = useState<0 | 1>(
@@ -252,7 +262,14 @@ function ScheduleCard({ staff, workingHours }: { staff: Staff; workingHours: Wor
       });
       if (res.ok) {
         setConflicts(null);
-        toast.success("Radno vreme je sačuvano.");
+        // Tokom vodiča: čuvanje radnog vremena je štikliralo korak, pa
+        // toast nudi povratak na vodič
+        toast.success(
+          "Radno vreme je sačuvano.",
+          guideActive
+            ? { action: { label: "Nastavi vodič", onClick: () => router.push("/admin") } }
+            : undefined
+        );
       } else if ("conflicts" in res && res.conflicts) {
         setConflicts(res.conflicts);
       } else {
@@ -342,11 +359,13 @@ export function StaffDetail({
   services,
   assignedServiceIds,
   workingHours,
+  guideActive,
 }: {
   staff: Staff;
   services: Service[];
   assignedServiceIds: string[];
   workingHours: WorkingHours[];
+  guideActive: boolean;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set(assignedServiceIds));
   const [savingServices, startServices] = useTransition();
@@ -407,7 +426,7 @@ export function StaffDetail({
         </CardContent>
       </Card>
 
-      <ScheduleCard staff={staff} workingHours={workingHours} />
+      <ScheduleCard staff={staff} workingHours={workingHours} guideActive={guideActive} />
     </div>
   );
 }
