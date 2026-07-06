@@ -12,10 +12,15 @@ import {
   type Invoice,
 } from "@/lib/invoice";
 import { PrintButton } from "./print-button";
+import { BackButton } from "./back-button";
 
 type InvoiceRow = Invoice & { tenants: { name: string; slug: string } | null };
 
-async function loadInvoice(id: string): Promise<InvoiceRow | null> {
+// viewer razlikuje odakle korisnik dolazi radi "Nazad" odredišta:
+// član salona -> /admin/pretplata, superadmin -> /superadmin.
+async function loadInvoice(
+  id: string
+): Promise<{ invoice: InvoiceRow; viewer: "member" | "superadmin" } | null> {
   // Član salona: kroz RLS; superadmin: kroz service role
   const supabase = await createClient();
   const { data } = await supabase
@@ -23,7 +28,7 @@ async function loadInvoice(id: string): Promise<InvoiceRow | null> {
     .select("*, tenants(name, slug)")
     .eq("id", id)
     .maybeSingle();
-  if (data) return data as InvoiceRow;
+  if (data) return { invoice: data as InvoiceRow, viewer: "member" };
 
   if (await assertSuperAdmin()) {
     const db = createAdminClient();
@@ -32,7 +37,7 @@ async function loadInvoice(id: string): Promise<InvoiceRow | null> {
       .select("*, tenants(name, slug)")
       .eq("id", id)
       .maybeSingle();
-    return (row as InvoiceRow) ?? null;
+    if (row) return { invoice: row as InvoiceRow, viewer: "superadmin" };
   }
   return null;
 }
@@ -45,8 +50,10 @@ export default async function InvoicePage({
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
 
-  const invoice = await loadInvoice(id);
-  if (!invoice) notFound();
+  const loaded = await loadInvoice(id);
+  if (!loaded) notFound();
+  const { invoice, viewer } = loaded;
+  const backHref = viewer === "superadmin" ? "/superadmin" : "/admin/pretplata";
 
   const ipsString = buildIpsQr({
     amount: Number(invoice.amount),
@@ -72,7 +79,8 @@ export default async function InvoicePage({
   return (
     <main className="min-h-screen bg-canvas p-4 font-display text-ink print:bg-white print:p-0 sm:p-10">
       <div className="mx-auto max-w-[210mm]">
-        <div className="mb-4 flex justify-end gap-2 print:hidden">
+        <div className="mb-4 flex items-center justify-between gap-2 print:hidden">
+          <BackButton fallbackHref={backHref} />
           <PrintButton />
         </div>
 
