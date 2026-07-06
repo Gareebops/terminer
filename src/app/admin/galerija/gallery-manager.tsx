@@ -2,12 +2,14 @@
 
 import Image from "next/image";
 import { useRef, useState, useTransition } from "react";
-import { Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { createClient } from "@/lib/supabase/client";
+import { prepareImageForUpload } from "@/lib/image";
 import type { Gallery } from "@/lib/types";
-import { addGalleryImage, deleteGalleryImage } from "../actions";
+import { addGalleryImage, deleteGalleryImage, moveGalleryImage } from "../actions";
 
 const MAX_IMAGES = 24;
 
@@ -20,7 +22,8 @@ export function GalleryManager({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [, startTransition] = useTransition();
+  const [toDelete, setToDelete] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = [...(e.target.files ?? [])];
@@ -35,15 +38,20 @@ export function GalleryManager({
     const supabase = createClient();
     let ok = 0;
     for (const file of files) {
-      if (!file.type.startsWith("image/") || file.size > 8 * 1024 * 1024) {
-        toast.error(`${file.name}: nije slika ili je veća od 8 MB.`);
+      if (!file.type.startsWith("image/") || file.size > 15 * 1024 * 1024) {
+        toast.error(`${file.name}: nije slika ili je veća od 15 MB.`);
         continue;
       }
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const path = `${tenantId}/gallery/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      // Kompresija/WebP pre uploada (galerija je najveći potrošač prostora)
+      const prepared = await prepareImageForUpload(file, 1600);
+      if ("error" in prepared) {
+        toast.error(`${file.name}: ${prepared.error}`);
+        continue;
+      }
+      const path = `${tenantId}/gallery/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${prepared.ext}`;
       const { error } = await supabase.storage
         .from("tenant-media")
-        .upload(path, file);
+        .upload(path, prepared.blob, { contentType: prepared.blob.type });
       if (error) {
         toast.error(`${file.name}: upload nije uspeo.`);
         continue;
@@ -54,13 +62,24 @@ export function GalleryManager({
       else toast.error(res.error ?? "Greška.");
     }
     setUploading(false);
-    if (ok > 0) toast.success(`Dodato ${ok} ${ok === 1 ? "fotografija" : "fotografije"}.`);
+    // Srpska množina: 1 fotografija, 2-4 fotografije, 5+ fotografija
+    if (ok > 0) {
+      const rec = ok === 1 ? "fotografija" : ok < 5 ? "fotografije" : "fotografija";
+      toast.success(ok === 1 ? "Dodata 1 fotografija." : `Dodato ${ok} ${rec}.`);
+    }
   }
 
   function remove(id: string) {
-    if (!confirm("Obrisati fotografiju?")) return;
     startTransition(async () => {
       const res = await deleteGalleryImage(id);
+      if (!res.ok) toast.error(res.error ?? "Greška.");
+      setToDelete(null);
+    });
+  }
+
+  function move(id: string, direction: "up" | "down") {
+    startTransition(async () => {
+      const res = await moveGalleryImage(id, direction);
       if (!res.ok) toast.error(res.error ?? "Greška.");
     });
   }
@@ -81,7 +100,9 @@ export function GalleryManager({
       </Button>
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {images.map((g) => (
+        {/* Kontrole su na telefonu uvek vidljive (nema hovera), na desktopu
+            se pojavljuju na prelaz mišem */}
+        {images.map((g, i) => (
           <div key={g.id} className="group relative">
             <Image
               src={g.image_url}
@@ -91,15 +112,42 @@ export function GalleryManager({
               className="aspect-square w-full rounded-lg object-cover"
             />
             <button
-              onClick={() => remove(g.id)}
+              onClick={() => setToDelete(g.id)}
               title="Obriši"
-              className="absolute right-2 top-2 rounded-md bg-black/60 p-1.5 text-white opacity-0 transition group-hover:opacity-100"
+              className="absolute right-2 top-2 rounded-md bg-black/60 p-1.5 text-white transition sm:opacity-0 sm:group-hover:opacity-100"
             >
               <Trash2 className="size-4" />
             </button>
+            <div className="absolute bottom-2 left-2 flex gap-1 transition sm:opacity-0 sm:group-hover:opacity-100">
+              <button
+                onClick={() => move(g.id, "up")}
+                disabled={pending || i === 0}
+                title="Pomeri napred"
+                className="rounded-md bg-black/60 p-1.5 text-white disabled:opacity-40"
+              >
+                <ArrowLeft className="size-4" />
+              </button>
+              <button
+                onClick={() => move(g.id, "down")}
+                disabled={pending || i === images.length - 1}
+                title="Pomeri nazad"
+                className="rounded-md bg-black/60 p-1.5 text-white disabled:opacity-40"
+              >
+                <ArrowRight className="size-4" />
+              </button>
+            </div>
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={!!toDelete}
+        title="Obrisati fotografiju?"
+        description="Fotografija nestaje sa sajta, a fajl se briše iz galerije."
+        pending={pending}
+        onConfirm={() => toDelete && remove(toDelete)}
+        onCancel={() => setToDelete(null)}
+      />
       {images.length === 0 && (
         <div className="mt-6 rounded-[2rem] border border-dashed p-8 text-center">
           <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-mint/50 text-ink">

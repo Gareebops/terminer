@@ -28,7 +28,8 @@ export function subscriptionInfo(tenant: {
   if (paidEnd >= now) {
     return { status: "active", daysLeft: Math.ceil((paidEnd - now) / DAY_MS) };
   }
-  if (trialEnd >= now && paidEnd === 0) {
+  // I kad je ranija uplata istekla, proba koja još traje se poštuje
+  if (trialEnd >= now) {
     return { status: "trial", daysLeft: Math.ceil((trialEnd - now) / DAY_MS) };
   }
 

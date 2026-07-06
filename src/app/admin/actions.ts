@@ -1,10 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { sendCustomerCancelledNotice } from "@/lib/email";
+import { normalizePhone } from "@/lib/phone";
 import { fromMinutes, toMinutes } from "@/lib/booking/slots";
 import { nowInZone, zonedToUtc } from "@/lib/booking/timezone";
 import {
@@ -33,14 +36,55 @@ export async function updateBookingStatus(
   bookingId: string,
   status: BookingStatus
 ): Promise<ActionResult> {
-  await getAdminContext();
+  const { tenant } = await getAdminContext();
   const supabase = await createClient();
+
+  // Stanje pre izmene: za obaveštenje klijentu kad salon otkazuje
+  const { data: before } = await supabase
+    .from("bookings")
+    .select("status, date, start_time, customer_email, services(name), staff(name)")
+    .eq("id", bookingId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("bookings")
     .update({ status })
     .eq("id", bookingId);
   if (error) return { ok: false, error: "Izmena nije uspela." };
+
+  // Salon otkazuje termin: klijent koji je ostavio email saznaje odmah,
+  // sa linkom za novo zakazivanje. Mejl nikad ne obara izmenu statusa.
+  if (
+    status === "cancelled" &&
+    before?.customer_email &&
+    ["pending", "confirmed"].includes(before.status)
+  ) {
+    const { data: settings } = await supabase
+      .from("site_settings")
+      .select("phone")
+      .eq("tenant_id", tenant.id)
+      .maybeSingle();
+    const hdrs = await headers();
+    const proto = hdrs.get("x-forwarded-proto") ?? "http";
+    const host = hdrs.get("host") ?? "localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? `${proto}://${host}`;
+    await sendCustomerCancelledNotice({
+      to: before.customer_email,
+      salonName: tenant.name,
+      serviceName:
+        (before.services as unknown as { name: string } | null)?.name ?? "Usluga",
+      staffName: (before.staff as unknown as { name: string } | null)?.name ?? "",
+      date: before.date,
+      startTime: before.start_time.slice(0, 5),
+      salonPhone: settings?.phone ?? null,
+      bookingUrl: `${baseUrl}/${tenant.slug}/zakazi`,
+    });
+  }
+
+  // Status se vidi i u kalendaru i u statistici na Početnoj
   revalidatePath("/admin/rezervacije");
+  revalidatePath("/admin/kalendar");
+  revalidatePath("/admin");
   return { ok: true };
 }
 
@@ -365,7 +409,10 @@ async function activeBookings(
   tenantId: string,
   staffIds: string[],
   from: string,
-  to?: string
+  to?: string,
+  // Termini koji su se danas već završili nisu konflikt za novo radno
+  // vreme - bez ovoga bi izmena rasporeda u 18h prijavila jutrošnji termin
+  endedCutoff?: { date: string; time: string }
 ): Promise<ConflictBooking[]> {
   let q = supabase
     .from("bookings")
@@ -378,7 +425,12 @@ async function activeBookings(
     .order("start_time");
   if (to) q = q.lte("date", to);
   const { data } = await q;
-  return (data ?? []) as unknown as ConflictBooking[];
+  const rows = (data ?? []) as unknown as ConflictBooking[];
+  if (!endedCutoff) return rows;
+  return rows.filter(
+    (b) =>
+      !(b.date === endedCutoff.date && b.end_time.slice(0, 5) <= endedCutoff.time)
+  );
 }
 
 function isOutsideWindow(b: ConflictBooking, window: WorkWindow): boolean {
@@ -442,7 +494,8 @@ export async function updateStaffSchedule(
     .maybeSingle();
   if (!staffRow) return { ok: false, error: "Zaposleni nije pronađen." };
 
-  const today = nowInZone(tenant.timezone).date;
+  const now = nowInZone(tenant.timezone);
+  const today = now.date;
   const anchor =
     mode === "rotating"
       ? thisWeekParity === 1
@@ -465,7 +518,10 @@ export async function updateStaffSchedule(
   if (!force) {
     // Buduće rezervacije koje bi novo pravilo ostavilo van radnog vremena;
     // datumi sa izuzetkom se preskaču - njih pravilo ne dira
-    const bookings = await activeBookings(supabase, tenant.id, [staffId], today);
+    const bookings = await activeBookings(supabase, tenant.id, [staffId], today, undefined, {
+      date: today,
+      time: fromMinutes(now.minutes),
+    });
     if (bookings.length > 0) {
       const { data: exceptions } = await supabase
         .from("shift_assignments")
@@ -557,7 +613,11 @@ export async function setScheduleException(
   }
 
   if (!force) {
-    const bookings = await activeBookings(supabase, tenant.id, [staffId], date, date);
+    const now = nowInZone(tenant.timezone);
+    const bookings = await activeBookings(supabase, tenant.id, [staffId], date, date, {
+      date: now.date,
+      time: fromMinutes(now.minutes),
+    });
     const conflicts = bookings
       .filter((b) => isOutsideWindow(b, window))
       .map((b) => toConflict(b, (staffRow as Staff).name));
@@ -627,7 +687,11 @@ export async function createAbsence(
   const nameById = new Map(staffRows.map((s) => [s.id, s.name]));
 
   if (!force) {
-    const bookings = await activeBookings(supabase, tenant.id, staffIds, from, to);
+    const now = nowInZone(tenant.timezone);
+    const bookings = await activeBookings(supabase, tenant.id, staffIds, from, to, {
+      date: now.date,
+      time: fromMinutes(now.minutes),
+    });
     const conflicts = bookings.map((b) => toConflict(b, nameById.get(b.staff_id) ?? ""));
     if (conflicts.length > 0) return { ok: false, conflicts };
   }
@@ -695,12 +759,24 @@ export async function adminCreateBooking(
     return { ok: false, error: "Usluga ili zaposleni nisu pronađeni." };
   }
 
-  const endTime = fromMinutes(toMinutes(d.time) + serviceRes.data.duration_minutes);
+  // Termin mora da se završi istog dana - "25:00" nije vreme, a upis bi pukao
+  const endMinutes = toMinutes(d.time) + serviceRes.data.duration_minutes;
+  if (endMinutes > 24 * 60) {
+    return {
+      ok: false,
+      error: "Termin bi trajao preko ponoći - pomeri početak ranije.",
+    };
+  }
+  const endTime = fromMinutes(endMinutes);
+
+  // Isti kanonski oblik telefona kao kod online zakazivanja - da telefonski
+  // klijent ne postane duplikat u evidenciji
+  const phone = normalizePhone(d.customerPhone);
 
   const { data: customer } = await supabase
     .from("customers")
     .upsert(
-      { tenant_id: tenant.id, name: d.customerName, phone: d.customerPhone },
+      { tenant_id: tenant.id, name: d.customerName, phone },
       { onConflict: "tenant_id,phone" }
     )
     .select("id")
@@ -712,7 +788,7 @@ export async function adminCreateBooking(
     service_id: d.serviceId,
     customer_id: customer?.id ?? null,
     customer_name: d.customerName,
-    customer_phone: d.customerPhone,
+    customer_phone: phone,
     date: d.date,
     start_time: d.time,
     end_time: endTime,
@@ -741,6 +817,7 @@ const blockedSlotSchema = z
     startTime: z.string().regex(/^\d{2}:\d{2}$/),
     endTime: z.string().regex(/^\d{2}:\d{2}$/),
     reason: z.string().trim().max(200).optional(),
+    force: z.boolean().optional(),
   })
   .refine((d) => d.startTime < d.endTime, {
     message: "Početak mora biti pre kraja.",
@@ -748,21 +825,44 @@ const blockedSlotSchema = z
 
 export async function createBlockedSlot(
   input: z.infer<typeof blockedSlotSchema>
-): Promise<ActionResult> {
+): Promise<ScheduleActionResult> {
   const parsed = blockedSlotSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
   }
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
+  const d = parsed.data;
+
+  // Blokada preko postojeće rezervacije: vlasnik mora svesno da odluči
+  // (isti obrazac kao izmene rasporeda - lista konflikata + force)
+  if (!d.force) {
+    let q = supabase
+      .from("bookings")
+      .select("staff_id, date, start_time, end_time, customer_name, services(name), staff(name)")
+      .eq("tenant_id", tenant.id)
+      .eq("date", d.date)
+      .in("status", ["pending", "confirmed"])
+      .lt("start_time", d.endTime)
+      .gt("end_time", d.startTime)
+      .order("start_time");
+    if (d.staffId) q = q.eq("staff_id", d.staffId);
+    const { data: overlapping } = await q;
+    const conflicts: ScheduleConflict[] = (
+      (overlapping ?? []) as unknown as (ConflictBooking & {
+        staff: { name: string } | null;
+      })[]
+    ).map((b) => toConflict(b, b.staff?.name ?? ""));
+    if (conflicts.length > 0) return { ok: false, conflicts };
+  }
 
   const { error } = await supabase.from("blocked_slots").insert({
     tenant_id: tenant.id,
-    staff_id: parsed.data.staffId || null,
-    date: parsed.data.date,
-    start_time: parsed.data.startTime,
-    end_time: parsed.data.endTime,
-    reason: parsed.data.reason || null,
+    staff_id: d.staffId || null,
+    date: d.date,
+    start_time: d.startTime,
+    end_time: d.endTime,
+    reason: d.reason || null,
   });
   if (error) return { ok: false, error: "Blokiranje nije uspelo." };
 
@@ -777,6 +877,18 @@ export async function deleteBlockedSlot(id: string): Promise<ActionResult> {
   if (error) return { ok: false, error: "Brisanje nije uspelo." };
   revalidatePath("/admin/kalendar");
   return { ok: true };
+}
+
+// Zamenjen/uklonjen fajl se počisti iz storage-a (best effort - red u bazi
+// je već ažuriran, zaostao fajl nije kritičan)
+async function removeStorageFile(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  url: string | null | undefined,
+  keepUrl: string | null
+) {
+  if (!url || url === keepUrl) return;
+  const path = url.split("/tenant-media/")[1];
+  if (path) await supabase.storage.from("tenant-media").remove([path]);
 }
 
 export async function updateStaffPhoto(
@@ -794,11 +906,19 @@ export async function updateStaffPhoto(
     }
   }
 
+  const { data: current } = await supabase
+    .from("staff")
+    .select("photo_url")
+    .eq("id", staffId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("staff")
     .update({ photo_url: photoUrl })
     .eq("id", staffId);
   if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+
+  await removeStorageFile(supabase, current?.photo_url, photoUrl);
 
   revalidatePath(`/admin/zaposleni/${staffId}`);
   revalidatePath("/admin/zaposleni");
@@ -868,11 +988,23 @@ export async function updateSiteImage(
   }
 
   const column = kind === "logo" ? "logo_url" : "hero_image_url";
+  const { data: current } = await supabase
+    .from("site_settings")
+    .select(column)
+    .eq("tenant_id", tenant.id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("site_settings")
     .update({ [column]: url, updated_at: new Date().toISOString() })
     .eq("tenant_id", tenant.id);
   if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+
+  await removeStorageFile(
+    supabase,
+    (current as Record<string, string | null> | null)?.[column],
+    url
+  );
 
   revalidatePath("/admin/podesavanja");
   revalidatePath(`/${tenant.slug}`);
@@ -920,6 +1052,71 @@ export async function deleteGalleryImage(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+// ---------- Redosled usluga i galerije (strelice gore/dole) ----------
+
+// Permisivni uuid (kao u booking akcijama) - Zodov .uuid() odbija seed
+// ID-jeve koji nisu RFC 4122
+const moveSchema = z.object({
+  id: z
+    .string()
+    .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i),
+  direction: z.enum(["up", "down"]),
+});
+
+// Zameni mesto sa susedom pa preupiši sort_order 0..n-1 za sve redove -
+// početno su svi na default 0, pa sam swap ne bi bio dovoljan
+async function moveRow(
+  table: "services" | "gallery",
+  input: z.infer<typeof moveSchema>,
+  adminPath: string
+): Promise<ActionResult> {
+  const parsed = moveSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Neispravni podaci." };
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+
+  // Isti redosled kao na stranicama (sort_order, pa created_at)
+  const { data: rows } = await supabase
+    .from(table)
+    .select("id")
+    .eq("tenant_id", tenant.id)
+    .order("sort_order")
+    .order("created_at");
+  const ids = (rows ?? []).map((r) => r.id as string);
+  const idx = ids.indexOf(parsed.data.id);
+  if (idx === -1) return { ok: false, error: "Stavka nije pronađena." };
+  const swapWith = parsed.data.direction === "up" ? idx - 1 : idx + 1;
+  if (swapWith < 0 || swapWith >= ids.length) return { ok: true }; // već na kraju
+
+  [ids[idx], ids[swapWith]] = [ids[swapWith], ids[idx]];
+  const results = await Promise.all(
+    ids.map((rowId, i) =>
+      supabase.from(table).update({ sort_order: i }).eq("id", rowId)
+    )
+  );
+  if (results.some((r) => r.error)) {
+    return { ok: false, error: "Čuvanje nije uspelo." };
+  }
+
+  revalidatePath(adminPath);
+  revalidatePath(`/${tenant.slug}`);
+  return { ok: true };
+}
+
+export async function moveService(
+  id: string,
+  direction: "up" | "down"
+): Promise<ActionResult> {
+  return moveRow("services", { id, direction }, "/admin/usluge");
+}
+
+export async function moveGalleryImage(
+  id: string,
+  direction: "up" | "down"
+): Promise<ActionResult> {
+  return moveRow("gallery", { id, direction }, "/admin/galerija");
+}
+
 export async function updateBillingInfo(info: string): Promise<ActionResult> {
   const parsed = z.string().trim().max(500).safeParse(info);
   if (!parsed.success) return { ok: false, error: "Neispravni podaci." };
@@ -937,7 +1134,12 @@ export async function updateBillingInfo(info: string): Promise<ActionResult> {
 
 function addMonths(dateStr: string, months: number): string {
   const d = new Date(`${dateStr}T12:00:00`);
+  const day = d.getDate();
+  d.setDate(1);
   d.setMonth(d.getMonth() + months);
+  // Klamp na poslednji dan ciljanog meseca: 31.1. + 1 mesec = 28.2, ne 3.3.
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(day, lastDay));
   return d.toISOString().slice(0, 10);
 }
 
@@ -1023,24 +1225,44 @@ export async function createInvoice(
   return { ok: false, error: "Izdavanje fakture nije uspelo. Pokušaj ponovo." };
 }
 
+// Instagram polje trpi sve što vlasnici lepe: pun URL, @handle ili čist
+// handle - čuva se uvek samo handle da link na sajtu ne bude pokvaren
+function normalizeInstagram(value: string): string {
+  return value
+    .trim()
+    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, "")
+    .replace(/^@/, "")
+    .split(/[/?#]/)[0];
+}
+
 const settingsSchema = z.object({
   heroTitle: z.string().trim().max(100).optional(),
   heroSubtitle: z.string().trim().max(300).optional(),
   phone: z.string().trim().max(30).optional(),
-  email: z.string().trim().max(200).optional(),
+  // Na ovu adresu stižu obaveštenja o rezervacijama - nevažeća bi značila
+  // da mejlovi tiho ne stižu
+  email: z
+    .string()
+    .trim()
+    .email("Unesi ispravan email za obaveštenja.")
+    .max(200)
+    .optional()
+    .or(z.literal("")),
   address: z.string().trim().max(200).optional(),
   city: z.string().trim().max(100).optional(),
-  instagram: z.string().trim().max(100).optional(),
+  instagram: z.string().trim().max(100).transform(normalizeInstagram).optional(),
   showTeam: z.boolean(),
   showGallery: z.boolean(),
   showPrices: z.boolean(),
 });
 
 export async function updateSettings(
-  input: z.infer<typeof settingsSchema>
+  input: z.input<typeof settingsSchema>
 ): Promise<ActionResult> {
   const parsed = settingsSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Neispravni podaci." };
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
+  }
 
   const { tenant } = await getAdminContext();
   const supabase = await createClient();

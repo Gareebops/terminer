@@ -1,23 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-
-// Rezervisani path segmenti koji nisu tenant slug-ovi.
-const RESERVED = new Set([
-  "admin",
-  "superadmin",
-  "faktura",
-  "prijava",
-  "registracija",
-  "onboarding",
-  "auth",
-  "zaboravljena-lozinka",
-  "nova-lozinka",
-  "privatnost",
-  "uslovi",
-  "api",
-  "_next",
-  "favicon.ico",
-]);
+import { RESERVED_SLUGS } from "@/lib/reserved-slugs";
 
 // Hostovi platforme - na njima važi path-based rutiranje (/{slug}).
 function isPlatformHost(hostHeader: string): boolean {
@@ -93,7 +76,7 @@ export default async function proxy(request: NextRequest) {
 
   // 2) MVP: path-based (terminer.rs/{slug}).
   const firstSegment = request.nextUrl.pathname.split("/")[1] ?? "";
-  if (firstSegment && !RESERVED.has(firstSegment)) {
+  if (firstSegment && !RESERVED_SLUGS.has(firstSegment)) {
     response.headers.set("x-tenant-slug", firstSegment);
   }
 

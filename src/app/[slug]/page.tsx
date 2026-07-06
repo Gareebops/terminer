@@ -1,11 +1,68 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { AtSign, Clock, MapPin, Phone } from "lucide-react";
+import { AtSign, CalendarClock, Clock, MapPin, Phone } from "lucide-react";
 import { FadeUp, HeroItem, HeroStagger, ZoomOnHover } from "@/components/animate";
 import { Button } from "@/components/ui/button";
-import { formatPrice } from "@/lib/booking/slots";
-import { getTenantSite } from "@/lib/tenant";
+import { DAY_NAMES_SR, formatPrice } from "@/lib/booking/slots";
+import {
+  addDaysISO,
+  dayOfWeek,
+  mondayOf,
+  resolveWindow,
+} from "@/lib/booking/schedule";
+import { nowInZone } from "@/lib/booking/timezone";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getTenantSite, type TenantSite } from "@/lib/tenant";
+import type { ScheduleException, WorkingHours } from "@/lib/types";
+
+// Radno vreme salona za tekuću nedelju: unija radnih okana svih aktivnih
+// zaposlenih (pravilo + izuzeci). working_hours javno nije čitljiv (RLS),
+// pa server komponenta čita service-role klijentom - u browser ide samo
+// izračunata lista.
+async function getWeeklyHours(
+  site: TenantSite
+): Promise<{ name: string; label: string; isToday: boolean }[] | null> {
+  if (site.staff.length === 0) return null;
+  const db = createAdminClient();
+  const today = nowInZone(site.tenant.timezone).date;
+  const monday = mondayOf(today);
+  const dates = Array.from({ length: 7 }, (_, i) => addDaysISO(monday, i));
+  const [hoursRes, excRes] = await Promise.all([
+    db.from("working_hours").select("*").eq("tenant_id", site.tenant.id),
+    db
+      .from("shift_assignments")
+      .select("*")
+      .eq("tenant_id", site.tenant.id)
+      .gte("date", dates[0])
+      .lte("date", dates[6]),
+  ]);
+  const hours = (hoursRes.data ?? []) as WorkingHours[];
+  const exceptions = (excRes.data ?? []) as ScheduleException[];
+
+  const rows = dates.map((date) => {
+    let start: string | null = null;
+    let end: string | null = null;
+    for (const member of site.staff) {
+      const w = resolveWindow(
+        date,
+        member,
+        hours,
+        exceptions.find((e) => e.staff_id === member.id && e.date === date) ?? null
+      );
+      if (!w) continue;
+      if (!start || w.start < start) start = w.start;
+      if (!end || w.end > end) end = w.end;
+    }
+    return {
+      name: DAY_NAMES_SR[dayOfWeek(date)],
+      label: start && end ? `${start} – ${end}` : "Ne radi",
+      isToday: date === today,
+    };
+  });
+  // Salon bez ijednog radnog dana: sekcija se ne prikazuje
+  return rows.some((r) => r.label !== "Ne radi") ? rows : null;
+}
 
 export default async function SalonPage({
   params,
@@ -17,10 +74,19 @@ export default async function SalonPage({
   if (!site) notFound();
 
   const { tenant, settings, services, staff, gallery } = site;
+  const weeklyHours = await getWeeklyHours(site);
   const mapsQuery =
     settings?.address || settings?.city
       ? encodeURIComponent([settings.address, settings.city].filter(Boolean).join(", "))
       : null;
+  // Podnosi i pun URL i @handle (stariji podaci pre normalizacije u akciji)
+  const igHandle = settings?.instagram
+    ? settings.instagram
+        .trim()
+        .replace(/^https?:\/\/(www\.)?instagram\.com\//i, "")
+        .replace(/^@/, "")
+        .split(/[/?#]/)[0]
+    : null;
 
   return (
     <main className="flex-1">
@@ -264,20 +330,48 @@ export default async function SalonPage({
                   {[settings.address, settings.city].filter(Boolean).join(", ")}
                 </p>
               )}
-              {settings?.instagram && (
+              {igHandle && (
                 <p className="flex items-center gap-2.5">
                   <AtSign className="size-4 text-primary" />
                   <a
-                    href={`https://instagram.com/${settings.instagram.replace(/^@/, "")}`}
+                    href={`https://instagram.com/${igHandle}`}
                     target="_blank"
                     rel="noreferrer"
                     className="hover:underline"
                   >
-                    {settings.instagram}
+                    @{igHandle}
                   </a>
                 </p>
               )}
             </div>
+            {weeklyHours && (
+              <div className="min-w-56">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <CalendarClock className="size-4 text-primary" /> Radno vreme
+                </p>
+                <dl className="mt-3 space-y-1.5 text-sm">
+                  {weeklyHours.map((d) => (
+                    <div
+                      key={d.name}
+                      className={`flex items-center justify-between gap-6 ${
+                        d.isToday ? "font-semibold" : ""
+                      }`}
+                    >
+                      <dt className={d.isToday ? "" : "text-muted-foreground"}>
+                        {d.name}
+                      </dt>
+                      <dd
+                        className={
+                          d.label === "Ne radi" ? "text-muted-foreground" : ""
+                        }
+                      >
+                        {d.label}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
             {mapsQuery && (
               <Button variant="outline" asChild>
                 <a

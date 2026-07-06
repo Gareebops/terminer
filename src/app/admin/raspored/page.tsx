@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
-import { formatDateISO } from "@/lib/booking/slots";
+import { nowInZone } from "@/lib/booking/timezone";
 import { addDaysISO, mondayOf } from "@/lib/booking/schedule";
 import type { OnboardingState, ScheduleException, Staff, WorkingHours } from "@/lib/types";
 import { ScheduleGrid } from "./schedule-grid";
@@ -19,9 +19,8 @@ export default async function SchedulePage({
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
 
-  const monday = mondayOf(
-    od && /^\d{4}-\d{2}-\d{2}$/.test(od) ? od : formatDateISO(new Date())
-  );
+  const today = nowInZone(tenant.timezone).date;
+  const monday = mondayOf(od && /^\d{4}-\d{2}-\d{2}$/.test(od) ? od : today);
   const weekDates = Array.from({ length: 7 }, (_, i) => addDaysISO(monday, i));
   const prevWeek = addDaysISO(monday, -7);
   const nextWeek = addDaysISO(monday, 7);
@@ -84,6 +83,7 @@ export default async function SchedulePage({
       <div className="mt-6 rounded-[2rem] bg-white p-6 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
         <ScheduleGrid
           weekDates={weekDates}
+          today={today}
           staff={staff}
           hours={(hoursRes.data ?? []) as WorkingHours[]}
           exceptions={(exceptionsRes.data ?? []) as ScheduleException[]}

@@ -18,6 +18,7 @@ import {
   type WorkWindow,
 } from "@/lib/booking/schedule";
 import { isBookingPaused } from "@/lib/billing";
+import { normalizePhone } from "@/lib/phone";
 import type {
   ScheduleException,
   Service,
@@ -152,6 +153,9 @@ type BookingContext = Exclude<
 // primaju proizvoljan datum - server mora imati sopstvenu granicu da
 // niko ne bukira termine za godinu dana unapred.
 const MAX_DAYS_AHEAD = 60;
+// Termin ne sme da počne "za minut" - salonu treba vremena da vidi
+// rezervaciju. Današnji slotovi počinju tek posle ovog razmaka.
+const MIN_LEAD_MINUTES = 30;
 
 async function computeSlots(ctx: BookingContext, date: string): Promise<string[]> {
   const now = nowInZone(ctx.tenant.timezone);
@@ -171,7 +175,7 @@ async function computeSlots(ctx: BookingContext, date: string): Promise<string[]
     durationMinutes: ctx.service.duration_minutes,
     busy,
     isToday: date === now.date,
-    nowMinutes: now.minutes,
+    nowMinutes: now.minutes + MIN_LEAD_MINUTES,
   });
 }
 
@@ -236,12 +240,16 @@ export async function createBooking(
   const hdrs = await headers();
   const ip = (hdrs.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || null;
 
+  // Kanonski oblik telefona: isti klijent = jedan red u customers, a limit
+  // po telefonu se ne zaobilazi razmacima/crticama
+  const phone = normalizePhone(input.customerPhone);
+
   // Limit po telefonu: max aktivnih predstojećih rezervacija u ovom salonu
   const { count: phoneCount } = await ctx.db
     .from("bookings")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", ctx.tenant.id)
-    .eq("customer_phone", input.customerPhone)
+    .eq("customer_phone", phone)
     .in("status", ["pending", "confirmed"])
     .gte("date", now.date);
   if ((phoneCount ?? 0) >= MAX_ACTIVE_PER_PHONE) {
@@ -284,15 +292,17 @@ export async function createBooking(
   const startsAt = zonedToUtc(input.date, input.time, ctx.tenant.timezone);
   const endsAt = zonedToUtc(input.date, endTime, ctx.tenant.timezone);
 
-  // Upis/ažuriranje klijenta u evidenciji salona
+  // Upis/ažuriranje klijenta u evidenciji salona. Email se šalje samo kad
+  // postoji - upsert ažurira sve poslate kolone, pa bi email:null pregazio
+  // adresu koju je klijent ostavio pri ranijem zakazivanju.
   const { data: customer } = await ctx.db
     .from("customers")
     .upsert(
       {
         tenant_id: ctx.tenant.id,
         name: input.customerName,
-        phone: input.customerPhone,
-        email: input.customerEmail || null,
+        phone,
+        ...(input.customerEmail ? { email: input.customerEmail } : {}),
       },
       { onConflict: "tenant_id,phone" }
     )
@@ -307,7 +317,7 @@ export async function createBooking(
       service_id: ctx.service.id,
       customer_id: customer?.id ?? null,
       customer_name: input.customerName,
-      customer_phone: input.customerPhone,
+      customer_phone: phone,
       customer_email: input.customerEmail || null,
       date: input.date,
       start_time: input.time,
@@ -368,7 +378,7 @@ export async function createBooking(
         startTime: input.time,
         endTime,
         customerName: input.customerName,
-        customerPhone: input.customerPhone,
+        customerPhone: phone,
         note: input.note || null,
       })
     : Promise.resolve({ sent: false });
@@ -392,6 +402,29 @@ export async function cancelBooking(input: {
   if (!ids.success) return { ok: false, error: "Neispravan link za otkazivanje." };
 
   const db = createAdminClient();
+
+  // Prošao termin se ne može otkazati ni direktnim pozivom akcije -
+  // UI to već brani, ali server mora imati sopstvenu proveru
+  const { data: existing } = await db
+    .from("bookings")
+    .select("date, start_time, tenants(timezone)")
+    .eq("id", ids.data.bookingId)
+    .eq("cancel_token", ids.data.cancelToken)
+    .maybeSingle();
+  if (existing) {
+    const tz =
+      (existing.tenants as unknown as { timezone: string } | null)?.timezone ??
+      "Europe/Belgrade";
+    const now = nowInZone(tz);
+    const started =
+      existing.date < now.date ||
+      (existing.date === now.date &&
+        toMinutes(existing.start_time.slice(0, 5)) <= now.minutes);
+    if (started) {
+      return { ok: false, error: "Termin je već prošao, pa otkazivanje više nije moguće." };
+    }
+  }
+
   const { data, error } = await db
     .from("bookings")
     .update({ status: "cancelled" })

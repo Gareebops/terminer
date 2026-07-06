@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Pencil, Plus, Scissors, Sparkles, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Plus, Scissors, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { formatPrice } from "@/lib/booking/slots";
 import type { Service } from "@/lib/types";
-import { deleteService, insertSampleServices, upsertService } from "../actions";
+import {
+  deleteService,
+  insertSampleServices,
+  moveService,
+  upsertService,
+} from "../actions";
 
 function ServiceForm({
   service,
@@ -109,7 +115,8 @@ export function ServicesManager({ services }: { services: Service[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Service | undefined>();
-  const [, startTransition] = useTransition();
+  const [toDelete, setToDelete] = useState<Service | null>(null);
+  const [pending, startTransition] = useTransition();
   const [samplesPending, startSamples] = useTransition();
 
   function addSamples() {
@@ -128,9 +135,16 @@ export function ServicesManager({ services }: { services: Service[] }) {
   }
 
   function onDelete(id: string) {
-    if (!confirm("Obrisati uslugu?")) return;
     startTransition(async () => {
       const res = await deleteService(id);
+      if (!res.ok) toast.error(res.error ?? "Greška.");
+      setToDelete(null);
+    });
+  }
+
+  function move(id: string, direction: "up" | "down") {
+    startTransition(async () => {
+      const res = await moveService(id, direction);
       if (!res.ok) toast.error(res.error ?? "Greška.");
     });
   }
@@ -165,7 +179,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
       </Dialog>
 
       <div className="mt-4 space-y-2">
-        {services.map((s) => (
+        {services.map((s, i) => (
           <div
             key={s.id}
             className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-[0_4px_24px_rgba(20,25,20,0.06)]"
@@ -180,6 +194,25 @@ export function ServicesManager({ services }: { services: Service[] }) {
               </p>
             </div>
             <div className="flex gap-1">
+              {/* Redosled na sajtu prati redosled u ovoj listi */}
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Pomeri gore"
+                disabled={pending || i === 0}
+                onClick={() => move(s.id, "up")}
+              >
+                <ArrowUp className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Pomeri dole"
+                disabled={pending || i === services.length - 1}
+                onClick={() => move(s.id, "down")}
+              >
+                <ArrowDown className="size-4" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -190,7 +223,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
               >
                 <Pencil className="size-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => onDelete(s.id)}>
+              <Button variant="ghost" size="icon" onClick={() => setToDelete(s)}>
                 <Trash2 className="size-4 text-destructive" />
               </Button>
             </div>
@@ -232,6 +265,15 @@ export function ServicesManager({ services }: { services: Service[] }) {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!toDelete}
+        title={`Obrisati uslugu „${toDelete?.name ?? ""}“?`}
+        description="Usluga sa postojećim rezervacijama se umesto brisanja deaktivira."
+        pending={pending}
+        onConfirm={() => toDelete && onDelete(toDelete.id)}
+        onCancel={() => setToDelete(null)}
+      />
     </div>
   );
 }

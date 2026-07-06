@@ -4,6 +4,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { RESERVED_SLUGS } from "@/lib/reserved-slugs";
 
 const schema = z.object({
   name: z.string().trim().min(2, "Unesi naziv salona.").max(80),
@@ -26,6 +27,12 @@ export async function createSalon(input: {
   const parsed = schema.safeParse(input);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
+  }
+
+  // Slug ne sme biti ruta aplikacije (/admin, /prijava...) - statička ruta
+  // bi zasenila sajt salona i adresa bi bila trajno nedostupna
+  if (RESERVED_SLUGS.has(parsed.data.slug)) {
+    return { error: "Ta adresa je rezervisana. Probaj drugu." };
   }
 
   const supabase = await createClient();

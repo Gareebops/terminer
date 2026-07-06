@@ -28,25 +28,49 @@ interface Props {
 type Step = 0 | 1 | 2 | 3;
 const STEP_LABELS = ["Usluga", "Frizer", "Termin", "Podaci"];
 
-function StepIndicator({ step, done }: { step: Step; done: boolean }) {
+function StepIndicator({
+  step,
+  done,
+  onStepClick,
+}: {
+  step: Step;
+  done: boolean;
+  // Klik na već pređeni korak vraća nazad (undefined = nije klikabilno)
+  onStepClick?: (step: Step) => void;
+}) {
   return (
     <ol className="flex items-center gap-1 sm:gap-2">
       {STEP_LABELS.map((label, i) => {
         const isDone = done || i < step;
         const isCurrent = !done && i === step;
+        const clickable = !done && i < step && !!onStepClick;
+        const circle = (
+          <span
+            className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+              isDone
+                ? "bg-primary text-primary-foreground"
+                : isCurrent
+                  ? "border-2 border-primary text-primary"
+                  : "border text-muted-foreground"
+            }`}
+          >
+            {isDone ? <Check className="size-3.5" /> : i + 1}
+          </span>
+        );
         return (
           <li key={label} className="flex flex-1 items-center gap-1 sm:gap-2">
-            <span
-              className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-                isDone
-                  ? "bg-primary text-primary-foreground"
-                  : isCurrent
-                    ? "border-2 border-primary text-primary"
-                    : "border text-muted-foreground"
-              }`}
-            >
-              {isDone ? <Check className="size-3.5" /> : i + 1}
-            </span>
+            {clickable ? (
+              <button
+                type="button"
+                onClick={() => onStepClick(i as Step)}
+                title={`Nazad na korak: ${label}`}
+                className="cursor-pointer transition-opacity hover:opacity-75"
+              >
+                {circle}
+              </button>
+            ) : (
+              circle
+            )}
             <span
               className={`hidden text-xs sm:block ${isCurrent ? "font-semibold" : "text-muted-foreground"}`}
             >
@@ -155,6 +179,9 @@ export function BookingWizard({
   // popuni biva odbijen na serveru
   const [website, setWebsite] = useState("");
   const [emailSent, setEmailSent] = useState(false);
+  // Korak "Frizer" je preskočen (uslugu radi samo jedan) - "Nazad" sa
+  // termina tada vodi pravo na usluge
+  const [staffSkipped, setStaffSkipped] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const availableStaff = useMemo(() => {
@@ -170,8 +197,12 @@ export function BookingWizard({
     setSlots(null);
     setTime(null);
     setSlotsError(null);
+    // Brzo preklikavanje dana: odgovor za stari dan sme da stigne posle
+    // novog - zastareli rezultat se ignoriše da ne prikaže pogrešne termine
+    let active = true;
     getAvailableSlots({ slug, staffId: member.id, serviceId: service.id, date }).then(
       (res) => {
+        if (!active) return;
         if ("error" in res) {
           // Trajna poruka umesto toasta - "nema termina" bi bilo obmanjujuće
           // kad je zakazivanje pauzirano ili salon nedostupan
@@ -182,7 +213,37 @@ export function BookingWizard({
         }
       }
     );
+    return () => {
+      active = false;
+    };
   }, [slug, service, member, date]);
+
+  function pickService(s: Service) {
+    setService(s);
+    const ids = new Set(
+      staffServices.filter((x) => x.service_id === s.id).map((x) => x.staff_id)
+    );
+    const eligible = staff.filter((m) => ids.has(m.id));
+    // Jedini koji radi uslugu se bira sam - korak "Frizer" se preskače
+    if (eligible.length === 1) {
+      setMember(eligible[0]);
+      setStaffSkipped(true);
+      setStep(2);
+    } else {
+      setMember(null);
+      setStaffSkipped(false);
+      setStep(1);
+    }
+  }
+
+  // Klik na pređeni korak u indikatoru: preskočen korak "Frizer" vodi na usluge
+  function jumpToStep(target: Step) {
+    if (target === 1 && staffSkipped) {
+      setStep(0);
+      return;
+    }
+    setStep(target);
+  }
 
   function submit() {
     if (!service || !member || !date || !time) return;
@@ -293,7 +354,7 @@ export function BookingWizard({
 
   return (
     <div>
-      <StepIndicator step={step} done={done} />
+      <StepIndicator step={step} done={done} onStepClick={jumpToStep} />
 
       {/* Rezime izbora */}
       {service && (
@@ -317,10 +378,7 @@ export function BookingWizard({
                 <button
                   key={s.id}
                   className="flex w-full items-center justify-between rounded-lg border p-4 text-left transition-colors hover:bg-accent"
-                  onClick={() => {
-                    setService(s);
-                    setStep(1);
-                  }}
+                  onClick={() => pickService(s)}
                 >
                   <div>
                     <p className="font-medium">{s.name}</p>
@@ -402,7 +460,11 @@ export function BookingWizard({
                       <Button
                         key={s}
                         variant={time === s ? "default" : "outline"}
-                        onClick={() => setTime(s)}
+                        onClick={() => {
+                          // Izbor vremena odmah vodi na podatke - jedan klik manje
+                          setTime(s);
+                          setStep(3);
+                        }}
                       >
                         {s}
                       </Button>
@@ -411,11 +473,11 @@ export function BookingWizard({
                 )}
               </div>
               <div className="mt-6 flex gap-2">
-                <Button variant="ghost" onClick={() => setStep(1)}>
+                <Button
+                  variant="ghost"
+                  onClick={() => setStep(staffSkipped ? 0 : 1)}
+                >
                   Nazad
-                </Button>
-                <Button disabled={!date || !time} onClick={() => setStep(3)}>
-                  Nastavi
                 </Button>
               </div>
             </div>

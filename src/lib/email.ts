@@ -172,6 +172,76 @@ export async function sendOwnerBookingNotice(
   }
 }
 
+// Obaveštenje KLIJENTU da je salon otkazao njegov termin - da ne dođe
+// pred zaključana vrata. Šalje se iz admin akcije promene statusa.
+export interface CustomerCancelledInput {
+  to: string;
+  salonName: string;
+  serviceName: string;
+  staffName: string;
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  salonPhone: string | null;
+  bookingUrl: string;
+}
+
+function customerCancelledHtml(input: CustomerCancelledInput): string {
+  const phoneNote = input.salonPhone
+    ? ` ili pozovi salon na <a href="tel:${escapeHtml(input.salonPhone)}" style="color:#18181b;">${escapeHtml(input.salonPhone)}</a>`
+    : "";
+  return `<!doctype html>
+<html lang="sr">
+<body style="margin:0;padding:24px 12px;background:#f4f4f5;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;">
+    <div style="background:#ffffff;border-radius:16px;padding:32px;">
+      <p style="margin:0;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:#71717a;">${escapeHtml(input.salonName)}</p>
+      <h1 style="margin:8px 0 4px;font-size:22px;color:#18181b;">Termin je otkazan</h1>
+      <p style="margin:0 0 20px;font-size:14px;color:#52525b;">
+        Nažalost, salon je morao da otkaže tvoj termin
+        <strong>${escapeHtml(input.serviceName)}</strong>${input.staffName ? ` kod ${escapeHtml(input.staffName)}` : ""}
+        zakazan za <strong>${dateLabelSr(input.date)} u ${input.startTime}</strong>.
+      </p>
+      <p style="margin:0;font-size:14px;color:#52525b;line-height:1.6;">
+        Novi termin možeš da
+        <a href="${input.bookingUrl}" style="color:#18181b;font-weight:600;">zakažeš ovde</a>${phoneNote}.
+        Izvini na neprijatnosti!
+      </p>
+    </div>
+    <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#a1a1aa;">
+      Poslato preko <a href="https://terminer.rs" style="color:#a1a1aa;">Terminer</a> zakazivanja.
+    </p>
+  </div>
+</body>
+</html>`;
+}
+
+export async function sendCustomerCancelledNotice(
+  input: CustomerCancelledInput
+): Promise<{ sent: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("RESEND_API_KEY nije podešen - obaveštenje klijentu preskočeno.");
+    return { sent: false };
+  }
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM ?? FROM_FALLBACK,
+      to: input.to,
+      subject: `Otkazan termin - ${input.salonName}, ${dateLabelSr(input.date)} u ${input.startTime}`,
+      html: customerCancelledHtml(input),
+    });
+    if (error) {
+      console.error("Resend greška (otkazivanje klijentu):", error);
+      return { sent: false };
+    }
+    return { sent: true };
+  } catch (err) {
+    console.error("Slanje obaveštenja klijentu nije uspelo:", err);
+    return { sent: false };
+  }
+}
+
 export async function sendBookingConfirmation(
   input: BookingEmailInput
 ): Promise<{ sent: boolean }> {

@@ -3,7 +3,8 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
-import { formatDateISO, DAY_NAMES_SR } from "@/lib/booking/slots";
+import { DAY_NAMES_SR, formatDateISO } from "@/lib/booking/slots";
+import { nowInZone } from "@/lib/booking/timezone";
 import { resolveWindow, type WorkWindow } from "@/lib/booking/schedule";
 import type {
   BlockedSlot,
@@ -30,7 +31,11 @@ export default async function CalendarPage({
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
 
-  const day = /^\d{4}-\d{2}-\d{2}$/.test(dan ?? "") ? dan! : formatDateISO(new Date());
+  // "Danas" u zoni salona - server na Vercelu radi u UTC, pa bi posle
+  // ponoći po Beogradu prikazivao jučerašnji dan
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(dan ?? "")
+    ? dan!
+    : nowInZone(tenant.timezone).date;
   const dayDate = new Date(`${day}T12:00:00`);
 
   const [staffRes, servicesRes, bookingsRes, blockedRes, hoursRes, exceptionsRes] =
@@ -52,7 +57,9 @@ export default async function CalendarPage({
       .select("*, services(name)")
       .eq("tenant_id", tenant.id)
       .eq("date", day)
-      .in("status", ["pending", "confirmed"])
+      // Završeni i "nije došao" ostaju vidljivi (prigušeno) - inače prošli
+      // dani izgledaju prazno čim se status ažurira
+      .in("status", ["pending", "confirmed", "completed", "no_show"])
       .order("start_time"),
     supabase
       .from("blocked_slots")

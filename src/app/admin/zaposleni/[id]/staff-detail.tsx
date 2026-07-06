@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
+import { prepareImageForUpload } from "@/lib/image";
 import { updateStaffPhoto, updateStaffServices, updateStaffSchedule } from "../../actions";
 import { DAY_NAMES_SR, formatDateISO, formatPrice } from "@/lib/booking/slots";
 import { addDaysISO, mondayOf, weekParityFor } from "@/lib/booking/schedule";
@@ -78,23 +79,29 @@ function PhotoCard({
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Izaberi sliku (JPG, PNG ili WebP).");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Slika je veća od 5 MB.");
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Slika je veća od 15 MB.");
       return;
     }
     startTransition(async () => {
+      // Kompresija/WebP pre uploada - i HEIC sa iPhone-a postaje upotrebljiv
+      const prepared = await prepareImageForUpload(file, 800);
+      if ("error" in prepared) {
+        toast.error(prepared.error);
+        return;
+      }
       const supabase = createClient();
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
       // Timestamp u imenu razbija keš pri zameni slike
-      const path = `${tenantId}/staff/${staffId}-${Date.now()}.${ext}`;
+      const path = `${tenantId}/staff/${staffId}-${Date.now()}.${prepared.ext}`;
       const { error } = await supabase.storage
         .from("tenant-media")
-        .upload(path, file, { upsert: true });
+        .upload(path, prepared.blob, { upsert: true, contentType: prepared.blob.type });
       if (error) {
         toast.error("Upload nije uspeo. Pokušaj ponovo.");
         return;

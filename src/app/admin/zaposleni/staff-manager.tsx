@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import type { Staff } from "@/lib/types";
 import { deleteStaff, upsertStaff } from "../actions";
 
@@ -75,13 +76,14 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Staff | undefined>();
-  const [, startTransition] = useTransition();
+  const [toDelete, setToDelete] = useState<Staff | null>(null);
+  const [pending, startTransition] = useTransition();
 
   function onDelete(id: string) {
-    if (!confirm("Obrisati zaposlenog?")) return;
     startTransition(async () => {
       const res = await deleteStaff(id);
       if (!res.ok) toast.error(res.error ?? "Greška.");
+      setToDelete(null);
     });
   }
 
@@ -155,7 +157,7 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
               >
                 <Pencil className="size-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => onDelete(m.id)}>
+              <Button variant="ghost" size="icon" onClick={() => setToDelete(m)}>
                 <Trash2 className="size-4 text-destructive" />
               </Button>
             </div>
@@ -184,6 +186,15 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!toDelete}
+        title={`Obrisati zaposlenog „${toDelete?.name ?? ""}“?`}
+        description="Zaposleni sa postojećim rezervacijama se umesto brisanja deaktivira."
+        pending={pending}
+        onConfirm={() => toDelete && onDelete(toDelete.id)}
+        onCancel={() => setToDelete(null)}
+      />
     </div>
   );
 }

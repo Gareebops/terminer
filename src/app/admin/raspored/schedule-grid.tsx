@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { setScheduleException } from "../actions";
 import { ScheduleConflictDialog } from "../schedule-conflict-dialog";
-import { DAY_NAMES_SR, formatDateISO } from "@/lib/booking/slots";
+import { DAY_NAMES_SR } from "@/lib/booking/slots";
 import { parityForStaff, resolveWindow, type WorkWindow } from "@/lib/booking/schedule";
 import type {
   ScheduleConflict,
@@ -105,11 +105,14 @@ interface EditState {
 
 export function ScheduleGrid({
   weekDates,
+  today,
   staff,
   hours,
   exceptions,
 }: {
   weekDates: string[];
+  // "Danas" u zoni salona (server) - browser datum ume da odstupa
+  today: string;
   staff: Staff[];
   hours: WorkingHours[];
   exceptions: ScheduleException[];
@@ -127,7 +130,7 @@ export function ScheduleGrid({
     );
   }
 
-  const todayStr = formatDateISO(new Date());
+  const todayStr = today;
 
   function openCell(member: Staff, date: string) {
     const exception = exceptions.find((e) => e.staff_id === member.id && e.date === date);

@@ -104,9 +104,10 @@ export default async function AdminDashboardPage() {
   const monthRevenue = monthRows.reduce((sum, r) => sum + Number(r.services?.price ?? 0), 0);
   const currency = monthRows[0]?.services?.currency ?? "RSD";
 
-  const byService = new Map<string, { name: string; count: number }>();
+  const byService = new Map<string, { id: string; name: string; count: number }>();
   for (const r of monthRows) {
     const entry = byService.get(r.service_id) ?? {
+      id: r.service_id,
       name: r.services?.name ?? "-",
       count: 0,
     };
@@ -202,7 +203,8 @@ export default async function AdminDashboardPage() {
         {/* Stat kolona */}
         <div className="grid gap-4">
           <div className="rounded-[2rem] bg-mint p-6">
-            <p className="text-sm font-semibold text-ink/60">Promet ovog meseca</p>
+            {/* Sabira i zakazane buduće termine - zato "očekivani" */}
+            <p className="text-sm font-semibold text-ink/60">Očekivani promet ovog meseca</p>
             <p className="mt-1 text-4xl font-extrabold tracking-tight">
               {formatPrice(monthRevenue, currency)}
             </p>
@@ -233,7 +235,7 @@ export default async function AdminDashboardPage() {
             )}
             <ul className="mt-4 space-y-3">
               {topServices.map((s, i) => (
-                <li key={s.name} className="text-sm font-semibold">
+                <li key={s.id} className="text-sm font-semibold">
                   <div className="flex justify-between">
                     <span>{s.name}</span>
                     <span>{s.count}</span>

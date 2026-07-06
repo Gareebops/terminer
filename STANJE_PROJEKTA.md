@@ -4,6 +4,44 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 6.7 (4) — VELIKI PAKET ISPRAVKI (bagovi + UX, verifikovano kroz
+preview; bez migracija):** detaljna analiza cele app pa ispravke svega nađenog.
+Bezbednost/podaci: (1) rezervisani slugovi u [src/lib/reserved-slugs.ts](src/lib/reserved-slugs.ts)
+(deli ih proxy i onboarding - slug "admin"/"prijava" više ne može da se
+registruje); (2) **telefon se normalizuje** u kanonski `+381...`
+([src/lib/phone.ts](src/lib/phone.ts)) u gost i admin bookingu → nema
+duplikata klijenata ni zaobilaženja limita razmacima; (3) customer upsert
+više ne gazi email sa null; (4) cancelBooking (token) server-side odbija
+prošle termine; (5) MIN_LEAD_MINUTES=30 buffer za današnje slotove.
+Admin: adminCreateBooking brani termin preko ponoći (ranije neuhvaćen
+izuzetak na "25:00"); updateBookingStatus revalidira i kalendar i početnu
+i **šalje mejl klijentu kad salon otkaže** (sendCustomerCancelledNotice u
+lib/email.ts); conflict-check rasporeda ignoriše već završene današnje
+termine; createBlockedSlot vraća konflikte sa rezervacijama (isti
+ScheduleConflictDialog + force); updateSettings validira email i
+normalizuje instagram (URL → handle). Kalendar: "danas" u zoni salona
+(nowInZone i u rezervacije/raspored stranicama), grid se širi van 07-22
+prema podacima, completed/no_show prigušeni (ne nestaju), **klik na termin
+= dijalog detalja** sa promenom statusa; dijalozi Nova rezervacija/Blokada
+prate promenu dana (key={day}). Rezervacije: tabovi Predstojeće/Istorija +
+pretraga po imenu/telefonu (normalizovano poređenje); labele statusa u
+[src/lib/booking/status.ts](src/lib/booking/status.ts). Wizard: race guard
+za slotove (zastareli odgovor se ignoriše), auto-skip koraka Frizer kad
+uslugu radi jedan, izbor vremena auto-prelazi na Podatke, klik na pređeni
+korak vraća nazad. Javni sajt: **sekcija Radno vreme** u Kontaktu
+(unija okana aktivnog tima za tekuću nedelju, service-role u server
+komponenti), instagram link podnosi i pun URL. Slike:
+[src/lib/image.ts](src/lib/image.ts) - downscale + WebP pre uploada
+(staff 800px, logo 512, hero 1920, galerija 1600), jasna poruka za
+nedekodabilan HEIC; stari fajl se briše iz storage-a pri zameni
+(removeStorageFile u admin/actions). Sitno: ConfirmDialog komponenta
+([src/components/confirm-dialog.tsx](src/components/confirm-dialog.tsx))
+umesto native confirm svuda; strelice za redosled usluga i galerije
+(moveService/moveGalleryImage - PAZI: permisivni uuid regex zbog seed
+ID-jeva); galerija kontrole vidljive na touch; srpska množina; "Očekivani
+promet"; billing edge (proba važi i posle istekle uplate); addMonths klamp
+na kraj meseca. Test podaci iz verifikacije obrisani (booking + customer).
+
 **Novo od 6.7 (3) — VODIČ: korak za radno vreme/smene + zaštite (verifikovano
 uživo end-to-end kroz svež nalog, test podaci obrisani):** vodič sada ima
 **6 koraka** — korak 3 je samo "Dodaj tim", a novi korak 4 "Proveri radno

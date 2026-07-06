@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Ban, Plus } from "lucide-react";
+import { Ban, Phone, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,25 +21,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { toMinutes } from "@/lib/booking/slots";
-import type { BlockedSlot, Booking, Service, Staff } from "@/lib/types";
+import {
+  BOOKING_STATUS_LABELS,
+  BOOKING_STATUS_STYLES,
+} from "@/lib/booking/status";
+import type {
+  BlockedSlot,
+  Booking,
+  BookingStatus,
+  ScheduleConflict,
+  Service,
+  Staff,
+} from "@/lib/types";
 import {
   adminCreateBooking,
   createBlockedSlot,
   deleteBlockedSlot,
+  updateBookingStatus,
 } from "../actions";
+import { ScheduleConflictDialog } from "../schedule-conflict-dialog";
 
-const DAY_START = 7 * 60; // 07:00
-const DAY_END = 22 * 60; // 22:00
 const PX_PER_MIN = 1.1;
 
 // Šrafura = nedostupno (van radnog vremena, isti jezik kao blokade)
 const HATCH =
   "repeating-linear-gradient(135deg, rgba(0,0,0,0.07) 0 2px, transparent 2px 8px)";
-
-function top(minutes: number): number {
-  return (minutes - DAY_START) * PX_PER_MIN;
-}
 
 type BookingRow = Booking & { services: { name: string } | null };
 
@@ -185,10 +194,11 @@ function BlockDialog({ day, staff }: { day: string; staff: Staff[] }) {
   const [startTime, setStartTime] = useState("12:00");
   const [endTime, setEndTime] = useState("13:00");
   const [reason, setReason] = useState("");
+  // Blokada preko postojećih rezervacija: server vraća listu, vlasnik odluči
+  const [conflicts, setConflicts] = useState<ScheduleConflict[] | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  function submit(force: boolean) {
     startTransition(async () => {
       const res = await createBlockedSlot({
         staffId: staffId === "salon" ? undefined : staffId,
@@ -196,11 +206,15 @@ function BlockDialog({ day, staff }: { day: string; staff: Staff[] }) {
         startTime,
         endTime,
         reason,
+        force,
       });
       if (res.ok) {
+        setConflicts(null);
         toast.success("Termin je blokiran.");
         setOpen(false);
         setReason("");
+      } else if ("conflicts" in res && res.conflicts) {
+        setConflicts(res.conflicts);
       } else {
         toast.error(res.error ?? "Greška.");
       }
@@ -208,78 +222,242 @@ function BlockDialog({ day, staff }: { day: string; staff: Staff[] }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">
-          <Ban className="size-4" /> Blokiraj termin
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Blokiranje termina</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>Za koga</Label>
-            <Select value={staffId} onValueChange={setStaffId}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="salon">Ceo salon</SelectItem>
-                {staff.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="bl-date">Datum</Label>
-              <Input
-                id="bl-date"
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bl-start">Od</Label>
-              <Input
-                id="bl-start"
-                type="time"
-                required
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bl-end">Do</Label>
-              <Input
-                id="bl-end"
-                type="time"
-                required
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="bl-reason">Razlog (opciono)</Label>
-            <Input
-              id="bl-reason"
-              placeholder="npr. pauza, odmor, privatno"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </div>
-          <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? "Blokiranje..." : "Blokiraj"}
+    <>
+      <Dialog open={open && !conflicts} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          <Button variant="outline">
+            <Ban className="size-4" /> Blokiraj termin
           </Button>
-        </form>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Blokiranje termina</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              submit(false);
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label>Za koga</Label>
+              <Select value={staffId} onValueChange={setStaffId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="salon">Ceo salon</SelectItem>
+                  {staff.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="bl-date">Datum</Label>
+                <Input
+                  id="bl-date"
+                  type="date"
+                  required
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bl-start">Od</Label>
+                <Input
+                  id="bl-start"
+                  type="time"
+                  required
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bl-end">Do</Label>
+                <Input
+                  id="bl-end"
+                  type="time"
+                  required
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bl-reason">Razlog (opciono)</Label>
+              <Input
+                id="bl-reason"
+                placeholder="npr. pauza, odmor, privatno"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={pending}>
+              {pending ? "Blokiranje..." : "Blokiraj"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <ScheduleConflictDialog
+        conflicts={conflicts}
+        onCancel={() => setConflicts(null)}
+        onConfirm={() => submit(true)}
+        pending={pending}
+      />
+    </>
+  );
+}
+
+// Detalji termina: klik na blok u gridu - kontakt klijenta i promena
+// statusa bez odlaska u Rezervacije
+function BookingDialog({
+  booking,
+  staffName,
+  onClose,
+}: {
+  booking: BookingRow | null;
+  staffName: string;
+  onClose: () => void;
+}) {
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  function setStatus(status: BookingStatus) {
+    if (!booking) return;
+    startTransition(async () => {
+      const res = await updateBookingStatus(booking.id, status);
+      if (res.ok) {
+        toast.success(
+          status === "cancelled"
+            ? "Termin je otkazan."
+            : "Status je izmenjen."
+        );
+        setConfirmCancel(false);
+        onClose();
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
+    });
+  }
+
+  const active =
+    !!booking && ["pending", "confirmed"].includes(booking.status);
+
+  return (
+    <Dialog
+      open={!!booking}
+      onOpenChange={(o) => {
+        if (!o) {
+          setConfirmCancel(false);
+          onClose();
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        {booking && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {booking.customer_name}
+                <Badge
+                  className={`border-0 font-semibold ${BOOKING_STATUS_STYLES[booking.status]}`}
+                >
+                  {BOOKING_STATUS_LABELS[booking.status]}
+                </Badge>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-1.5 text-sm">
+              <p className="font-medium">
+                {booking.start_time.slice(0, 5)}–{booking.end_time.slice(0, 5)} ·{" "}
+                {booking.services?.name ?? "Usluga"}
+              </p>
+              <p className="text-muted-foreground">Radnik: {staffName}</p>
+              <p>
+                <a
+                  href={`tel:${booking.customer_phone}`}
+                  className="inline-flex items-center gap-1.5 font-medium hover:underline"
+                >
+                  <Phone className="size-3.5" /> {booking.customer_phone}
+                </a>
+              </p>
+              {booking.note && (
+                <p className="text-muted-foreground">Napomena: {booking.note}</p>
+              )}
+            </div>
+
+            {active &&
+              (confirmCancel ? (
+                <div className="space-y-2 rounded-2xl bg-red-50 p-3">
+                  <p className="text-sm font-medium text-red-900">
+                    Otkazati termin? Klijent koji je ostavio email dobija
+                    obaveštenje o otkazivanju.
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setConfirmCancel(false)}
+                    >
+                      Odustani
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={pending}
+                      onClick={() => setStatus("cancelled")}
+                    >
+                      {pending ? "Otkazivanje..." : "Da, otkaži"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    disabled={pending}
+                    onClick={() => setStatus("completed")}
+                  >
+                    Završeno
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pending}
+                    onClick={() => setStatus("no_show")}
+                  >
+                    Nije došao
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-red-700 hover:text-red-800"
+                    disabled={pending}
+                    onClick={() => setConfirmCancel(true)}
+                  >
+                    Otkaži termin
+                  </Button>
+                </div>
+              ))}
+            {!active && (
+              <div className="pt-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={pending}
+                  onClick={() => setStatus("confirmed")}
+                >
+                  Vrati na „Potvrđeno“
+                </Button>
+              </div>
+            )}
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -301,13 +479,15 @@ export function CalendarView({
   // Radno okno po zaposlenom za taj dan; null = ne radi
   windows: Record<string, { start: string; end: string } | null>;
 }) {
-  const [, startTransition] = useTransition();
+  const [selected, setSelected] = useState<BookingRow | null>(null);
+  const [blockToRemove, setBlockToRemove] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   function removeBlock(id: string) {
-    if (!confirm("Ukloniti blokadu?")) return;
     startTransition(async () => {
       const res = await deleteBlockedSlot(id);
       if (!res.ok) toast.error(res.error ?? "Greška.");
+      setBlockToRemove(null);
     });
   }
 
@@ -319,15 +499,32 @@ export function CalendarView({
     );
   }
 
+  // Podrazumevani opseg 07-22, ali grid se širi da termin upisan ručno u
+  // 06:00 ili radno vreme do 23:00 ne ispadne iz prikaza
+  let dayStart = 7 * 60;
+  let dayEnd = 22 * 60;
+  const widen = (startT: string, endT: string) => {
+    dayStart = Math.min(dayStart, Math.floor(toMinutes(startT.slice(0, 5)) / 60) * 60);
+    dayEnd = Math.max(dayEnd, Math.ceil(toMinutes(endT.slice(0, 5)) / 60) * 60);
+  };
+  bookings.forEach((b) => widen(b.start_time, b.end_time));
+  blockedSlots.forEach((b) => widen(b.start_time, b.end_time));
+  Object.values(windows).forEach((w) => w && widen(w.start, w.end));
+
+  const top = (minutes: number) => (minutes - dayStart) * PX_PER_MIN;
+
   const hours: number[] = [];
-  for (let m = DAY_START; m < DAY_END; m += 60) hours.push(m);
-  const gridHeight = (DAY_END - DAY_START) * PX_PER_MIN;
+  for (let m = dayStart; m < dayEnd; m += 60) hours.push(m);
+  const gridHeight = (dayEnd - dayStart) * PX_PER_MIN;
+
+  const staffNameById = new Map(staff.map((m) => [m.id, m.name]));
 
   return (
     <div>
       <div className="mb-4 flex gap-2">
-        <NewBookingDialog day={day} staff={staff} services={services} />
-        <BlockDialog day={day} staff={staff} />
+        {/* key={day}: promena dana kroz strelice resetuje datume u formama */}
+        <NewBookingDialog key={`nb-${day}`} day={day} staff={staff} services={services} />
+        <BlockDialog key={`bl-${day}`} day={day} staff={staff} />
       </div>
 
       <div className="overflow-x-auto rounded-[2rem] bg-white p-3 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
@@ -368,8 +565,8 @@ export function CalendarView({
               (b) => b.staff_id === m.id || b.staff_id === null
             );
             const win = windows[m.id] ?? null;
-            const winStart = win ? Math.max(toMinutes(win.start), DAY_START) : 0;
-            const winEnd = win ? Math.min(toMinutes(win.end), DAY_END) : 0;
+            const winStart = win ? Math.max(toMinutes(win.start), dayStart) : 0;
+            const winEnd = win ? Math.min(toMinutes(win.end), dayEnd) : 0;
             return (
               <div
                 key={m.id}
@@ -391,13 +588,13 @@ export function CalendarView({
                   </div>
                 ) : (
                   <>
-                    {winStart > DAY_START && (
+                    {winStart > dayStart && (
                       <div
                         className="absolute inset-x-0 top-0"
                         style={{ height: top(winStart), backgroundImage: HATCH }}
                       />
                     )}
-                    {winEnd < DAY_END && (
+                    {winEnd < dayEnd && (
                       <div
                         className="absolute inset-x-0 bottom-0"
                         style={{ top: top(winEnd), backgroundImage: HATCH }}
@@ -411,14 +608,13 @@ export function CalendarView({
                   return (
                     <button
                       key={b.id}
-                      onClick={() => removeBlock(b.id)}
+                      onClick={() => setBlockToRemove(b.id)}
                       title={`Blokirano${b.reason ? `: ${b.reason}` : ""} - klik za uklanjanje`}
                       className="absolute inset-x-1 rounded-xl bg-ink/[0.04] px-2 py-1 text-left text-xs text-ink/60 ring-1 ring-ink/10 hover:ring-red-400"
                       style={{
                         top: top(s),
                         height: (e - s) * PX_PER_MIN,
-                        backgroundImage:
-                          "repeating-linear-gradient(135deg, rgba(0,0,0,0.07) 0 2px, transparent 2px 8px)",
+                        backgroundImage: HATCH,
                       }}
                     >
                       <span className="font-medium">Blokirano</span>
@@ -429,18 +625,30 @@ export function CalendarView({
                 {myBookings.map((b) => {
                   const s = toMinutes(b.start_time.slice(0, 5));
                   const e = toMinutes(b.end_time.slice(0, 5));
+                  const dimmed =
+                    b.status === "completed" || b.status === "no_show";
                   return (
-                    <div
+                    <button
                       key={b.id}
-                      title={`${b.customer_name} · ${b.customer_phone}`}
-                      className="absolute inset-x-1 overflow-hidden rounded-xl bg-ink px-2 py-1 text-xs text-white"
+                      onClick={() => setSelected(b)}
+                      title={`${b.customer_name} · ${b.customer_phone} - klik za detalje`}
+                      className={`absolute inset-x-1 overflow-hidden rounded-xl px-2 py-1 text-left text-xs transition-shadow hover:ring-2 hover:ring-ink/30 ${
+                        dimmed
+                          ? "bg-ink/10 text-ink/60 ring-1 ring-ink/10"
+                          : "bg-ink text-white"
+                      } ${b.status === "no_show" ? "line-through" : ""}`}
                       style={{ top: top(s), height: Math.max((e - s) * PX_PER_MIN, 22) }}
                     >
                       <span className="font-medium">
                         {b.start_time.slice(0, 5)} {b.customer_name}
                       </span>
-                      <span className="opacity-80"> · {b.services?.name}</span>
-                    </div>
+                      <span className={dimmed ? "opacity-70" : "opacity-80"}>
+                        {" "}
+                        · {b.services?.name}
+                        {b.status === "completed" && " · završeno"}
+                        {b.status === "no_show" && " · nije došao"}
+                      </span>
+                    </button>
                   );
                 })}
               </div>
@@ -449,9 +657,26 @@ export function CalendarView({
         </div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Klik na blokadu je uklanja. Statusi rezervacija se menjaju u meniju
-        Rezervacije.
+        Klik na termin otvara detalje i promenu statusa; klik na blokadu je
+        uklanja.
       </p>
+
+      <BookingDialog
+        key={selected?.id ?? "none"}
+        booking={selected}
+        staffName={selected ? (staffNameById.get(selected.staff_id) ?? "") : ""}
+        onClose={() => setSelected(null)}
+      />
+
+      <ConfirmDialog
+        open={!!blockToRemove}
+        title="Ukloniti blokadu?"
+        description="Vreme ponovo postaje dostupno za online zakazivanje."
+        confirmLabel="Ukloni"
+        pending={pending}
+        onConfirm={() => blockToRemove && removeBlock(blockToRemove)}
+        onCancel={() => setBlockToRemove(null)}
+      />
     </div>
   );
 }

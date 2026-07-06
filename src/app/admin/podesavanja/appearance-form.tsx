@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
+import { prepareImageForUpload } from "@/lib/image";
 import { brandGradient, gradientForeground } from "@/lib/color";
 import { FONT_PAIRS, type FontPairId } from "@/lib/fonts";
 import type { ButtonStyle, SiteTheme } from "@/lib/types";
@@ -51,22 +52,28 @@ function ImageUploadRow({
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       toast.error("Izaberi sliku (JPG, PNG ili WebP).");
       return;
     }
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error("Slika je veća od 8 MB.");
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Slika je veća od 15 MB.");
       return;
     }
     startTransition(async () => {
+      // Logo ostaje mali, hero ide preko celog ekrana - različite dimenzije
+      const prepared = await prepareImageForUpload(file, kind === "logo" ? 512 : 1920);
+      if ("error" in prepared) {
+        toast.error(prepared.error);
+        return;
+      }
       const supabase = createClient();
-      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-      const path = `${tenantId}/site/${kind}-${Date.now()}.${ext}`;
+      const path = `${tenantId}/site/${kind}-${Date.now()}.${prepared.ext}`;
       const { error } = await supabase.storage
         .from("tenant-media")
-        .upload(path, file, { upsert: true });
+        .upload(path, prepared.blob, { upsert: true, contentType: prepared.blob.type });
       if (error) {
         toast.error("Upload nije uspeo. Pokušaj ponovo.");
         return;
