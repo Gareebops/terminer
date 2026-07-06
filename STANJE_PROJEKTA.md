@@ -41,6 +41,13 @@ umesto native confirm svuda; strelice za redosled usluga i galerije
 ID-jeva); galerija kontrole vidljive na touch; srpska množina; "Očekivani
 promet"; billing edge (proba važi i posle istekle uplate); addMonths klamp
 na kraj meseca. Test podaci iz verifikacije obrisani (booking + customer).
+UZ TO, dizajnersko usaglašavanje modala u adminu: Radix dijalozi/select/
+dropdown se portaluju na <body> pa su ISKAKALI iz `.admin-scope` (Geist
+font, sirovi shadcn izgled). Selektori u globals.css sada idu preko
+`body:has(.admin-scope)` — modali dobijaju Jakarta font, ink boju, 2rem
+radius (spoljna kartica), extrabold naslov, pill dugmad/stavke, 1rem
+radius za padajuće menije. Iframe pregleda sajta netaknut (zaseban
+dokument); sajt salona netaknut (nema .admin-scope).
 
 **Novo od 6.7 (3) — VODIČ: korak za radno vreme/smene + zaštite (verifikovano
 uživo end-to-end kroz svež nalog, test podaci obrisani):** vodič sada ima

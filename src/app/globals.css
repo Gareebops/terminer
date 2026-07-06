@@ -143,25 +143,54 @@
 }
 
 /* Terminer admin scope — DS polish za shadcn komponente unutar admina.
-   Kartice: meka senka bez bordera; dugmad/bedževi/selecti: pill. */
-.admin-scope [data-slot="card"] {
+   Kartice: meka senka bez bordera; dugmad/bedževi/selecti: pill.
+   VAŽNO: Radix dijalozi, select i dropdown sadržaj se PORTALUJU na <body>,
+   van .admin-scope div-a - zato selektori idu preko body:has(.admin-scope),
+   da brend stigne i do modala. Važi samo na admin rutama; iframe pregleda
+   sajta je zaseban dokument pa ga ovo ne dira. */
+body:has(.admin-scope) [data-slot="card"] {
   border: 0;
   border-radius: 1.5rem;
   box-shadow: 0 4px 24px rgba(20, 25, 20, 0.06);
 }
-.admin-scope [data-slot="button"],
-.admin-scope [data-slot="badge"],
-.admin-scope [data-slot="select-trigger"],
-.admin-scope [data-slot="dropdown-menu-trigger"] {
+body:has(.admin-scope) [data-slot="button"],
+body:has(.admin-scope) [data-slot="badge"],
+body:has(.admin-scope) [data-slot="select-trigger"],
+body:has(.admin-scope) [data-slot="dropdown-menu-trigger"] {
   border-radius: 999px;
 }
-.admin-scope [data-slot="dialog-content"] {
-  border-radius: 1.5rem;
+/* Portalovan sadržaj ne nasleđuje ni font ni boju sa admin wrappera */
+body:has(.admin-scope) [data-slot="dialog-content"],
+body:has(.admin-scope) [data-slot="select-content"],
+body:has(.admin-scope) [data-slot="dropdown-menu-content"] {
+  font-family: var(--font-jakarta);
+  color: #17181a; /* ink */
+}
+/* Dijalog = spoljna kartica brenda (2rem, bez bordera, meka senka) */
+body:has(.admin-scope) [data-slot="dialog-content"] {
+  border: 0;
+  border-radius: 2rem;
+  box-shadow: 0 12px 48px rgba(20, 25, 20, 0.18);
+}
+body:has(.admin-scope) [data-slot="dialog-title"] {
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+/* Padajući meniji = unutrašnja površina (1rem) sa pill stavkama */
+body:has(.admin-scope) [data-slot="select-content"],
+body:has(.admin-scope) [data-slot="dropdown-menu-content"] {
+  border-color: rgba(23, 24, 26, 0.08);
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px rgba(20, 25, 20, 0.14);
+}
+body:has(.admin-scope) [data-slot="select-item"],
+body:has(.admin-scope) [data-slot="dropdown-menu-item"] {
+  border-radius: 999px;
 }
 /* Polja za unos: podrazumevani border-input je preslab na belim karticama */
-.admin-scope [data-slot="input"],
-.admin-scope [data-slot="textarea"],
-.admin-scope [data-slot="select-trigger"] {
+body:has(.admin-scope) [data-slot="input"],
+body:has(.admin-scope) [data-slot="textarea"],
+body:has(.admin-scope) [data-slot="select-trigger"] {
   border-color: rgba(23, 24, 26, 0.18);
 }
 
