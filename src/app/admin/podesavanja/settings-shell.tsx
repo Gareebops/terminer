@@ -1,12 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useState } from "react";
-import { ExternalLink, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import type { SiteSettings } from "@/lib/types";
 import { AppearanceForm } from "./appearance-form";
 import { DomainCard } from "./domain-card";
+import { PhonePreview } from "./phone-preview";
 import { SettingsForm } from "./settings-form";
 
 export function SettingsShell({
@@ -41,37 +39,12 @@ export function SettingsShell({
       {/* Živi pregled sajta (mobilni prikaz) */}
       <div className="hidden xl:block">
         <div className="sticky top-6">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-medium text-muted-foreground">
-              Pregled sajta
-            </p>
-            <div className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                title="Osveži pregled"
-                onClick={onSaved}
-              >
-                <RefreshCw className="size-4" />
-              </Button>
-              <Button variant="ghost" size="icon" title="Otvori sajt" asChild>
-                <Link href={`/${slug}`} target="_blank">
-                  <ExternalLink className="size-4" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-          <div className="overflow-hidden rounded-[2rem] border-8 border-ink shadow-[0_4px_24px_rgba(20,25,20,0.12)]">
-            <iframe
-              key={refreshKey}
-              src={`/${slug}`}
-              title="Pregled sajta"
-              className="h-[640px] w-full bg-white"
-            />
-          </div>
-          <p className="mt-2 text-center text-xs text-muted-foreground">
-            Osvežava se posle svakog čuvanja.
-          </p>
+          <PhonePreview
+            slug={slug}
+            refreshKey={refreshKey}
+            brandColor={settings?.primary_color ?? "#18181b"}
+            onRefresh={onSaved}
+          />
         </div>
       </div>
     </div>

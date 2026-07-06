@@ -7,8 +7,21 @@ import {
   Users,
 } from "lucide-react";
 import { HeroItem, HeroStagger } from "@/components/animate";
+import { FaqAccordion } from "@/components/landing/faq";
+import { FAQ_ITEMS } from "@/components/landing/faq-items";
 import { HeroDemo } from "@/components/landing/hero-demo";
 import { TerminerLogo } from "@/components/terminer-logo";
+
+// FAQPage structured data - Google ume da prikaže pitanja u rezultatima
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQ_ITEMS.map((item) => ({
+    "@type": "Question",
+    name: item.q,
+    acceptedAnswer: { "@type": "Answer", text: item.a },
+  })),
+};
 
 const features = [
   {
@@ -168,6 +181,36 @@ export default function HomePage() {
             Probaj odmah
           </Link>
         </p>
+      </section>
+
+      {/* Česta pitanja */}
+      <section className="mx-auto max-w-5xl px-4 pb-16">
+        <div className="text-center">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink/40">
+            Česta pitanja
+          </p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
+            Sve što te zanima pre starta
+          </h2>
+        </div>
+        <div className="mt-8">
+          <FaqAccordion />
+        </div>
+        <p className="mt-6 text-center text-sm font-semibold text-ink/60">
+          Imaš još pitanja?{" "}
+          <Link href="/demo" className="underline">
+            Pogledaj demo salon
+          </Link>{" "}
+          ili{" "}
+          <Link href="/registracija" className="underline">
+            probaj besplatno
+          </Link>
+          .
+        </p>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
       </section>
 
       <footer className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 pb-10 text-sm font-medium text-ink/50">
