@@ -40,7 +40,7 @@ export default function OnboardingPage() {
     <main className="flex flex-1 items-center justify-center bg-canvas px-4 py-16 font-display">
       <Card className="w-full max-w-md rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
         <CardHeader>
-          <CardTitle>Napravi svoj salon</CardTitle>
+          <CardTitle className="text-2xl font-extrabold tracking-tight">Napravi svoj salon</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -72,7 +72,7 @@ export default function OnboardingPage() {
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={pending}>
+            <Button type="submit" className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85" disabled={pending}>
               {pending ? "Kreiranje..." : "Napravi salon"}
             </Button>
           </form>

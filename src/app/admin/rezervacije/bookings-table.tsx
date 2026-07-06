@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { Search } from "lucide-react";
+import { CalendarDays, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,9 +67,24 @@ export function BookingsTable({
 
   if (bookings.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-        {history ? "Još nema prošlih termina." : "Nema predstojećih rezervacija."}
-      </p>
+      <div className="rounded-[2rem] border border-dashed p-8 text-center">
+        <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-mint/50 text-ink">
+          <CalendarDays className="size-5" />
+        </span>
+        <p className="mt-3 text-lg font-bold tracking-tight">
+          {history ? "Još nema prošlih termina" : "Nema predstojećih rezervacija"}
+        </p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+          {history
+            ? "Ovde će stajati završeni i otkazani termini - istorija se puni sama."
+            : "Online rezervacije stižu same čim klijenti dobiju link sajta, a telefonske upisuješ ručno u Kalendaru."}
+        </p>
+        {!history && (
+          <Button asChild className="mt-5 rounded-full">
+            <Link href="/admin/kalendar?novo=1">Upiši termin ručno</Link>
+          </Button>
+        )}
+      </div>
     );
   }
 

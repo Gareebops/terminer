@@ -1,9 +1,11 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { CalendarPlus, Check, Clock } from "lucide-react";
+import { ConfettiBurst } from "@/components/confetti";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -294,6 +296,8 @@ export function BookingWizard({
   if (done && service && member && date && time) {
     return (
       <Card>
+        {/* Mala proslava - klijent ovo pamti (poštuje reduced-motion) */}
+        <ConfettiBurst />
         <CardContent className="pt-10 pb-10 text-center">
           {reduce ? (
             <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -355,6 +359,12 @@ export function BookingWizard({
   return (
     <div>
       <StepIndicator step={step} done={done} onStepClick={jumpToStep} />
+      {/* Na telefonu su labele koraka sakrivene - reci bar gde smo */}
+      {!done && (
+        <p className="mt-2 text-xs font-semibold text-muted-foreground sm:hidden">
+          Korak {step + 1} od {STEP_LABELS.length} · {STEP_LABELS[step]}
+        </p>
+      )}
 
       {/* Rezime izbora */}
       {service && (
@@ -380,13 +390,18 @@ export function BookingWizard({
                   className="flex w-full items-center justify-between rounded-lg border p-4 text-left transition-colors hover:bg-accent"
                   onClick={() => pickService(s)}
                 >
-                  <div>
+                  <div className="min-w-0">
                     <p className="font-medium">{s.name}</p>
-                    <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                    {s.description && (
+                      <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">
+                        {s.description}
+                      </p>
+                    )}
+                    <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                       <Clock className="size-3.5" /> {s.duration_minutes} min
                     </p>
                   </div>
-                  <span className="font-semibold text-primary">
+                  <span className="shrink-0 font-semibold text-primary">
                     {formatPrice(s.price, s.currency)}
                   </span>
                 </button>
@@ -410,9 +425,19 @@ export function BookingWizard({
                     setStep(2);
                   }}
                 >
-                  <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
-                    {m.name.charAt(0)}
-                  </div>
+                  {m.photo_url ? (
+                    <Image
+                      src={m.photo_url}
+                      alt={m.name}
+                      width={48}
+                      height={48}
+                      className="size-12 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 font-semibold text-primary">
+                      {m.name.charAt(0)}
+                    </div>
+                  )}
                   <div>
                     <p className="font-medium">{m.name}</p>
                     {m.bio && <p className="text-sm text-muted-foreground">{m.bio}</p>}

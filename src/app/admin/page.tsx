@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { ArrowUpRight, CalendarDays } from "lucide-react";
+import { ArrowUpRight, Ban, CalendarDays, Plus } from "lucide-react";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
-import { formatPrice } from "@/lib/booking/slots";
+import { formatPrice, fromMinutes, toMinutes } from "@/lib/booking/slots";
 import { nowInZone } from "@/lib/booking/timezone";
+import { CountUp } from "@/components/count-up";
 import type { OnboardingState, SiteSettings } from "@/lib/types";
 import { OnboardingGuide } from "./onboarding-guide";
+import { ShareSiteButton } from "./share-site-button";
 
 function addDaysISO(dateStr: string, n: number): string {
   const d = new Date(`${dateStr}T12:00:00`);
@@ -20,8 +22,11 @@ export default async function AdminDashboardPage() {
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
 
-  const today = nowInZone(tenant.timezone).date;
+  const now = nowInZone(tenant.timezone);
+  const today = now.date;
   const todayDate = new Date(`${today}T12:00:00`);
+  const hour = Math.floor(now.minutes / 60);
+  const greeting = hour < 10 ? "Dobro jutro" : hour < 18 ? "Dobar dan" : "Dobro veče";
   const dow = todayDate.getDay();
   const monday = addDaysISO(today, dow === 0 ? -6 : 1 - dow);
   const sunday = addDaysISO(monday, 6);
@@ -30,7 +35,7 @@ export default async function AdminDashboardPage() {
 
   const activeStatuses = ["pending", "confirmed", "completed"];
 
-  const [todayRes, weekRes, monthRes, customersRes, servicesRes, staffRes, settingsRes] =
+  const [todayRes, weekRes, monthRes, customersRes, servicesRes, staffRes, settingsRes, nextRes] =
     await Promise.all([
     supabase
       .from("bookings")
@@ -68,7 +73,45 @@ export default async function AdminDashboardPage() {
       .eq("tenant_id", tenant.id)
       .eq("is_active", true),
     supabase.from("site_settings").select("*").eq("tenant_id", tenant.id).maybeSingle(),
+    // Prvi predstojeći termin - istaknut u tamnoj kartici
+    supabase
+      .from("bookings")
+      .select("date, start_time, customer_name, services(name)")
+      .eq("tenant_id", tenant.id)
+      .in("status", ["pending", "confirmed"])
+      .or(`date.gt.${today},and(date.eq.${today},start_time.gte.${fromMinutes(now.minutes)})`)
+      .order("date")
+      .order("start_time")
+      .limit(1)
+      .maybeSingle(),
   ]);
+
+  // "za 45 min" / "danas u 14:30" / "sutra u 10:00" / "sre 8.7. u 10:00"
+  const next = nextRes.data as unknown as {
+    date: string;
+    start_time: string;
+    customer_name: string;
+    services: { name: string } | null;
+  } | null;
+  let nextLabel: string | null = null;
+  if (next) {
+    const time = next.start_time.slice(0, 5);
+    if (next.date === today) {
+      const diff = toMinutes(time) - now.minutes;
+      nextLabel =
+        diff <= 90
+          ? `za ${diff} min`
+          : `danas u ${time}`;
+    } else if (next.date === addDaysISO(today, 1)) {
+      nextLabel = `sutra u ${time}`;
+    } else {
+      nextLabel = `${new Date(`${next.date}T12:00:00`).toLocaleDateString("sr-Latn-RS", {
+        weekday: "short",
+        day: "numeric",
+        month: "numeric",
+      })} u ${time}`;
+    }
+  }
 
   // Vodič za pokretanje: vidljiv dok sajt nije objavljen (ili dok ga vlasnik
   // ne sakrije); koraci se izvode iz stvarnih podataka
@@ -123,7 +166,9 @@ export default async function AdminDashboardPage() {
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">Početna</h1>
           <p className="mt-1 text-sm font-medium text-ink/50">
-            {todayDate.toLocaleDateString("sr-RS", {
+            {/* sr-Latn: podrazumevani sr-RS ispisuje imena dana ćirilicom */}
+            {greeting},{" "}
+            {todayDate.toLocaleDateString("sr-Latn-RS", {
               weekday: "long",
               day: "numeric",
               month: "long",
@@ -136,6 +181,23 @@ export default async function AdminDashboardPage() {
         >
           <CalendarDays className="size-4" /> Otvori kalendar
         </Link>
+      </div>
+
+      {/* Brze akcije - najčešći poslovi na jedan klik */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link
+          href="/admin/kalendar?novo=1"
+          className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-[0_4px_24px_rgba(20,25,20,0.06)] transition-colors hover:bg-ink/5"
+        >
+          <Plus className="size-4" /> Upiši termin
+        </Link>
+        <Link
+          href="/admin/kalendar?blokada=1"
+          className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-[0_4px_24px_rgba(20,25,20,0.06)] transition-colors hover:bg-ink/5"
+        >
+          <Ban className="size-4" /> Blokiraj vreme
+        </Link>
+        <ShareSiteButton slug={tenant.slug} />
       </div>
 
       {showGuide && (
@@ -164,7 +226,7 @@ export default async function AdminDashboardPage() {
                 </span>
               </p>
               <p className="mt-1 text-5xl font-extrabold tracking-tight">
-                {todayBookings.length}
+                <CountUp value={todayBookings.length} />
               </p>
             </div>
             <Link
@@ -174,6 +236,15 @@ export default async function AdminDashboardPage() {
               Sve rezervacije
             </Link>
           </div>
+          {next && nextLabel && (
+            <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-full bg-mint px-4 py-2.5 text-sm text-ink">
+              <span className="font-bold">Sledeći termin {nextLabel}</span>
+              <span className="text-ink/70">
+                · {next.customer_name}
+                {next.services?.name && ` · ${next.services.name}`}
+              </span>
+            </div>
+          )}
           <div className="mt-6 space-y-2">
             {todayBookings.slice(0, 6).map((b) => (
               <div
@@ -206,7 +277,7 @@ export default async function AdminDashboardPage() {
             {/* Sabira i zakazane buduće termine - zato "očekivani" */}
             <p className="text-sm font-semibold text-ink/60">Očekivani promet ovog meseca</p>
             <p className="mt-1 text-4xl font-extrabold tracking-tight">
-              {formatPrice(monthRevenue, currency)}
+              <CountUp value={monthRevenue} suffix={` ${currency}`} />
             </p>
             <p className="mt-1 text-sm font-semibold text-ink/60">
               {monthRows.length} termina
@@ -216,14 +287,14 @@ export default async function AdminDashboardPage() {
             <div className="rounded-[2rem] bg-lavender p-6">
               <p className="text-sm font-semibold text-ink/60">Ove nedelje</p>
               <p className="mt-1 text-4xl font-extrabold tracking-tight">
-                {weekRes.count ?? 0}
+                <CountUp value={weekRes.count ?? 0} />
               </p>
               <p className="mt-1 text-sm font-semibold text-ink/60">termina</p>
             </div>
             <div className="rounded-[2rem] bg-white p-6 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
               <p className="text-sm font-semibold text-ink/50">Klijenata</p>
               <p className="mt-1 text-4xl font-extrabold tracking-tight">
-                {customersRes.count ?? 0}
+                <CountUp value={customersRes.count ?? 0} />
               </p>
               <p className="mt-1 text-sm font-semibold text-ink/50">u evidenciji</p>
             </div>

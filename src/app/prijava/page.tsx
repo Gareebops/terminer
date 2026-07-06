@@ -58,7 +58,7 @@ function LoginForm() {
   return (
     <Card className="w-full max-w-sm rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
       <CardHeader>
-        <CardTitle>Prijava</CardTitle>
+        <CardTitle className="text-2xl font-extrabold tracking-tight">Prijava</CardTitle>
       </CardHeader>
       <CardContent>
         {justConfirmed && (
@@ -101,7 +101,7 @@ function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85" disabled={loading}>
             {loading ? "Prijavljivanje..." : "Prijavi se"}
           </Button>
           {unconfirmed && (

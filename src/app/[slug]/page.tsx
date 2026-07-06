@@ -2,9 +2,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { AtSign, CalendarClock, Clock, MapPin, Phone } from "lucide-react";
-import { FadeUp, HeroItem, HeroStagger, ZoomOnHover } from "@/components/animate";
+import { FadeUp, HeroItem, HeroStagger } from "@/components/animate";
 import { Button } from "@/components/ui/button";
-import { DAY_NAMES_SR, formatPrice } from "@/lib/booking/slots";
+import { DAY_NAMES_SR, formatPrice, fromMinutes } from "@/lib/booking/slots";
+import { GalleryGrid } from "./gallery-grid";
+import { MobileBookCta } from "./mobile-book-cta";
 import {
   addDaysISO,
   dayOfWeek,
@@ -20,12 +22,15 @@ import type { ScheduleException, WorkingHours } from "@/lib/types";
 // zaposlenih (pravilo + izuzeci). working_hours javno nije čitljiv (RLS),
 // pa server komponenta čita service-role klijentom - u browser ide samo
 // izračunata lista.
-async function getWeeklyHours(
-  site: TenantSite
-): Promise<{ name: string; label: string; isToday: boolean }[] | null> {
+async function getWeeklyHours(site: TenantSite): Promise<{
+  rows: { name: string; label: string; isToday: boolean }[];
+  openNow: boolean;
+} | null> {
   if (site.staff.length === 0) return null;
   const db = createAdminClient();
-  const today = nowInZone(site.tenant.timezone).date;
+  const now = nowInZone(site.tenant.timezone);
+  const today = now.date;
+  const nowHM = fromMinutes(now.minutes);
   const monday = mondayOf(today);
   const dates = Array.from({ length: 7 }, (_, i) => addDaysISO(monday, i));
   const [hoursRes, excRes] = await Promise.all([
@@ -40,6 +45,7 @@ async function getWeeklyHours(
   const hours = (hoursRes.data ?? []) as WorkingHours[];
   const exceptions = (excRes.data ?? []) as ScheduleException[];
 
+  let openNow = false;
   const rows = dates.map((date) => {
     let start: string | null = null;
     let end: string | null = null;
@@ -54,6 +60,9 @@ async function getWeeklyHours(
       if (!start || w.start < start) start = w.start;
       if (!end || w.end > end) end = w.end;
     }
+    if (date === today && start && end && nowHM >= start && nowHM < end) {
+      openNow = true;
+    }
     return {
       name: DAY_NAMES_SR[dayOfWeek(date)],
       label: start && end ? `${start} – ${end}` : "Ne radi",
@@ -61,7 +70,7 @@ async function getWeeklyHours(
     };
   });
   // Salon bez ijednog radnog dana: sekcija se ne prikazuje
-  return rows.some((r) => r.label !== "Ne radi") ? rows : null;
+  return rows.some((r) => r.label !== "Ne radi") ? { rows, openNow } : null;
 }
 
 export default async function SalonPage({
@@ -74,7 +83,7 @@ export default async function SalonPage({
   if (!site) notFound();
 
   const { tenant, settings, services, staff, gallery } = site;
-  const weeklyHours = await getWeeklyHours(site);
+  const weekly = await getWeeklyHours(site);
   const mapsQuery =
     settings?.address || settings?.city
       ? encodeURIComponent([settings.address, settings.city].filter(Boolean).join(", "))
@@ -288,21 +297,7 @@ export default async function SalonPage({
             </p>
             <h2 className="mt-2 font-heading text-3xl font-bold tracking-tight">Izdvojeni radovi</h2>
           </FadeUp>
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {gallery.map((g, i) => (
-              <FadeUp key={g.id} delay={i * 0.05}>
-                <ZoomOnHover className="overflow-hidden rounded-xl">
-                  <Image
-                    src={g.image_url}
-                    alt=""
-                    width={400}
-                    height={400}
-                    className="aspect-square w-full object-cover"
-                  />
-                </ZoomOnHover>
-              </FadeUp>
-            ))}
-          </div>
+          <GalleryGrid images={gallery} />
         </section>
       )}
 
@@ -344,13 +339,27 @@ export default async function SalonPage({
                 </p>
               )}
             </div>
-            {weeklyHours && (
+            {weekly && (
               <div className="min-w-56">
                 <p className="flex items-center gap-2 text-sm font-semibold">
                   <CalendarClock className="size-4 text-primary" /> Radno vreme
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      weekly.openNow
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    <span
+                      className={`size-1.5 rounded-full ${
+                        weekly.openNow ? "bg-emerald-500" : "bg-muted-foreground/50"
+                      }`}
+                    />
+                    {weekly.openNow ? "Otvoreno" : "Zatvoreno"}
+                  </span>
                 </p>
                 <dl className="mt-3 space-y-1.5 text-sm">
-                  {weeklyHours.map((d) => (
+                  {weekly.rows.map((d) => (
                     <div
                       key={d.name}
                       className={`flex items-center justify-between gap-6 ${
@@ -389,7 +398,8 @@ export default async function SalonPage({
       </section>
 
       <footer className="bg-zinc-950 text-zinc-400">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-8 text-sm">
+        {/* pb na telefonu: plutajuće CTA dugme ne sme da prekrije sadržaj */}
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-8 pb-24 text-sm sm:pb-8">
           <span>
             © {new Date().getFullYear()} {tenant.name}
           </span>
@@ -398,6 +408,8 @@ export default async function SalonPage({
           </Link>
         </div>
       </footer>
+
+      <MobileBookCta slug={tenant.slug} />
     </main>
   );
 }

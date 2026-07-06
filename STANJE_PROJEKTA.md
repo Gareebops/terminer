@@ -4,6 +4,25 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 6.7 (5) — DIZAJN/UX paketi (analiza + 3 paketa, verifikovano kroz
+preview):** (1) Usaglašenost: datumi sa imenima dana/meseci na sr-Latn-RS
+(sr-RS daje ćirilicu!); auth CTA dugmad mint pill + extrabold naslovi +
+"30 dana besplatno" na registraciji; bogato prazno stanje Rezervacija;
+kalendar opseg prati stvarna okna (sat pre/posle, ne fiksno 07-22);
+brendirani sonner toastovi (globals, body:has selektor). (2) Admin wow:
+crvena linija "sada" u Kalendaru (tick na minut + auto-scroll, samo danas);
+avatari zaposlenih u zaglavljima kolona Kalendara i u Rasporedu; Početna:
+pozdrav po dobu dana, mint traka "Sledeći termin za X min" (upit + relativna
+labela), brze akcije (Upiši termin → /admin/kalendar?novo=1 otvara dijalog,
+Blokiraj → ?blokada=1, Podeli sajt → [admin/share-site-button.tsx](src/app/admin/share-site-button.tsx)),
+count-up animacija brojeva ([components/count-up.tsx](src/components/count-up.tsx)).
+(3) Javni deo wow: wizard prikazuje fotke frizera, opise usluga i naziv
+koraka na telefonu + konfete na uspehu (reuse ConfettiBurst); sajt salona
+dobio plutajuće "Zakaži termin" na telefonu
+([slug]/mobile-book-cta.tsx, footer pb-24 na mobilnom), bedž
+Otvoreno/Zatvoreno uz radno vreme (računa se u getWeeklyHours) i lightbox
+galeriju ([slug]/gallery-grid.tsx - tap/strelice/Escape, brojač).
+
 **Novo od 6.7 (4) — VELIKI PAKET ISPRAVKI (bagovi + UX, verifikovano kroz
 preview; bez migracija):** detaljna analiza cele app pa ispravke svega nađenog.
 Bezbednost/podaci: (1) rezervisani slugovi u [src/lib/reserved-slugs.ts](src/lib/reserved-slugs.ts)

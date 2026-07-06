@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import Image from "next/image";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Ban, Phone, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { toMinutes } from "@/lib/booking/slots";
+import { fromMinutes, toMinutes } from "@/lib/booking/slots";
 import {
   BOOKING_STATUS_LABELS,
   BOOKING_STATUS_STYLES,
@@ -55,12 +56,15 @@ function NewBookingDialog({
   day,
   staff,
   services,
+  defaultOpen = false,
 }: {
   day: string;
   staff: Staff[];
   services: Service[];
+  // Brza akcija sa Početne (?novo=1) otvara dijalog odmah
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [serviceId, setServiceId] = useState("");
   const [staffId, setStaffId] = useState("");
   const [date, setDate] = useState(day);
@@ -187,8 +191,16 @@ function NewBookingDialog({
   );
 }
 
-function BlockDialog({ day, staff }: { day: string; staff: Staff[] }) {
-  const [open, setOpen] = useState(false);
+function BlockDialog({
+  day,
+  staff,
+  defaultOpen = false,
+}: {
+  day: string;
+  staff: Staff[];
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
   const [staffId, setStaffId] = useState("salon");
   const [date, setDate] = useState(day);
   const [startTime, setStartTime] = useState("12:00");
@@ -470,6 +482,9 @@ export function CalendarView({
   bookings,
   blockedSlots,
   windows,
+  nowMinutes,
+  openNew = false,
+  openBlock = false,
 }: {
   day: string;
   staff: Staff[];
@@ -478,10 +493,32 @@ export function CalendarView({
   blockedSlots: BlockedSlot[];
   // Radno okno po zaposlenom za taj dan; null = ne radi
   windows: Record<string, { start: string; end: string } | null>;
+  // Trenutno vreme u zoni salona, samo kad je prikazan današnji dan
+  nowMinutes: number | null;
+  openNew?: boolean;
+  openBlock?: boolean;
 }) {
   const [selected, setSelected] = useState<BookingRow | null>(null);
   const [blockToRemove, setBlockToRemove] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Linija "sada": server daje početno vreme, klijent je pomera na minut
+  const [nowMin, setNowMin] = useState(nowMinutes);
+  useEffect(() => setNowMin(nowMinutes), [nowMinutes]);
+  useEffect(() => {
+    if (nowMinutes === null) return;
+    const id = setInterval(
+      () => setNowMin((m) => (m === null ? m : m + 1)),
+      60_000
+    );
+    return () => clearInterval(id);
+  }, [nowMinutes]);
+
+  // Pri otvaranju današnjeg dana grid se sam dovede do trenutnog vremena
+  const nowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    nowRef.current?.scrollIntoView({ block: "center" });
+  }, []);
 
   function removeBlock(id: string) {
     startTransition(async () => {
@@ -499,19 +536,38 @@ export function CalendarView({
     );
   }
 
-  // Podrazumevani opseg 07-22, ali grid se širi da termin upisan ručno u
-  // 06:00 ili radno vreme do 23:00 ne ispadne iz prikaza
-  let dayStart = 7 * 60;
-  let dayEnd = 22 * 60;
+  // Opseg prati stvarna radna okna (sat pre prvog i posle poslednjeg) -
+  // fiksni 07-22 je pravio dva sata mrtve šrafure na vrhu svakog dana.
+  // Termini/blokade van okna i dalje šire prikaz da ništa ne ispadne.
+  const winList = Object.values(windows).filter(Boolean) as {
+    start: string;
+    end: string;
+  }[];
+  let dayStart: number;
+  let dayEnd: number;
+  if (winList.length > 0) {
+    dayStart = Math.max(
+      0,
+      Math.floor((Math.min(...winList.map((w) => toMinutes(w.start))) - 60) / 60) * 60
+    );
+    dayEnd = Math.min(
+      24 * 60,
+      Math.ceil((Math.max(...winList.map((w) => toMinutes(w.end))) + 60) / 60) * 60
+    );
+  } else {
+    // Niko ne radi taj dan - kratak prikaz, kolone su ionako šrafirane
+    dayStart = 9 * 60;
+    dayEnd = 17 * 60;
+  }
   const widen = (startT: string, endT: string) => {
     dayStart = Math.min(dayStart, Math.floor(toMinutes(startT.slice(0, 5)) / 60) * 60);
     dayEnd = Math.max(dayEnd, Math.ceil(toMinutes(endT.slice(0, 5)) / 60) * 60);
   };
   bookings.forEach((b) => widen(b.start_time, b.end_time));
   blockedSlots.forEach((b) => widen(b.start_time, b.end_time));
-  Object.values(windows).forEach((w) => w && widen(w.start, w.end));
 
   const top = (minutes: number) => (minutes - dayStart) * PX_PER_MIN;
+  const showNow = nowMin !== null && nowMin >= dayStart && nowMin <= dayEnd;
 
   const hours: number[] = [];
   for (let m = dayStart; m < dayEnd; m += 60) hours.push(m);
@@ -523,8 +579,14 @@ export function CalendarView({
     <div>
       <div className="mb-4 flex gap-2">
         {/* key={day}: promena dana kroz strelice resetuje datume u formama */}
-        <NewBookingDialog key={`nb-${day}`} day={day} staff={staff} services={services} />
-        <BlockDialog key={`bl-${day}`} day={day} staff={staff} />
+        <NewBookingDialog
+          key={`nb-${day}`}
+          day={day}
+          staff={staff}
+          services={services}
+          defaultOpen={openNew}
+        />
+        <BlockDialog key={`bl-${day}`} day={day} staff={staff} defaultOpen={openBlock} />
       </div>
 
       <div className="overflow-x-auto rounded-[2rem] bg-white p-3 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
@@ -541,7 +603,22 @@ export function CalendarView({
               key={m.id}
               className="border-b border-l bg-muted/40 p-2 text-center text-sm font-medium"
             >
-              {m.name}
+              <span className="inline-flex max-w-full items-center justify-center gap-2">
+                {m.photo_url ? (
+                  <Image
+                    src={m.photo_url}
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="size-6 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-ink/10 text-[10px] font-bold">
+                    {m.name.charAt(0)}
+                  </span>
+                )}
+                <span className="truncate">{m.name}</span>
+              </span>
             </div>
           ))}
 
@@ -556,6 +633,17 @@ export function CalendarView({
                 {String(m / 60).padStart(2, "0")}:00
               </span>
             ))}
+            {showNow && (
+              <div
+                ref={nowRef}
+                className="absolute right-1 z-10 -translate-y-1/2"
+                style={{ top: top(nowMin!) }}
+              >
+                <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white">
+                  {fromMinutes(nowMin!)}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Kolone po zaposlenom */}
@@ -580,6 +668,13 @@ export function CalendarView({
                     style={{ top: top(h) }}
                   />
                 ))}
+                {/* Linija trenutnog vremena (samo za današnji dan) */}
+                {showNow && (
+                  <div
+                    className="pointer-events-none absolute inset-x-0 z-10 h-px bg-red-500"
+                    style={{ top: top(nowMin!) }}
+                  />
+                )}
                 {win === null ? (
                   <div className="absolute inset-0" style={{ backgroundImage: HATCH }}>
                     <span className="absolute left-1/2 top-8 -translate-x-1/2 rounded-full bg-white px-3 py-1 text-xs font-medium text-ink/50 ring-1 ring-ink/10">

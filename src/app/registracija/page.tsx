@@ -114,7 +114,12 @@ export default function RegisterPage() {
       <TerminerLogo href="/" />
       <Card className="w-full max-w-sm rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
         <CardHeader>
-          <CardTitle>Registruj svoj salon</CardTitle>
+          <CardTitle className="text-2xl font-extrabold tracking-tight">Registruj svoj salon</CardTitle>
+          {/* Najjači argument sa landinga ponovljen na koraku odluke */}
+          <p className="text-sm text-muted-foreground">
+            Prvih <span className="font-semibold text-ink">30 dana besplatno</span> - bez
+            kartice, bez obaveze.
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
@@ -163,7 +168,7 @@ export default function RegisterPage() {
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85" disabled={loading}>
               {loading ? "Kreiranje naloga..." : "Napravi nalog"}
             </Button>
             <p className="text-center text-xs text-muted-foreground">

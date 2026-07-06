@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <>
             <CardHeader>
-              <CardTitle>Zaboravljena lozinka</CardTitle>
+              <CardTitle className="text-2xl font-extrabold tracking-tight">Zaboravljena lozinka</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={onSubmit} className="space-y-4">
@@ -70,7 +70,7 @@ export default function ForgotPasswordPage() {
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85" disabled={loading}>
                   {loading ? "Slanje..." : "Pošalji link za novu lozinku"}
                 </Button>
                 <p className="text-center text-sm text-muted-foreground">

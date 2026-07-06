@@ -1,0 +1,120 @@
+"use client";
+
+import Image from "next/image";
+import { useCallback, useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { FadeUp, ZoomOnHover } from "@/components/animate";
+import type { Gallery } from "@/lib/types";
+
+// Galerija sa lightbox pregledom: tap na rad = pun prikaz, strelice/swipe
+// za listanje, Escape ili tap na pozadinu za izlaz.
+export function GalleryGrid({ images }: { images: Gallery[] }) {
+  const [idx, setIdx] = useState<number | null>(null);
+
+  const step = useCallback(
+    (delta: number) => {
+      setIdx((i) =>
+        i === null ? i : (i + delta + images.length) % images.length
+      );
+    },
+    [images.length]
+  );
+
+  useEffect(() => {
+    if (idx === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIdx(null);
+      if (e.key === "ArrowLeft") step(-1);
+      if (e.key === "ArrowRight") step(1);
+    };
+    window.addEventListener("keydown", onKey);
+    // Zaključaj skrol pozadine dok je lightbox otvoren
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [idx, step]);
+
+  return (
+    <>
+      <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {images.map((g, i) => (
+          <FadeUp key={g.id} delay={i * 0.05}>
+            <ZoomOnHover className="overflow-hidden rounded-xl">
+              <button
+                type="button"
+                onClick={() => setIdx(i)}
+                className="block w-full cursor-zoom-in"
+                aria-label="Uvećaj fotografiju"
+              >
+                <Image
+                  src={g.image_url}
+                  alt=""
+                  width={400}
+                  height={400}
+                  className="aspect-square w-full object-cover"
+                />
+              </button>
+            </ZoomOnHover>
+          </FadeUp>
+        ))}
+      </div>
+
+      {idx !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setIdx(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={images[idx].image_url}
+            alt=""
+            className="max-h-[85vh] max-w-full rounded-xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            onClick={() => setIdx(null)}
+            aria-label="Zatvori"
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2.5 text-white transition-colors hover:bg-white/25"
+          >
+            <X className="size-5" />
+          </button>
+          {images.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  step(-1);
+                }}
+                aria-label="Prethodna"
+                className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2.5 text-white transition-colors hover:bg-white/25"
+              >
+                <ChevronLeft className="size-6" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  step(1);
+                }}
+                aria-label="Sledeća"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2.5 text-white transition-colors hover:bg-white/25"
+              >
+                <ChevronRight className="size-6" />
+              </button>
+              <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white">
+                {idx + 1} / {images.length}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+    </>
+  );
+}

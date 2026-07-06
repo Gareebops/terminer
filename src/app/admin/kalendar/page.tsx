@@ -25,17 +25,16 @@ function addDays(dateStr: string, n: number): string {
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ dan?: string }>;
+  searchParams: Promise<{ dan?: string; novo?: string; blokada?: string }>;
 }) {
-  const { dan } = await searchParams;
+  const { dan, novo, blokada } = await searchParams;
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
 
   // "Danas" u zoni salona - server na Vercelu radi u UTC, pa bi posle
   // ponoći po Beogradu prikazivao jučerašnji dan
-  const day = /^\d{4}-\d{2}-\d{2}$/.test(dan ?? "")
-    ? dan!
-    : nowInZone(tenant.timezone).date;
+  const now = nowInZone(tenant.timezone);
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(dan ?? "") ? dan! : now.date;
   const dayDate = new Date(`${day}T12:00:00`);
 
   const [staffRes, servicesRes, bookingsRes, blockedRes, hoursRes, exceptionsRes] =
@@ -121,6 +120,9 @@ export default async function CalendarPage({
           }
           blockedSlots={(blockedRes.data ?? []) as BlockedSlot[]}
           windows={windows}
+          nowMinutes={day === now.date ? now.minutes : null}
+          openNew={novo === "1"}
+          openBlock={blokada === "1"}
         />
       </div>
     </div>

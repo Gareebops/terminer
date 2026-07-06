@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -204,11 +205,28 @@ export function ScheduleGrid({
           {staff.map((m) => (
             <tr key={m.id}>
               <td className="border-b p-2">
-                <div className="font-medium">{m.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {m.schedule_mode === "rotating"
-                    ? `Smene · ova nedelja: ${parityForStaff(weekDates[0], m) === 0 ? "A" : "B"}`
-                    : "Isto svake nedelje"}
+                <div className="flex items-center gap-2.5">
+                  {m.photo_url ? (
+                    <Image
+                      src={m.photo_url}
+                      alt=""
+                      width={32}
+                      height={32}
+                      className="size-8 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-ink/10 text-xs font-bold">
+                      {m.name.charAt(0)}
+                    </span>
+                  )}
+                  <div>
+                    <div className="font-medium">{m.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {m.schedule_mode === "rotating"
+                        ? `Smene · ova nedelja: ${parityForStaff(weekDates[0], m) === 0 ? "A" : "B"}`
+                        : "Isto svake nedelje"}
+                    </div>
+                  </div>
                 </div>
               </td>
               {weekDates.map((d) => {
