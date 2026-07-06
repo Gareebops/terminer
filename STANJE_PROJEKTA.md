@@ -4,6 +4,41 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 6.7 (6) — MOBILNA APLIKACIJA (Faza 0 gotova, verifikovano kroz
+preview):** nova Expo app (React Native, SDK 57, TypeScript) u `mobile/` —
+admin za telefon, cilj Google Play + App Store, koegzistira sa webom (ista
+Supabase baza i nalozi). ODLUKE: Expo + EAS Build (Capacitor odbačen — Apple
+4.2 "minimum functionality" rizik; Flutter — nula reuse-a); čitanja idu
+DIREKTNO na Supabase pod RLS-om, istim upitima kao web admin (`bookings` ima
+denormalizovan `customer_name`, radi bez API-ja); pisanja sa poslovnom
+logikom (konflikti, mejlovi, normalizacije) ići će kroz buduće `/api/mobile/*`
+REST rute na Next.js sa Supabase JWT u Authorization headeru — logika se NE
+duplira u appu. Faza 0 sadržaj: prijava (supabase-js + AsyncStorage sesija,
+auth gate = `Stack.Protected` u [mobile/src/app/_layout.tsx](mobile/src/app/_layout.tsx)),
+tabovi Početna/Kalendar/Rezervacije/Više; Početna = pozdrav po dobu dana +
+tamna kartica (datum sr-Latn-RS, broj termina, srpska množina) + današnji
+termini sa status bedževima ([mobile/src/lib/status.ts](mobile/src/lib/status.ts)
+preslikan sa weba) + pull-to-refresh; Kalendar/Rezervacije = "uskoro" ekran
+sa dugmetom ka web adminu; Više = salon/email/linkovi/odjava. DS tokeni u
+[mobile/src/constants/theme.ts](mobile/src/constants/theme.ts) (canvas/ink/
+mint/lavanda, Jakarta kroz @expo-google-fonts, radius 32/16/pill). Env:
+`mobile/.env.local` (EXPO_PUBLIC_SUPABASE_URL/ANON_KEY — gitignorovan, vidi
+.env.example). Pokretanje: `cd mobile && npx expo start` (Expo Go QR); web
+provera kroz launch config `terminer-mobile-web` (port 8090). VERIFIKOVANO
+kroz web preview: prijava test-adminom → Salon Aura + današnji termin
+(privremeni booking service-rolom, obrisan), pogrešna lozinka → srpska
+poruka, odjava → nazad na prijavu, konzola čista; native build JOŠ NIJE
+rađen (čeka EAS + naloge). DALJE FAZE: F1 Kalendar + Rezervacije (promena
+statusa kroz API rute); F2 upis termina/blokada + PUSH notifikacije
+(expo-notifications, nova tabela `push_tokens` + slanje iz createBooking
+kroz Expo Push API — glavni razlog appa); F3 store paket (ikonica, splash,
+screenshots, EAS build, TestFlight/Play interno, submit). MIHAJLO pre F3
+(kreni odmah, najduže traje): D-U-N-S broj za Čvorište → Apple Developer
+$99/god (organizacija) + Google Play Console $25 (OBAVEZNO organizacioni
+nalog — lični zahteva zatvoreni test 12 testera/14 dana) + Expo nalog.
+Bundle ID `rs.terminer.app` već u app.json. Apple pre submita traži i
+"brisanje naloga iz aplikacije" — dodati u Više.
+
 **Novo od 6.7 (5) — DIZAJN/UX paketi (analiza + 3 paketa, verifikovano kroz
 preview):** (1) Usaglašenost: datumi sa imenima dana/meseci na sr-Latn-RS
 (sr-RS daje ćirilicu!); auth CTA dugmad mint pill + extrabold naslovi +
