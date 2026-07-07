@@ -140,6 +140,23 @@
   html {
     @apply font-sans;
   }
+  /* Tastaturni fokus: prsten u boji teksta elementa — currentColor se sam
+     prilagođava svakoj podlozi (ink na kanvasu, belo na tamnim karticama,
+     boja brenda na sajtu salona). Miš/tap ne dobijaju prsten. */
+  :focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Horizontalni skrol bez vidljivog scrollbara (trake dana, galerije) */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Terminer admin scope — DS polish za shadcn komponente unutar admina.

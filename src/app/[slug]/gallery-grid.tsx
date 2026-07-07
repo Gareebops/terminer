@@ -10,6 +10,8 @@ import type { Gallery } from "@/lib/types";
 // za listanje, Escape ili tap na pozadinu za izlaz.
 export function GalleryGrid({ images }: { images: Gallery[] }) {
   const [idx, setIdx] = useState<number | null>(null);
+  // Početna X koordinata dodira - za swipe listanje na telefonu
+  const [touchX, setTouchX] = useState<number | null>(null);
 
   const step = useCallback(
     (delta: number) => {
@@ -66,6 +68,14 @@ export function GalleryGrid({ images }: { images: Gallery[] }) {
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
           onClick={() => setIdx(null)}
+          onTouchStart={(e) => setTouchX(e.touches[0].clientX)}
+          onTouchEnd={(e) => {
+            if (touchX === null) return;
+            const dx = e.changedTouches[0].clientX - touchX;
+            // Prag od 48px razdvaja swipe od običnog tapa (tap = zatvaranje)
+            if (Math.abs(dx) > 48) step(dx < 0 ? 1 : -1);
+            setTouchX(null);
+          }}
           role="dialog"
           aria-modal="true"
         >

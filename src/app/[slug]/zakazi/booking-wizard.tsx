@@ -115,7 +115,7 @@ function DayStrip({
   }, []);
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2">
+    <div className="scrollbar-none flex gap-2 overflow-x-auto pb-2">
       {days.map((d) => (
         <button
           key={d.iso}
@@ -134,27 +134,66 @@ function DayStrip({
   );
 }
 
+// Smer prati kretanje kroz tok: napred = sadržaj ulazi zdesna,
+// nazad = sleva. custom prop stiže i do exit animacije kroz AnimatePresence.
+const paneVariants = {
+  enter: (dir: 1 | -1) => ({ opacity: 0, x: 28 * dir }),
+  center: { opacity: 1, x: 0 },
+  exit: (dir: 1 | -1) => ({ opacity: 0, x: -28 * dir }),
+};
+
 function StepPane({
   stepKey,
+  direction,
   children,
 }: {
   stepKey: string;
+  direction: 1 | -1;
   children: React.ReactNode;
 }) {
   const reduce = useReducedMotion();
   if (reduce) return <div>{children}</div>;
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="wait" custom={direction}>
       <motion.div
         key={stepKey}
-        initial={{ opacity: 0, x: 24 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -24 }}
+        custom={direction}
+        variants={paneVariants}
+        initial="enter"
+        animate="center"
+        exit="exit"
         transition={{ duration: 0.22, ease: "easeOut" }}
       >
         {children}
       </motion.div>
     </AnimatePresence>
+  );
+}
+
+// Čip u živom rezimeu: uskoči spring animacijom kad izbor legne;
+// promena vrednosti (drugi key) ponovi ulazak
+function SummaryChip({
+  children,
+  accent = false,
+}: {
+  children: React.ReactNode;
+  accent?: boolean;
+}) {
+  const reduce = useReducedMotion();
+  const cls = accent
+    ? "rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary"
+    : "rounded-full border px-3 py-1 text-sm text-muted-foreground";
+  if (reduce) return <span className={cls}>{children}</span>;
+  return (
+    <motion.span
+      layout
+      className={cls}
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ type: "spring", stiffness: 420, damping: 26 }}
+    >
+      {children}
+    </motion.span>
   );
 }
 
@@ -168,6 +207,8 @@ export function BookingWizard({
 }: Props) {
   const reduce = useReducedMotion();
   const [step, setStep] = useState<Step>(0);
+  // Smer poslednje promene koraka - StepPane klizi u pravom pravcu
+  const [direction, setDirection] = useState<1 | -1>(1);
   const [done, setDone] = useState(false);
   const [service, setService] = useState<Service | null>(null);
   const [member, setMember] = useState<Staff | null>(null);
@@ -187,6 +228,18 @@ export function BookingWizard({
   // termina tada vodi pravo na usluge
   const [staffSkipped, setStaffSkipped] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  function go(target: Step) {
+    setDirection(target > step ? 1 : -1);
+    setStep(target);
+  }
+
+  // Današnji dan je preselektovan - korak "Termin" odmah nudi slotove
+  // umesto praznog "Izaberi dan". U efektu (ne u useState init) da SSR i
+  // klijent ne bi izračunali različit datum oko ponoći.
+  useEffect(() => {
+    setDate((d) => d ?? formatDateISO(new Date()));
+  }, []);
 
   const availableStaff = useMemo(() => {
     if (!service) return [];
@@ -232,21 +285,21 @@ export function BookingWizard({
     if (eligible.length === 1) {
       setMember(eligible[0]);
       setStaffSkipped(true);
-      setStep(2);
+      go(2);
     } else {
       setMember(null);
       setStaffSkipped(false);
-      setStep(1);
+      go(1);
     }
   }
 
   // Klik na pređeni korak u indikatoru: preskočen korak "Frizer" vodi na usluge
   function jumpToStep(target: Step) {
     if (target === 1 && staffSkipped) {
-      setStep(0);
+      go(0);
       return;
     }
-    setStep(target);
+    go(target);
   }
 
   function submit() {
@@ -279,7 +332,7 @@ export function BookingWizard({
             date,
           });
           setSlots("error" in r ? [] : r.slots);
-          setStep(2);
+          go(2);
         }
       }
     });
@@ -296,66 +349,103 @@ export function BookingWizard({
     : "";
 
   if (done && service && member && date && time) {
+    const details = [
+      { k: "Usluga", v: service.name },
+      { k: "Kod koga", v: member.name },
+      { k: "Termin", v: `${dateLabel} u ${time}` },
+      { k: "Cena", v: formatPrice(service.price, service.currency) },
+    ];
     return (
-      <Card>
-        {/* Mala proslava - klijent ovo pamti (poštuje reduced-motion) */}
+      <>
+        {/* Mala proslava - klijent ovo pamti (poštuje reduced-motion).
+            Van motion wrappera: fixed pozicija bi se vezala za transform. */}
         <ConfettiBurst />
-        <CardContent className="pt-10 pb-10 text-center">
-          {reduce ? (
-            <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-              <Check className="size-8" />
-            </span>
-          ) : (
-            <motion.span
-              className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 260, damping: 16 }}
-            >
-              <Check className="size-8" />
-            </motion.span>
-          )}
-          <h2 className="mt-5 font-heading text-2xl font-bold">Termin je zakazan!</h2>
-          {/* Bez "kod {ime}" - imena se ne menjaju kroz padeže programski */}
-          <p className="mt-2 text-muted-foreground">
-            {service.name} · {member.name}
-          </p>
-          <p className="font-medium">
-            {dateLabel} u {time}
-          </p>
-          {emailSent && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Potvrdu sa linkom za otkazivanje smo poslali na {email}.
-            </p>
-          )}
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() =>
-                downloadICS(
-                  `termin-${date}.ics`,
-                  buildICS({
-                    title: `${service.name} - ${salonName}`,
-                    description: `Kod: ${member.name}`,
-                    location: address ?? undefined,
-                    date,
-                    startTime: time,
-                    endTime: endTimeFor(time),
-                  })
-                )
-              }
-            >
-              <CalendarPlus className="size-4" /> Dodaj u kalendar
-            </Button>
-            <Button asChild>
-              <Link href={`/${slug}`}>Nazad na sajt</Link>
-            </Button>
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            Vidimo se, {name.split(" ")[0]}!
-          </p>
-        </CardContent>
-      </Card>
+        <motion.div
+          initial={reduce ? false : { opacity: 0, y: -32, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ type: "spring", stiffness: 220, damping: 22 }}
+        >
+          {/* "Ulaznica": perforacija deli proslavu od detalja termina */}
+          <Card className="relative overflow-hidden">
+            <CardContent className="pt-10 pb-2 text-center">
+              {reduce ? (
+                <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Check className="size-8" />
+                </span>
+              ) : (
+                <motion.span
+                  className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 260,
+                    damping: 16,
+                    delay: 0.15,
+                  }}
+                >
+                  <Check className="size-8" />
+                </motion.span>
+              )}
+              <h2 className="mt-5 font-heading text-2xl font-bold">
+                Termin je zakazan!
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">{salonName}</p>
+            </CardContent>
+
+            <div className="relative px-6" aria-hidden>
+              <div className="border-t border-dashed" />
+              <span className="absolute -left-3 top-1/2 size-6 -translate-y-1/2 rounded-full border bg-background" />
+              <span className="absolute -right-3 top-1/2 size-6 -translate-y-1/2 rounded-full border bg-background" />
+            </div>
+
+            <CardContent className="pt-2 pb-10">
+              <dl className="mx-auto max-w-xs space-y-2 text-sm">
+                {details.map(({ k, v }) => (
+                  <div
+                    key={k}
+                    className="flex items-baseline justify-between gap-4"
+                  >
+                    <dt className="shrink-0 text-muted-foreground">{k}</dt>
+                    <dd className="text-right font-medium">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+              {emailSent && (
+                <p className="mt-4 text-center text-sm text-muted-foreground">
+                  Potvrdu sa linkom za otkazivanje smo poslali na {email}.
+                </p>
+              )}
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    downloadICS(
+                      `termin-${date}.ics`,
+                      buildICS({
+                        title: `${service.name} - ${salonName}`,
+                        description: `Kod: ${member.name}`,
+                        location: address ?? undefined,
+                        date,
+                        startTime: time,
+                        endTime: endTimeFor(time),
+                      })
+                    )
+                  }
+                >
+                  <CalendarPlus className="size-4" /> Dodaj u kalendar
+                </Button>
+                <Button asChild>
+                  <Link href={`/${slug}`}>Nazad na sajt</Link>
+                </Button>
+              </div>
+              <p className="mt-4 text-center text-sm text-muted-foreground">
+                Vidimo se, {name.split(" ")[0]}!
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </>
     );
   }
 
@@ -369,22 +459,27 @@ export function BookingWizard({
         </p>
       )}
 
-      {/* Rezime izbora */}
+      {/* Živi rezime izbora: čipovi uskaču kako izbor raste, cena je uvek
+          vidljiva od prvog koraka (klijent zna šta potvrđuje) */}
       {service && (
-        <p className="mt-4 text-sm text-muted-foreground">
-          {service.name}
-          {member && <> · {member.name}</>}
-          {date && time && (
-            <>
-              {" "}
-              · {dateLabel} u {time}
-            </>
+        <div className="mt-4 flex flex-wrap items-center gap-1.5">
+          <SummaryChip key={`s-${service.id}`}>{service.name}</SummaryChip>
+          {member && (
+            <SummaryChip key={`m-${member.id}`}>{member.name}</SummaryChip>
           )}
-        </p>
+          {date && time && (
+            <SummaryChip key={`t-${date}-${time}`}>
+              {dateLabel} u {time}
+            </SummaryChip>
+          )}
+          <SummaryChip key={`p-${service.id}`} accent>
+            {formatPrice(service.price, service.currency)}
+          </SummaryChip>
+        </div>
       )}
 
       <div className="mt-6">
-        <StepPane stepKey={String(step)}>
+        <StepPane stepKey={String(step)} direction={direction}>
           {step === 0 && (
             <div className="space-y-2">
               {services.map((s) => (
@@ -425,7 +520,7 @@ export function BookingWizard({
                   className="flex w-full items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent"
                   onClick={() => {
                     setMember(m);
-                    setStep(2);
+                    go(2);
                   }}
                 >
                   {m.photo_url ? (
@@ -452,7 +547,7 @@ export function BookingWizard({
                   Trenutno niko ne radi ovu uslugu. Probaj drugu ili pozovi salon.
                 </p>
               )}
-              <Button variant="ghost" onClick={() => setStep(0)}>
+              <Button variant="ghost" onClick={() => go(0)}>
                 Nazad
               </Button>
             </div>
@@ -483,27 +578,49 @@ export function BookingWizard({
                   </p>
                 )}
                 {date && slots !== null && slots.length > 0 && (
-                  <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                  // key={date}: promena dana ponovi stagger ulazak slotova
+                  <motion.div
+                    key={date}
+                    className="grid grid-cols-4 gap-2 sm:grid-cols-6"
+                    initial={reduce ? false : "hidden"}
+                    animate="show"
+                    variants={{
+                      show: { transition: { staggerChildren: 0.016 } },
+                    }}
+                  >
                     {slots.map((s) => (
-                      <Button
+                      <motion.div
                         key={s}
-                        variant={time === s ? "default" : "outline"}
-                        onClick={() => {
-                          // Izbor vremena odmah vodi na podatke - jedan klik manje
-                          setTime(s);
-                          setStep(3);
+                        variants={{
+                          hidden: { opacity: 0, y: 6, scale: 0.92 },
+                          show: {
+                            opacity: 1,
+                            y: 0,
+                            scale: 1,
+                            transition: { duration: 0.18, ease: "easeOut" },
+                          },
                         }}
                       >
-                        {s}
-                      </Button>
+                        <Button
+                          className="w-full"
+                          variant={time === s ? "default" : "outline"}
+                          onClick={() => {
+                            // Izbor vremena odmah vodi na podatke - jedan klik manje
+                            setTime(s);
+                            go(3);
+                          }}
+                        >
+                          {s}
+                        </Button>
+                      </motion.div>
                     ))}
-                  </div>
+                  </motion.div>
                 )}
               </div>
               <div className="mt-6 flex gap-2">
                 <Button
                   variant="ghost"
-                  onClick={() => setStep(staffSkipped ? 0 : 1)}
+                  onClick={() => go(staffSkipped ? 0 : 1)}
                 >
                   Nazad
                 </Button>
@@ -554,15 +671,21 @@ export function BookingWizard({
                   onChange={(e) => setWebsite(e.target.value)}
                 />
               </div>
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setStep(2)}>
+              {/* Na telefonu: sticky traka na dnu ekrana sa full-width CTA
+                  (cena na dugmetu = poslednja potvrda pre klika);
+                  na desktopu ostaje običan red dugmadi */}
+              <div className="sticky bottom-0 z-10 -mx-4 flex items-center gap-2 border-t bg-background/85 px-4 py-3 backdrop-blur sm:static sm:z-auto sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+                <Button variant="ghost" onClick={() => go(2)}>
                   Nazad
                 </Button>
                 <Button
+                  className="h-12 flex-1 text-base sm:h-9 sm:flex-none sm:text-sm"
                   disabled={pending || name.trim().length < 2 || phone.trim().length < 6}
                   onClick={submit}
                 >
-                  {pending ? "Zakazujem..." : "Potvrdi termin"}
+                  {pending
+                    ? "Zakazujem..."
+                    : `Potvrdi termin${service ? ` · ${formatPrice(service.price, service.currency)}` : ""}`}
                 </Button>
               </div>
             </div>

@@ -1,7 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { AtSign, CalendarClock, Clock, MapPin, Phone } from "lucide-react";
+import {
+  AtSign,
+  CalendarClock,
+  ChevronDown,
+  Clock,
+  MapPin,
+  Phone,
+} from "lucide-react";
 import { FadeUp, HeroItem, HeroStagger } from "@/components/animate";
 import { Button } from "@/components/ui/button";
 import { DAY_NAMES_SR, formatPrice, fromMinutes } from "@/lib/booking/slots";
@@ -210,6 +217,15 @@ export default async function SalonPage({
             )}
           </HeroStagger>
         </div>
+        {/* Scroll cue: tamni hero ume da deluje kao kraj stranice,
+            pogotovo na telefonu - pulsirajuća strelica vodi ka ponudi */}
+        <a
+          href="#cenovnik"
+          aria-label="Pogledaj ponudu"
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full p-2 text-white/50 transition-colors hover:text-white motion-safe:animate-bounce"
+        >
+          <ChevronDown className="size-5" />
+        </a>
       </section>
 
       {/* Usluge / cenovnik */}

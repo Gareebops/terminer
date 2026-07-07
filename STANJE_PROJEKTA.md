@@ -4,6 +4,30 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 7.7 (3) — WIZARD WOW + QUICK FIX PAKET (analiza stvarnog stanja pa
+ispravke; verifikovano kroz preview desktop+mobil, probni booking obrisan):**
+Wizard: (1) živi rezime kao ČIPOVI (SummaryChip u booking-wizard.tsx) — usluga/
+osoba/termin/CENA uskaču spring animacijom, cena vidljiva od 1. koraka;
+(2) današnji dan PRESELEKTOVAN (useEffect, ne useState init — SSR/klijent
+oko ponoći); (3) stagger ulazak slotova (key={date} ponavlja pri promeni
+dana); (4) smerne tranzicije koraka (direction state + go() helper,
+custom prop kroz AnimatePresence — napred zdesna, nazad sleva); (5) mobilni
+sticky CTA na dnu ekrana, full-width, sa cenom na dugmetu ("Potvrdi termin
+· 900 RSD"); (6) ekran uspeha = "ULAZNICA" (spring drop-in, perforacija sa
+notch krugovima, detalji usluga/kod koga/termin/cena; ConfettiBurst OSTAJE
+VAN motion wrappera — fixed pozicija bi se vezala za transform!);
+(7) beli scrollbar trake dana sakriven (.scrollbar-none utility u globals).
+Ostalo: focus-visible prsten `currentColor` u @layer base (prilagođava se
+svakoj podlozi); [slug]/zakazi/loading.tsx skeleton (tema salona važi —
+renderuje se unutar [slug]/layout-a); hero-demo datum dinamičan (sledeći
+petak, suppressHydrationWarning); scroll cue chevron na hero sekciji sajta
+salona (motion-safe:animate-bounce → #cenovnik); swipe u lightbox galeriji
+(touch handleri, prag 48px da se ne meša sa tap-za-zatvaranje); labela
+"Pil" → "Pilula" u Podešavanjima. Nalazi analize koji NISU rađeni (svesno):
+email slanje blokira booking odgovor (~0.5s, prihvatljivo), [slug]/loading
+ne pomaže (layout fetch blokira pre Suspense granice), animacija upisa u
+admin kalendaru (server-render, nema "new" signala).
+
 **Novo od 7.7 (2) — SIGURNOSNA MREŽA (unit testovi + Sentry, verifikovano):**
 (1) Vitest uveden (`npm test`, config u [vitest.config.ts](vitest.config.ts)
 sa `@` aliasom; testovi kolocirani `src/**/*.test.ts`, ne diraju bazu ni

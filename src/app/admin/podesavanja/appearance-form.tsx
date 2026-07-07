@@ -17,7 +17,7 @@ import { updateAppearance, updateSiteImage } from "../actions";
 
 const BUTTON_STYLES: { id: ButtonStyle; label: string; radius: string }[] = [
   { id: "rounded", label: "Zaobljena", radius: "0.5rem" },
-  { id: "pill", label: "Pil", radius: "999px" },
+  { id: "pill", label: "Pilula", radius: "999px" },
   { id: "square", label: "Uglasta", radius: "0.25rem" },
 ];
 

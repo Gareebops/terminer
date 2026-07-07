@@ -27,6 +27,14 @@ const STAFF = [
 
 const SLOTS = ["10:00", "10:30", "11:00", "12:00", "12:30", "13:00"];
 
+// Sledeći petak (nikad današnji) - fiktivni demo, ali datum u prošlosti
+// bi delovao zapušteno. sr-Latn-RS daje "10. jul" oblik.
+function nextFridayLabel(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + (((5 - d.getDay() + 7) % 7) || 7));
+  return `Petak, ${d.toLocaleDateString("sr-Latn-RS", { day: "numeric", month: "long" })}`;
+}
+
 const listStagger = {
   hidden: {},
   show: { transition: { staggerChildren: 0.09 } },
@@ -144,8 +152,13 @@ function PhoneScreen({ phase, tapped }: { phase: number; tapped: boolean }) {
               animate="show"
               exit={{ opacity: 0, x: -16, transition: { duration: 0.18 } }}
             >
-              <p className="text-[10px] font-bold uppercase tracking-wider text-ink/40">
-                Petak, 3. jul
+              {/* suppressHydrationWarning: oko ponoći se server i klijent
+                  mogu razići za dan - nebitno za fiktivni demo */}
+              <p
+                suppressHydrationWarning
+                className="text-[10px] font-bold uppercase tracking-wider text-ink/40"
+              >
+                {nextFridayLabel()}
               </p>
               <motion.div variants={listItem} className="mt-1.5 flex gap-1.5">
                 {["Danas", "Sutra", "Pet", "Sub"].map((d, i) => (
