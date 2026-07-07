@@ -1,8 +1,39 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 6. jul 2026. Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 7. jul 2026. Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
+
+**Novo od 7.7 (1) — PRE-LAUNCH POLIRANJE (verifikovano kroz preview + build):**
+(1) Brendirana 404 ([src/app/not-found.tsx](src/app/not-found.tsx)) — hvata
+`notFound()` sa svih mesta (pogrešan slug, nevažeći link otkazivanja, tuđa
+faktura...) i sve nepostojeće adrese; ranije je izlazio default engleski Next
+ekran. (2) [error.tsx](src/app/error.tsx) + [global-error.tsx](src/app/global-error.tsx)
+— "Nešto je pošlo naopako" + "Pokušaj ponovo" + šifra greške (digest, za
+traženje u server logovima). PAZI: u ovom Next-u je prop `unstable_retry`, ne
+`reset`; global-error je namerno bez globals.css/next-font (inline stilovi)
+jer menja ceo root layout. (3) OG slike kroz next/og:
+[src/lib/og.tsx](src/lib/og.tsx) (fontovi + Terminer kartica),
+root `opengraph-image.tsx` (ink kartica, mint pill) i
+`[slug]/opengraph-image.tsx` (gradijent boje brenda salona +
+gradientForeground kontrast, ime salona, terminer.rs/{slug}; fallback =
+Terminer kartica za nepostojeći/neobjavljen/suspendovan; revalidate 1h;
+service-role upit BEZ cookies da slika sme u keš). GOTCHAS: satori traži TTF
+— statični Plus Jakarta Sans u `src/assets/fonts/` (latin-ext glifovi
+provereni skriptom), readFile putanje moraju biti literale zbog Vercel file
+tracinga; satori NE podržava WebP pa logo salona namerno nije na kartici
+(logoi su WebP posle lib/image.ts). (4) `metadataBase` + openGraph/twitter
+defaults u root layoutu; [slug] generateMetadata dobio openGraph blok
+(openGraph se ne nasleđuje po poljima — ceo objekat se zamenjuje).
+(5) [sitemap.ts](src/app/sitemap.ts): landing + pravne + objavljeni
+nesuspendovani saloni (+ /zakazi), revalidate 1h; robots.ts sada navodi
+sitemap. U sitemap trenutno ulaze i objavljeni test saloni (studio-test,
+ivona-studio, studio-ragazzi) — rešava se čišćenjem test podataka pre
+launcha. (6) Vercel Web Analytics (`@vercel/analytics/next`, `<Analytics/>`
+u root layoutu) — Mihajlo još treba da UKLJUČI Analytics na Vercel projektu
+(Project → Analytics → Enable), bez toga skripta na produkciji vraća 404.
+(7) "Kontakt" (mailto CONTACT_EMAIL) u footeru landinga — adresa se menja na
+jednom mestu u legal-page.tsx.
 
 **Novo od 6.7 (6) — MOBILNA APLIKACIJA (Faza 0 gotova, verifikovano kroz
 preview):** nova Expo app (React Native, SDK 57, TypeScript) u `mobile/` —
@@ -560,7 +591,10 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
       prebaciti sa gmail-a na kontakt@terminer.rs kad domen legne.
 - [ ] Pravne strane pregledati očima vlasnika: `/privatnost` i `/uslovi`
       (nacrt pisao AI 3.7.2026 — proveriti PIB/MB i formulacije).
-- [ ] OG slika za deljenje linka (dizajnerski zadatak, može i posle launcha).
+- [x] OG slika za deljenje linka — generisana kroz next/og 7.7 (Terminer
+      kartica + kartica po salonu u boji brenda).
+- [ ] Uključiti Web Analytics na Vercel projektu (Project → Analytics →
+      Enable) — kod je na mestu od 7.7, bez ovoga se podaci ne skupljaju.
 
 ## 11. Kako da nastaviš (uputstvo za AI)
 

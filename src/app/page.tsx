@@ -7,6 +7,7 @@ import {
   Users,
 } from "lucide-react";
 import { HeroItem, HeroStagger } from "@/components/animate";
+import { CONTACT_EMAIL } from "@/components/legal-page";
 import { FaqAccordion } from "@/components/landing/faq";
 import { FAQ_ITEMS } from "@/components/landing/faq-items";
 import { HeroDemo } from "@/components/landing/hero-demo";
@@ -216,6 +217,12 @@ export default function HomePage() {
       <footer className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 pb-10 text-sm font-medium text-ink/50">
         <span>© {new Date().getFullYear()} Terminer</span>
         <nav className="flex gap-4">
+          <a
+            href={`mailto:${CONTACT_EMAIL}`}
+            className="hover:text-ink hover:underline"
+          >
+            Kontakt
+          </a>
           <Link href="/privatnost" className="hover:text-ink hover:underline">
             Privatnost
           </Link>

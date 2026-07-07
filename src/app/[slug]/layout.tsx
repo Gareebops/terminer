@@ -14,15 +14,26 @@ export async function generateMetadata({
   const { slug } = await params;
   const site = await getTenantSite(slug);
   if (!site) return {};
+  const title = `${site.tenant.name} - online zakazivanje`;
+  const description =
+    site.settings?.hero_subtitle ??
+    `${site.tenant.name} - zakaži svoj termin online, brzo i bez poziva.`;
   return {
     title: {
       // absolute: bez root "%s | Terminer" šablona - sajt salona nosi svoj brend
-      absolute: `${site.tenant.name} - online zakazivanje`,
+      absolute: title,
       template: `%s | ${site.tenant.name}`,
     },
-    description:
-      site.settings?.hero_subtitle ??
-      `${site.tenant.name} - zakaži svoj termin online, brzo i bez poziva.`,
+    description,
+    // openGraph iz root layouta se ne nasleđuje po poljima nego zamenjuje ceo,
+    // pa deljeni link salona ovde dobija svoj naslov (sliku daje opengraph-image.tsx)
+    openGraph: {
+      type: "website",
+      locale: "sr_RS",
+      siteName: site.tenant.name,
+      title,
+      description,
+    },
   };
 }
 

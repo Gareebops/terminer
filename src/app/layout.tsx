@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
@@ -20,12 +21,22 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  // Apsolutna osnova za og:image i ostale relativne URL-ove u metapodacima
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://terminer.rs"),
   title: {
     default: "Terminer - online zakazivanje za salone",
     template: "%s | Terminer",
   },
   description:
     "Terminer je platforma za frizerske i beauty salone: sopstveni mini-sajt i online zakazivanje termina za par minuta.",
+  openGraph: {
+    type: "website",
+    locale: "sr_RS",
+    siteName: "Terminer",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({
@@ -41,6 +52,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-sans antialiased">
         {children}
         <Toaster richColors position="top-center" />
+        <Analytics />
       </body>
     </html>
   );
