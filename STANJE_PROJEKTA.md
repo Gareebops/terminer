@@ -608,10 +608,11 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
       Odluka za Mihajla: da li salon `demo` ostaje kao javni showcase (onda mu
       prebaciti vlasništvo na Mihajlov nalog) ili se briše ceo tenant.
 - [x] Supabase Auth: email potvrda naloga uključena (4.7).
-- [ ] Supabase Auth mejlovi da idu preko Resend SMTP-a sa terminer.rs adrese
-      i našim šablonima na srpskom ([supabase/templates/](supabase/templates/)
-      — Mihajlo lepi u Dashboard → Authentication: SMTP Settings + Email
-      Templates; uputstvo dobio 4.7).
+- [x] Supabase Auth mejlovi preko Resend SMTP-a sa srpskim šablonima —
+      POTVRĐENO 7.7. živim testom: registracija šalje "Potvrdi svoj Terminer
+      nalog" sa potvrda@terminer.rs (Mihajlo podesio ranije; checklist je
+      kasnila za stvarnošću). Još proveriti: reset-password šablon i
+      Auth rate limit za mejlove.
 - [ ] `CONTACT_EMAIL` u [src/components/legal-page.tsx](src/components/legal-page.tsx)
       prebaciti sa gmail-a na kontakt@terminer.rs kad domen legne.
 - [ ] Pravne strane pregledati očima vlasnika: `/privatnost` i `/uslovi`
