@@ -4,6 +4,20 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 7.7 (4) — FAVICON SALONA ([slug]/icon.tsx, verifikovano):** logo
+salona postaje favicon njegovog sajta čim je salon objavljen i ima logo.
+Next konvencija `app/[slug]/icon.tsx` (dublji segment GAZI root icon.svg —
+provereno u head-u: /demo ima samo salonski link, landing zadržava
+Terminerov). Tri putanje: (1) objavljen + logo → 302 redirect na
+`/_next/image?w=64` (NE sirovi bytes — demo logo je 3.6MB PNG, kroz
+optimizator 535B; satori ionako ne ume WebP u koji lib/image.ts konvertuje
+upload-e); (2) objavljen bez logoa → monogram prvog slova na boji brenda
+(ImageResponse); (3) neobjavljen/suspendovan/nepostojeći → Terminer znak
+(ista vidljivost kao getTenantSite, bez curenja podataka). PAZI:
+ImageResponse default šalje `immutable, max-age=31536000` — eksplicitno
+spušteno na max-age=300 + revalidate 300, da se favicon prevrne ubrzo posle
+objave/promene logoa. Bez size/contentType exporta (format zavisi od putanje).
+
 **Novo od 7.7 (3) — WIZARD WOW + QUICK FIX PAKET (analiza stvarnog stanja pa
 ispravke; verifikovano kroz preview desktop+mobil, probni booking obrisan):**
 Wizard: (1) živi rezime kao ČIPOVI (SummaryChip u booking-wizard.tsx) — usluga/
