@@ -39,6 +39,28 @@ nalog — lični zahteva zatvoreni test 12 testera/14 dana) + Expo nalog.
 Bundle ID `rs.terminer.app` već u app.json. Apple pre submita traži i
 "brisanje naloga iz aplikacije" — dodati u Više.
 
+**Novo od 6.7 (6) — TEKSTUALNI PAKET (analiza sadržine + ispravke):**
+detaljna analiza svih korisničkih stringova pa ispravke. Gramatika:
+"kod {ime}" (nominativ!) zamenjen sa "· {ime}" u wizardu/otkazivanju/mejlu
+(imena se ne menjaju kroz padeže programski); centralni
+[src/lib/plural.ts](src/lib/plural.ts) helper (1 dan / 21 dan / 11 dana...)
+primenjen na dan/dana (baner+pretplata) i termin/termina (Početna) -
+raniji `n===1?"dan":"dana"` je grešio za 21+; "Dobro došli u Terminer"
+(rod); "Da i kod tebe ovako radi..." (rod uz ime salona); ćirilično 'е' u
+opisu demo usluge Farbanje ispravljeno u bazi. Prikladnost: javni tok
+zakazivanja više ne kaže "Frizer" (korak "Kod koga", greške "član tima" -
+platforma služi i kozmetičkim/masažnim studijima; landing/FAQ zadržavaju
+"frizera"); admin ujednačen na "Zaposleni" (bio i "Radnik"); mejl o
+otkazivanju: "(ime)" umesto "kod ime" + "Izvinjavamo se zbog
+neprijatnosti."; galerija: sekcija se zove „Izdvojeni radovi“ (pisalo
+"Naši radovi"). Pravno (checklist stavke ZATVORENE): /privatnost sada
+pominje čuvanje IP adrese pri rezervaciji; /uslovi dobili odredbu
+"Pristup podrške nalogu" (impersonacija uz saglasnost) i ispravku naziva
+sekcije Pretplata. Mihajlo NIJE hteo: crtice " - " → " — " i
+"Nije došao" → "Nedolazak" (ostaje kako je). UZ TO: koreni tsconfig sada
+exclude-uje mobile/ (Expo app ima svoj tsconfig; build je počeo da puca
+na mobile aliasima).
+
 **Novo od 6.7 (5) — DIZAJN/UX paketi (analiza + 3 paketa, verifikovano kroz
 preview):** (1) Usaglašenost: datumi sa imenima dana/meseci na sr-Latn-RS
 (sr-RS daje ćirilicu!); auth CTA dugmad mint pill + extrabold naslovi +

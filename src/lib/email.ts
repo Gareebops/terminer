@@ -103,7 +103,7 @@ export interface OwnerNoticeInput {
 function ownerNoticeHtml(input: OwnerNoticeInput): string {
   const rows: [string, string][] = [
     ["Usluga", input.serviceName],
-    ["Radnik", input.staffName],
+    ["Zaposleni", input.staffName],
     ["Datum", dateLabelSr(input.date)],
     ["Vreme", `${input.startTime} – ${input.endTime}`],
     ["Klijent", input.customerName],
@@ -198,13 +198,13 @@ function customerCancelledHtml(input: CustomerCancelledInput): string {
       <h1 style="margin:8px 0 4px;font-size:22px;color:#18181b;">Termin je otkazan</h1>
       <p style="margin:0 0 20px;font-size:14px;color:#52525b;">
         Nažalost, salon je morao da otkaže tvoj termin
-        <strong>${escapeHtml(input.serviceName)}</strong>${input.staffName ? ` kod ${escapeHtml(input.staffName)}` : ""}
+        <strong>${escapeHtml(input.serviceName)}</strong>${input.staffName ? ` (${escapeHtml(input.staffName)})` : ""}
         zakazan za <strong>${dateLabelSr(input.date)} u ${input.startTime}</strong>.
       </p>
       <p style="margin:0;font-size:14px;color:#52525b;line-height:1.6;">
         Novi termin možeš da
         <a href="${input.bookingUrl}" style="color:#18181b;font-weight:600;">zakažeš ovde</a>${phoneNote}.
-        Izvini na neprijatnosti!
+        Izvinjavamo se zbog neprijatnosti.
       </p>
     </div>
     <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#a1a1aa;">

@@ -123,7 +123,7 @@ function NewBookingDialog({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Radnik *</Label>
+            <Label>Zaposleni *</Label>
             <Select value={staffId} onValueChange={setStaffId} required>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Izaberi radnika" />
@@ -389,7 +389,7 @@ function BookingDialog({
                 {booking.start_time.slice(0, 5)}–{booking.end_time.slice(0, 5)} ·{" "}
                 {booking.services?.name ?? "Usluga"}
               </p>
-              <p className="text-muted-foreground">Radnik: {staffName}</p>
+              <p className="text-muted-foreground">Zaposleni: {staffName}</p>
               <p>
                 <a
                   href={`tel:${booking.customer_phone}`}

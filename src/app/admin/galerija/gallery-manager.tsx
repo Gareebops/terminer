@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { createClient } from "@/lib/supabase/client";
 import { prepareImageForUpload } from "@/lib/image";
+import { plural } from "@/lib/plural";
 import type { Gallery } from "@/lib/types";
 import { addGalleryImage, deleteGalleryImage, moveGalleryImage } from "../actions";
 
@@ -62,10 +63,12 @@ export function GalleryManager({
       else toast.error(res.error ?? "Greška.");
     }
     setUploading(false);
-    // Srpska množina: 1 fotografija, 2-4 fotografije, 5+ fotografija
     if (ok > 0) {
-      const rec = ok === 1 ? "fotografija" : ok < 5 ? "fotografije" : "fotografija";
-      toast.success(ok === 1 ? "Dodata 1 fotografija." : `Dodato ${ok} ${rec}.`);
+      toast.success(
+        ok === 1
+          ? "Dodata 1 fotografija."
+          : `Dodato ${ok} ${plural(ok, ["fotografija", "fotografije", "fotografija"])}.`
+      );
     }
   }
 

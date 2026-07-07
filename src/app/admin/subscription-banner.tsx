@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { plural } from "@/lib/plural";
 import { PaymentModal } from "./payment-modal";
 
 // Baner o statusu pretplate - "visi nad glavom" dok se ne plati.
@@ -22,8 +23,8 @@ export function SubscriptionBanner({
     expired: "bg-red-500 text-white",
   };
   const text: Record<string, string> = {
-    trial: `Probni period - još ${daysLeft} ${daysLeft === 1 ? "dan" : "dana"} besplatnog korišćenja.`,
-    grace: `Pretplata je istekla - online zakazivanje se pauzira za ${daysLeft} ${daysLeft === 1 ? "dan" : "dana"}.`,
+    trial: `Probni period - još ${daysLeft} ${plural(daysLeft, ["dan", "dana", "dana"])} besplatnog korišćenja.`,
+    grace: `Pretplata je istekla - online zakazivanje se pauzira za ${daysLeft} ${plural(daysLeft, ["dan", "dana", "dana"])}.`,
     expired:
       "Pretplata je istekla i online zakazivanje je pauzirano. Tvoj sajt je i dalje aktivan.",
   };

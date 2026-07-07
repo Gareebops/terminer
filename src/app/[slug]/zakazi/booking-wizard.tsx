@@ -28,7 +28,9 @@ interface Props {
 }
 
 type Step = 0 | 1 | 2 | 3;
-const STEP_LABELS = ["Usluga", "Frizer", "Termin", "Podaci"];
+// "Kod koga" umesto "Frizer": platforma služi i kozmetičkim i masažnim
+// studijima, gde "frizer" ne odgovara
+const STEP_LABELS = ["Usluga", "Kod koga", "Termin", "Podaci"];
 
 function StepIndicator({
   step,
@@ -314,8 +316,9 @@ export function BookingWizard({
             </motion.span>
           )}
           <h2 className="mt-5 font-heading text-2xl font-bold">Termin je zakazan!</h2>
+          {/* Bez "kod {ime}" - imena se ne menjaju kroz padeže programski */}
           <p className="mt-2 text-muted-foreground">
-            {service.name} kod {member.name}
+            {service.name} · {member.name}
           </p>
           <p className="font-medium">
             {dateLabel} u {time}
@@ -446,7 +449,7 @@ export function BookingWizard({
               ))}
               {availableStaff.length === 0 && (
                 <p className="text-muted-foreground">
-                  Nijedan frizer trenutno ne radi ovu uslugu.
+                  Trenutno niko ne radi ovu uslugu. Probaj drugu ili pozovi salon.
                 </p>
               )}
               <Button variant="ghost" onClick={() => setStep(0)}>

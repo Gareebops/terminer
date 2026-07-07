@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConfettiBurst } from "@/components/confetti";
 import { HeroDemo } from "@/components/landing/hero-demo";
+import { plural } from "@/lib/plural";
 import { setPublished, updateOnboarding } from "./actions";
 
 // Vodič za pokretanje: koraci se štikliraju sami iz stvarnih podataka
@@ -22,14 +23,6 @@ import { setPublished, updateOnboarding } from "./actions";
 // vlasnik uradio bez njega. Kartica nestaje objavom sajta, ali komponenta
 // ostaje montirana (published prop) da bi proslava objave preživela
 // osvežavanje Početne koje server akcija povuče.
-
-function plural(n: number, forms: [string, string, string]): string {
-  const d = n % 10;
-  const dd = n % 100;
-  if (d === 1 && dd !== 11) return forms[0];
-  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return forms[1];
-  return forms[2];
-}
 
 interface GuideStep {
   title: string;
@@ -401,8 +394,9 @@ export function OnboardingGuide({
       <Dialog open={welcomeOpen} onOpenChange={(o) => !o && closeWelcome()}>
         <DialogContent className="max-h-[92vh] overflow-y-auto rounded-[2rem] font-display sm:max-w-md">
           <DialogHeader>
+            {/* Učtiva množina - vlasnici salona su i frizerke i frizeri */}
             <DialogTitle className="text-center text-2xl font-extrabold tracking-tight">
-              Dobro došao u Terminer
+              Dobro došli u Terminer
             </DialogTitle>
             <DialogDescription className="text-center">
               Ovako će klijenti zakazivati kod tebe - sami, sa telefona, i u 3
@@ -416,10 +410,11 @@ export function OnboardingGuide({
             </div>
           </div>
 
+          {/* Bez roda uz ime salona ("da bi X radio" puca za ženska imena) */}
           <p className="text-center text-sm text-muted-foreground">
-            Da bi <span className="font-bold text-ink">{salonName}</span> ovako
-            radio, dodaj još usluge, tim i izgled. Vodič na Početnoj te vodi
-            korak po korak - za desetak minuta si online.
+            Da i kod tebe ovako radi, dodaj još usluge, tim i izgled za{" "}
+            <span className="font-bold text-ink">{salonName}</span>. Vodič na
+            Početnoj te vodi korak po korak - za desetak minuta si online.
           </p>
 
           <Button

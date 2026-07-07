@@ -112,7 +112,7 @@ export function BookingsTable({
               <TableHead>Klijent</TableHead>
               <TableHead>Telefon</TableHead>
               <TableHead>Usluga</TableHead>
-              <TableHead>Radnik</TableHead>
+              <TableHead>Zaposleni</TableHead>
               <TableHead>Status</TableHead>
               <TableHead />
             </TableRow>

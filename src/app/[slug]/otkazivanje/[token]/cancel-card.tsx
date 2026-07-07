@@ -87,9 +87,10 @@ export function CancelCard({
         <h2 className="mt-5 font-heading text-2xl font-bold">
           {isCancelled ? "Termin je otkazan" : "Tvoj termin"}
         </h2>
+        {/* Bez "kod {ime}" - imena se ne menjaju kroz padeže programski */}
         <p className="mt-2 text-muted-foreground">
           {booking.serviceName}
-          {booking.staffName && <> kod {booking.staffName}</>}
+          {booking.staffName && <> · {booking.staffName}</>}
         </p>
         <p className="font-medium">
           {dateLabel} u {booking.startTime}

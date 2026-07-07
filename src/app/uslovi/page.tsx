@@ -45,7 +45,7 @@ export default function TermsPage() {
       </ul>
       <p>
         Plaćanje je fakturom sa NBS IPS QR kodom, prenosom na račun. Faktura se
-        izdaje iz admin panela, u sekciji Pretplata i naplata.
+        izdaje iz admin panela, u sekciji Pretplata.
       </p>
 
       <h2>Šta se dešava kad pretplata istekne</h2>
@@ -66,6 +66,14 @@ export default function TermsPage() {
         </Link>
         . Zadržavamo pravo da uklonimo sadržaj koji krši propise ili tuđa
         prava.
+      </p>
+
+      <h2>Pristup podrške nalogu</h2>
+      <p>
+        Radi rešavanja tehničkog problema, podrška može - isključivo uz tvoju
+        prethodnu saglasnost - privremeno pristupiti admin panelu tvog salona.
+        Svaki takav pristup se beleži i koristi samo za pomoć oko konkretnog
+        problema.
       </p>
 
       <h2>Dostupnost usluge</h2>

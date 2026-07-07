@@ -16,6 +16,7 @@ import {
   type Invoice,
 } from "@/lib/invoice";
 import type { SubscriptionInfo } from "@/lib/billing";
+import { plural } from "@/lib/plural";
 import { updateBillingInfo } from "../actions";
 import { PaymentModal } from "../payment-modal";
 
@@ -75,9 +76,9 @@ export function PretplataClient({
                 {sub.status === "active" && paidUntil
                   ? `plaćeno do ${fmt(paidUntil)}`
                   : sub.status === "trial"
-                    ? `još ${sub.daysLeft} ${sub.daysLeft === 1 ? "dan" : "dana"} besplatno (do ${fmt(trialEndsAt)})`
+                    ? `još ${sub.daysLeft} ${plural(sub.daysLeft, ["dan", "dana", "dana"])} besplatno (do ${fmt(trialEndsAt)})`
                     : sub.status === "grace"
-                      ? `zakazivanje se pauzira za ${sub.daysLeft} ${sub.daysLeft === 1 ? "dan" : "dana"}`
+                      ? `zakazivanje se pauzira za ${sub.daysLeft} ${plural(sub.daysLeft, ["dan", "dana", "dana"])}`
                       : "online zakazivanje je pauzirano"}
               </span>
             </div>

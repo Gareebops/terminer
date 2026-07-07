@@ -4,6 +4,7 @@ import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { formatPrice, fromMinutes, toMinutes } from "@/lib/booking/slots";
 import { nowInZone } from "@/lib/booking/timezone";
+import { plural } from "@/lib/plural";
 import { CountUp } from "@/components/count-up";
 import type { OnboardingState, SiteSettings } from "@/lib/types";
 import { OnboardingGuide } from "./onboarding-guide";
@@ -167,7 +168,7 @@ export default async function AdminDashboardPage() {
           <h1 className="text-3xl font-extrabold tracking-tight">Početna</h1>
           <p className="mt-1 text-sm font-medium text-ink/50">
             {/* sr-Latn: podrazumevani sr-RS ispisuje imena dana ćirilicom */}
-            {greeting},{" "}
+            {greeting} ·{" "}
             {todayDate.toLocaleDateString("sr-Latn-RS", {
               weekday: "long",
               day: "numeric",
@@ -265,7 +266,8 @@ export default async function AdminDashboardPage() {
             )}
             {todayBookings.length > 6 && (
               <p className="pt-1 text-center text-xs text-white/50">
-                + još {todayBookings.length - 6} termina
+                + još {todayBookings.length - 6}{" "}
+                {plural(todayBookings.length - 6, ["termin", "termina", "termina"])}
               </p>
             )}
           </div>
@@ -280,7 +282,7 @@ export default async function AdminDashboardPage() {
               <CountUp value={monthRevenue} suffix={` ${currency}`} />
             </p>
             <p className="mt-1 text-sm font-semibold text-ink/60">
-              {monthRows.length} termina
+              {monthRows.length} {plural(monthRows.length, ["termin", "termina", "termina"])}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -289,7 +291,9 @@ export default async function AdminDashboardPage() {
               <p className="mt-1 text-4xl font-extrabold tracking-tight">
                 <CountUp value={weekRes.count ?? 0} />
               </p>
-              <p className="mt-1 text-sm font-semibold text-ink/60">termina</p>
+              <p className="mt-1 text-sm font-semibold text-ink/60">
+                {plural(weekRes.count ?? 0, ["termin", "termina", "termina"])}
+              </p>
             </div>
             <div className="rounded-[2rem] bg-white p-6 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
               <p className="text-sm font-semibold text-ink/50">Klijenata</p>

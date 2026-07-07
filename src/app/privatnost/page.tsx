@@ -49,6 +49,12 @@ export default function PrivacyPage() {
         Podaci klijenata jednog salona nikada nisu vidljivi drugim salonima ni
         trećim licima i ne koriste se za marketing.
       </p>
+      <p>
+        Radi zaštite od zloupotrebe (npr. masovnog lažnog zakazivanja), pri
+        online rezervaciji se čuva i IP adresa sa koje je napravljena. Koristi
+        se isključivo za ograničavanje broja pokušaja zakazivanja i ne deli se
+        ni sa kim.
+      </p>
 
       <h2>Gde se podaci čuvaju</h2>
       <p>Za rad platforme koristimo proverene pružaoce usluga:</p>

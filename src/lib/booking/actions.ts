@@ -72,9 +72,10 @@ async function loadBookingContext(
     db.from("services").select("*").eq("id", serviceId).eq("tenant_id", tenant.id).eq("is_active", true).maybeSingle(),
     db.from("staff_services").select("staff_id").eq("staff_id", staffId).eq("service_id", serviceId).maybeSingle(),
   ]);
-  if (!staffRes.data) return { error: "Frizer nije pronađen ili je neaktivan." };
+  // Neutralno "član tima" - platforma služi i salonima gde nema frizera
+  if (!staffRes.data) return { error: "Član tima nije pronađen ili je neaktivan." };
   if (!serviceRes.data) return { error: "Usluga nije pronađena ili je neaktivna." };
-  if (!linkRes.data) return { error: "Izabrani frizer ne radi ovu uslugu." };
+  if (!linkRes.data) return { error: "Izabrani član tima ne radi ovu uslugu." };
 
   return {
     db,

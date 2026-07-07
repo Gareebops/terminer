@@ -9,15 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DAY_NAMES_SR } from "@/lib/booking/slots";
+import { plural } from "@/lib/plural";
 import type { ScheduleConflict } from "@/lib/types";
-
-function rezWord(n: number): string {
-  const d = n % 10;
-  const dd = n % 100;
-  if (d === 1 && dd !== 11) return "rezervacija";
-  if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return "rezervacije";
-  return "rezervacija";
-}
 
 function formatDate(date: string): string {
   const d = new Date(`${date}T12:00:00`);
@@ -51,7 +44,8 @@ export function ScheduleConflictDialog({
           </DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Posle ove izmene {list.length} {rezWord(list.length)} ostaje van radnog
+          Posle ove izmene {list.length}{" "}
+          {plural(list.length, ["rezervacija", "rezervacije", "rezervacija"])} ostaje van radnog
           vremena. Rezervacije se ne otkazuju same — premesti ih ili otkaži u
           meniju Rezervacije, ili sačuvaj izmenu svejedno.
         </p>
