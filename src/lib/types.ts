@@ -102,6 +102,9 @@ export interface Staff {
   // "rotating" = smene A/B; rotation_anchor = ponedeljak neke A-nedelje
   schedule_mode: ScheduleMode;
   rotation_anchor: string | null;
+  // Koliko dana unapred (računajući danas) gosti vide termine;
+  // null = podrazumevano (DEFAULT_HORIZON_DAYS)
+  booking_horizon_days: number | null;
 }
 
 export interface WorkingHours {

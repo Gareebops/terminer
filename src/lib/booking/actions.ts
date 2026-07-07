@@ -12,6 +12,8 @@ import {
 } from "@/lib/booking/slots";
 import { nowInZone, zonedToUtc } from "@/lib/booking/timezone";
 import {
+  addDaysISO,
+  bookingHorizonDays,
   dayOfWeek,
   parityForStaff,
   resolveWindow,
@@ -150,10 +152,6 @@ type BookingContext = Exclude<
   { error: string }
 >;
 
-// Koliko unapred gost sme da zakaže. Wizard nudi 14 dana, ali akcije
-// primaju proizvoljan datum - server mora imati sopstvenu granicu da
-// niko ne bukira termine za godinu dana unapred.
-const MAX_DAYS_AHEAD = 60;
 // Termin ne sme da počne "za minut" - salonu treba vremena da vidi
 // rezervaciju. Današnji slotovi počinju tek posle ovog razmaka.
 const MIN_LEAD_MINUTES = 30;
@@ -161,9 +159,10 @@ const MIN_LEAD_MINUTES = 30;
 async function computeSlots(ctx: BookingContext, date: string): Promise<string[]> {
   const now = nowInZone(ctx.tenant.timezone);
   if (date < now.date) return [];
-  const max = new Date(`${now.date}T12:00:00Z`);
-  max.setUTCDate(max.getUTCDate() + MAX_DAYS_AHEAD);
-  if (date > max.toISOString().slice(0, 10)) return [];
+  // Horizont po zaposlenom (wizard traka nudi isti broj dana). Horizont N =
+  // N ponuđenih dana računajući danas, pa je poslednji dozvoljen danas+N-1.
+  const lastBookable = addDaysISO(now.date, bookingHorizonDays(ctx.staff) - 1);
+  if (date > lastBookable) return [];
 
   const window = await getWorkWindow(ctx.db, ctx.tenant.id, ctx.staff, date);
   if (!window) return [];

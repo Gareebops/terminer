@@ -926,6 +926,29 @@ export async function updateStaffPhoto(
   return { ok: true };
 }
 
+// Ponuđeni horizonti zakazivanja (dana unapred, računajući danas);
+// booking akcije svakako klampuju na 1-90 (bookingHorizonDays)
+const HORIZON_CHOICES = [3, 7, 14, 30, 60, 90] as const;
+
+export async function updateStaffHorizon(
+  staffId: string,
+  days: number
+): Promise<ActionResult> {
+  await getAdminContext();
+  if (!HORIZON_CHOICES.includes(days as (typeof HORIZON_CHOICES)[number])) {
+    return { ok: false, error: "Neispravna vrednost." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("staff")
+    .update({ booking_horizon_days: days })
+    .eq("id", staffId);
+  if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+
+  revalidatePath(`/admin/zaposleni/${staffId}`);
+  return { ok: true };
+}
+
 const appearanceSchema = z.object({
   primaryColor: z
     .string()

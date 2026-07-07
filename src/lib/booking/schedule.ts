@@ -43,6 +43,21 @@ export function parityForStaff(dateISO: string, staff: Staff): 0 | 1 {
   return weekParityFor(dateISO, staff.rotation_anchor);
 }
 
+// ---------- Horizont zakazivanja ----------
+// Koliko dana unapred (računajući danas) se gostima nude termini.
+// null/nepostojeća kolona = podrazumevano; clamp čuva server od
+// vrednosti mimo ponuđenih (direktan REST upis i sl.).
+
+export const DEFAULT_HORIZON_DAYS = 60;
+export const MAX_HORIZON_DAYS = 90;
+
+export function bookingHorizonDays(
+  staff: Pick<Staff, "booking_horizon_days">
+): number {
+  const days = staff.booking_horizon_days ?? DEFAULT_HORIZON_DAYS;
+  return Math.max(1, Math.min(days, MAX_HORIZON_DAYS));
+}
+
 // Radno okno za datum: izuzetak gazi pravilo; null = ne radi
 export function resolveWindow(
   dateISO: string,

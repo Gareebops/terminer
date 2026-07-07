@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import type { ScheduleException, Staff, WorkingHours } from "@/lib/types";
 import {
   addDaysISO,
+  bookingHorizonDays,
   dayOfWeek,
+  DEFAULT_HORIZON_DAYS,
+  MAX_HORIZON_DAYS,
   mondayOf,
   parityForStaff,
   resolveWindow,
@@ -24,6 +27,7 @@ function makeStaff(over: Partial<Staff> = {}): Staff {
     sort_order: 0,
     schedule_mode: "weekly",
     rotation_anchor: null,
+    booking_horizon_days: null,
     ...over,
   };
 }
@@ -116,6 +120,29 @@ describe("parityForStaff", () => {
     const staff = makeStaff({ schedule_mode: "rotating", rotation_anchor: ANCHOR });
     expect(parityForStaff("2026-07-07", staff)).toBe(0);
     expect(parityForStaff("2026-07-14", staff)).toBe(1);
+  });
+});
+
+describe("bookingHorizonDays", () => {
+  it("null (i nepostojeća kolona pre migracije) daje podrazumevanih 60", () => {
+    expect(bookingHorizonDays(makeStaff())).toBe(DEFAULT_HORIZON_DAYS);
+    // pre migracije kolone nema pa runtime vidi undefined
+    expect(
+      bookingHorizonDays({ booking_horizon_days: undefined as unknown as null })
+    ).toBe(DEFAULT_HORIZON_DAYS);
+  });
+
+  it("postavljena vrednost se poštuje", () => {
+    expect(bookingHorizonDays(makeStaff({ booking_horizon_days: 3 }))).toBe(3);
+    expect(bookingHorizonDays(makeStaff({ booking_horizon_days: 90 }))).toBe(90);
+  });
+
+  it("vrednosti mimo opsega se klampuju (REST upis mimo UI-ja)", () => {
+    expect(bookingHorizonDays(makeStaff({ booking_horizon_days: 365 }))).toBe(
+      MAX_HORIZON_DAYS
+    );
+    expect(bookingHorizonDays(makeStaff({ booking_horizon_days: 0 }))).toBe(1);
+    expect(bookingHorizonDays(makeStaff({ booking_horizon_days: -5 }))).toBe(1);
   });
 });
 

@@ -15,6 +15,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { createBooking, getAvailableSlots } from "@/lib/booking/actions";
 import { buildICS, downloadICS } from "@/lib/booking/ics";
+import {
+  bookingHorizonDays,
+  DEFAULT_HORIZON_DAYS,
+} from "@/lib/booking/schedule";
 import { formatDateISO, formatPrice, DAY_NAMES_SR } from "@/lib/booking/slots";
 import type { Service, Staff } from "@/lib/types";
 
@@ -90,18 +94,21 @@ function StepIndicator({
   );
 }
 
-// Traka narednih 14 dana - brže od punog kalendara
+// Traka narednih dana - brže od punog kalendara. Broj dana = horizont
+// zakazivanja izabranog zaposlenog (server sprovodi istu granicu).
 function DayStrip({
+  count,
   selected,
   onSelect,
 }: {
+  count: number;
   selected: string | null;
   onSelect: (date: string) => void;
 }) {
   const days = useMemo(() => {
     const out: { iso: string; dayName: string; label: string; isToday: boolean }[] = [];
     const now = new Date();
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < count; i++) {
       const d = new Date(now);
       d.setDate(now.getDate() + i);
       out.push({
@@ -112,7 +119,7 @@ function DayStrip({
       });
     }
     return out;
-  }, []);
+  }, [count]);
 
   return (
     <div className="scrollbar-none flex gap-2 overflow-x-auto pb-2">
@@ -555,7 +562,11 @@ export function BookingWizard({
 
           {step === 2 && (
             <div>
-              <DayStrip selected={date} onSelect={setDate} />
+              <DayStrip
+                count={member ? bookingHorizonDays(member) : DEFAULT_HORIZON_DAYS}
+                selected={date}
+                onSelect={setDate}
+              />
               <div className="mt-4 min-h-32">
                 {!date && (
                   <p className="text-sm text-muted-foreground">Izaberi dan.</p>

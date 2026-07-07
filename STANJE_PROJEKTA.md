@@ -4,6 +4,24 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 8.7 (1) — HORIZONT ZAKAZIVANJA PO ZAPOSLENOM (čeka migraciju!):**
+`staff.booking_horizon_days` (migracija `20260707000001` — MIHAJLO treba
+`supabase db push`; kod je null-safe i PRE migracije, samo čuvanje u adminu
+uredno javlja grešku). Semantika: horizont N = klijenti vide narednih N dana
+RAČUNAJUĆI danas (poslednji dozvoljen datum = danas+N-1); null = default 60
+(`DEFAULT_HORIZON_DAYS`), clamp 1-90 (`bookingHorizonDays` u
+[schedule.ts](src/lib/booking/schedule.ts), unit testovi). Sprovođenje:
+`computeSlots` u booking akcijama koristi per-staff granicu umesto stare
+konstante MAX_DAYS_AHEAD=60 (obrisana); admin ručno zakazivanje NAMERNO ne
+primenjuje horizont; postojeće rezervacije preživljavaju skraćenje. UI:
+kartica "Zakazivanje unapred" na strani zaposlenog (select 3/7/14/30/60/90,
+čuva odmah, `updateStaffHorizon` u admin/actions.ts sa whitelist proverom);
+wizard `DayStrip` prima `count` = horizont izabrane osobe (default se
+promenio: traka sada nudi 60 dana umesto starih hardkodovanih 14 — Mihajlova
+odluka). VERIFIKOVANO kroz preview: traka 60 dana (Danas 8.7 → Sub 5.9),
+kartica u adminu, graceful greška čuvanja pre migracije; POSLE push-a
+proveriti E2E: Đorđe na 3 dana → traka 3 dana → vratiti na 60.
+
 **Novo od 7.7 (4) — FAVICON SALONA ([slug]/icon.tsx, verifikovano):** logo
 salona postaje favicon njegovog sajta čim je salon objavljen i ima logo.
 Next konvencija `app/[slug]/icon.tsx` (dublji segment GAZI root icon.svg —

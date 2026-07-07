@@ -21,9 +21,19 @@ import {
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import { prepareImageForUpload } from "@/lib/image";
-import { updateStaffPhoto, updateStaffServices, updateStaffSchedule } from "../../actions";
+import {
+  updateStaffHorizon,
+  updateStaffPhoto,
+  updateStaffServices,
+  updateStaffSchedule,
+} from "../../actions";
 import { DAY_NAMES_SR, formatDateISO, formatPrice } from "@/lib/booking/slots";
-import { addDaysISO, mondayOf, weekParityFor } from "@/lib/booking/schedule";
+import {
+  addDaysISO,
+  DEFAULT_HORIZON_DAYS,
+  mondayOf,
+  weekParityFor,
+} from "@/lib/booking/schedule";
 import { ScheduleConflictDialog } from "../../schedule-conflict-dialog";
 import type {
   ScheduleConflict,
@@ -214,6 +224,68 @@ function DayRowsEditor({
         </div>
       ))}
     </div>
+  );
+}
+
+// Koliko dana unapred klijenti vide termine kod ovog zaposlenog.
+// Čuva se odmah pri izboru - podešavanje, ne forma.
+const HORIZON_OPTIONS = [
+  { value: 3, label: "3 dana" },
+  { value: 7, label: "7 dana" },
+  { value: 14, label: "14 dana" },
+  { value: 30, label: "30 dana" },
+  { value: 60, label: "60 dana (podrazumevano)" },
+  { value: 90, label: "90 dana" },
+];
+
+function HorizonCard({ staff }: { staff: Staff }) {
+  const [value, setValue] = useState(
+    String(staff.booking_horizon_days ?? DEFAULT_HORIZON_DAYS)
+  );
+  const [pending, startTransition] = useTransition();
+
+  function onChange(v: string) {
+    const prev = value;
+    setValue(v);
+    startTransition(async () => {
+      const res = await updateStaffHorizon(staff.id, Number(v));
+      if (res.ok) {
+        toast.success("Sačuvano.");
+      } else {
+        setValue(prev);
+        toast.error(res.error ?? "Greška.");
+      }
+    });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Zakazivanje unapred</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Label className="font-normal">Klijenti vide narednih</Label>
+          <Select value={value} onValueChange={onChange} disabled={pending}>
+            <SelectTrigger className="w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {HORIZON_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={String(o.value)}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Kraći horizont je zgodan kad se raspored često menja - klijenti ne
+          mogu da zakažu dalje nego što je raspored siguran. Već zakazani
+          termini ostaju i ako horizont skratiš.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -434,6 +506,8 @@ export function StaffDetail({
       </Card>
 
       <ScheduleCard staff={staff} workingHours={workingHours} guideActive={guideActive} />
+
+      <HorizonCard staff={staff} />
     </div>
   );
 }
