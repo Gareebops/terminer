@@ -4,7 +4,7 @@
 export const FAQ_ITEMS: { q: string; a: string }[] = [
   {
     q: "Treba li mi tehničko znanje?",
-    a: "Ne. Sve se podešava klikanjem - uneseš usluge, tim i radno vreme, izabereš boju i fotografije, i sajt je spreman. Ako negde zapneš, tu smo da pomognemo.",
+    a: "Ne. Sve se podešava kliktanjem - uneseš usluge, tim i radno vreme, izabereš boju i fotografije, i sajt je spreman. Ako negde zapneš, tu smo da pomognemo.",
   },
   {
     q: "Koliko brzo mogu da krenem?",
