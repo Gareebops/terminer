@@ -1,5 +1,8 @@
 "use client"; // error boundary mora biti klijentska komponenta
 
+import * as Sentry from "@sentry/nextjs";
+import { useEffect } from "react";
+
 // Zamena za CEO root layout kad pukne i sam layout — mora da vrati sopstveni
 // <html>/<body>. Namerno bez globals.css i next/font (i oni mogu biti uzrok
 // pada): inline stilovi + sistemski font, boje brenda ukucane.
@@ -10,6 +13,10 @@ export default function GlobalError({
   error: Error & { digest?: string };
   unstable_retry: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <html lang="sr">
       <body

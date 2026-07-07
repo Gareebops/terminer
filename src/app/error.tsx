@@ -1,5 +1,6 @@
 "use client"; // error boundary mora biti klijentska komponenta
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 // Brendirani ekran za neuhvaćene greške ispod root layouta. Poruka je
@@ -13,6 +14,9 @@ export default function Error({
   unstable_retry: () => void;
 }) {
   useEffect(() => {
+    // Greške uhvaćene boundary-jem ne stižu do window.onerror,
+    // pa se Sentryju prijavljuju ručno (no-op bez DSN-a)
+    Sentry.captureException(error);
     console.error(error);
   }, [error]);
 

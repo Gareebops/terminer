@@ -4,6 +4,30 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 7.7 (2) — SIGURNOSNA MREŽA (unit testovi + Sentry, verifikovano):**
+(1) Vitest uveden (`npm test`, config u [vitest.config.ts](vitest.config.ts)
+sa `@` aliasom; testovi kolocirani `src/**/*.test.ts`, ne diraju bazu ni
+browser). 35 testova za čistu logiku: [slots.test.ts](src/lib/booking/slots.test.ts)
+(preklapanja, generisanje slotova, zauzeća, "danas" filter, step),
+[schedule.test.ts](src/lib/booking/schedule.test.ts) (dayOfWeek/mondayOf/
+addDaysISO, parnost A/B nedelja i pre sidra, resolveWindow: pravilo/izuzetak/
+is_off/rotacija), [phone.test.ts](src/lib/phone.test.ts) (kanonski +381),
+[plural.test.ts](src/lib/plural.test.ts) (21 dan / 11 dana). Pre commita
+ubuduće: `npm test` uz build. (2) Sentry error monitoring (@sentry/nextjs),
+POTPUNO GATED na `NEXT_PUBLIC_SENTRY_DSN` — bez env varijable je no-op i app
+radi identično. Kačenje po Next 16 konvencijama:
+[src/instrumentation.ts](src/instrumentation.ts) (server init +
+`onRequestError = Sentry.captureRequestError` za render/akcije/route
+handlere) i [src/instrumentation-client.ts](src/instrumentation-client.ts)
+(browser init + `onRouterTransitionStart` breadcrumb); error.tsx i
+global-error.tsx ručno zovu `Sentry.captureException` (boundary greške ne
+stižu do window.onerror). Samo greške (tracesSampleRate 0, bez replaya) —
+čuva besplatnu kvotu. NAMERNO bez `withSentryConfig` omotača (source-map
+upload traži auth token i komplikuje Turbopack build) — server stack je
+čitljiv i bez toga. MIHAJLO za aktivaciju: nalog na sentry.io (free) →
+Next.js projekat → DSN u `NEXT_PUBLIC_SENTRY_DSN` na Vercelu (i .env.local);
+primer u .env.example.
+
 **Novo od 7.7 (1) — PRE-LAUNCH POLIRANJE (verifikovano kroz preview + build):**
 (1) Brendirana 404 ([src/app/not-found.tsx](src/app/not-found.tsx)) — hvata
 `notFound()` sa svih mesta (pogrešan slug, nevažeći link otkazivanja, tuđa
@@ -278,6 +302,7 @@ kao gosti (bez naloga).
 ```bash
 npm run dev            # localhost:3000
 npm run build          # mora proći pre svakog commita
+npm test               # unit testovi (vitest) — takođe pre commita
 npx tsc --noEmit       # brza provera tipova (ignoriši greške iz .next/)
 supabase db push       # migracije — MORA pokrenuti Mihajlo (traži DB lozinku koju samo on zna)
 ```
@@ -595,6 +620,9 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
       kartica + kartica po salonu u boji brenda).
 - [ ] Uključiti Web Analytics na Vercel projektu (Project → Analytics →
       Enable) — kod je na mestu od 7.7, bez ovoga se podaci ne skupljaju.
+- [ ] Sentry (opciono ali preporučeno): nalog na sentry.io → Next.js
+      projekat → `NEXT_PUBLIC_SENTRY_DSN` na Vercel + .env.local — kod je
+      na mestu od 7.7, bez DSN-a je monitoring isključen.
 
 ## 11. Kako da nastaviš (uputstvo za AI)
 
