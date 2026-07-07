@@ -671,9 +671,9 @@ export function BookingWizard({
                   onChange={(e) => setWebsite(e.target.value)}
                 />
               </div>
-              {/* Na telefonu: sticky traka na dnu ekrana sa full-width CTA
-                  (cena na dugmetu = poslednja potvrda pre klika);
-                  na desktopu ostaje običan red dugmadi */}
+              {/* Na telefonu: sticky traka na dnu ekrana sa full-width CTA;
+                  na desktopu ostaje običan red dugmadi. Cena je već u
+                  čipovima rezimea - na dugmetu bi bila ponavljanje. */}
               <div className="sticky bottom-0 z-10 -mx-4 flex items-center gap-2 border-t bg-background/85 px-4 py-3 backdrop-blur sm:static sm:z-auto sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
                 <Button variant="ghost" onClick={() => go(2)}>
                   Nazad
@@ -683,9 +683,7 @@ export function BookingWizard({
                   disabled={pending || name.trim().length < 2 || phone.trim().length < 6}
                   onClick={submit}
                 >
-                  {pending
-                    ? "Zakazujem..."
-                    : `Potvrdi termin${service ? ` · ${formatPrice(service.price, service.currency)}` : ""}`}
+                  {pending ? "Zakazujem..." : "Potvrdi termin"}
                 </Button>
               </div>
             </div>
