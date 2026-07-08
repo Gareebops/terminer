@@ -29,9 +29,11 @@ function GoogleMark() {
 }
 
 // Prijava/registracija Google nalogom. Ista PKCE razmena koda kao potvrda
-// mejla: Google → Supabase → /auth/callback?code=... → sesija. next=/admin
-// pokriva oba slučaja - postojeći vlasnik ulazi u admin, novi korisnik se
-// sa /admin preusmerava na /onboarding (nema članstvo).
+// mejla: Google → Supabase → /auth/callback?code=... → sesija. BEZ query
+// parametara u redirectTo: Supabase allowlist ne pokriva URL sa upitom pa
+// bi pao na Site URL (produkciju!); callback default (/admin) pokriva oba
+// slučaja - postojeći vlasnik ulazi u admin, novi korisnik se sa /admin
+// preusmerava na /onboarding (nema članstvo).
 export function GoogleButton({ label }: { label: string }) {
   const [loading, setLoading] = useState(false);
 
@@ -41,7 +43,7 @@ export function GoogleButton({ label }: { label: string }) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/admin`,
+        redirectTo: `${window.location.origin}/auth/callback`,
       },
     });
     // Uspeh = browser već odlazi na Google; ovde stižemo samo na grešku

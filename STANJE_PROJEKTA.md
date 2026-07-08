@@ -4,8 +4,26 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
-**Novo od 8.7 (4) — GOOGLE PRIJAVA/REGISTRACIJA (kod gotov i verifikovan
-do authorize endpointa; ČEKA Mihajlovo podešavanje provajdera):**
+**Novo od 8.7 (5) — GOOGLE AUTH VERIFIKOVAN E2E + ISPRAVKA REDIRECTA:**
+Mihajlo podesio Google Cloud OAuth klijent i uključio provider u Supabase.
+Živi test kroz njegov Chrome: dugme → Google account chooser → consent →
+localhost:3000/auth/callback → **/admin sa Studio Test salonom** ✓;
+automatsko POVEZIVANJE identiteta potvrđeno (postojeći nalog sada ima
+email + google identitet, bez duplikata). DVE STVARI NAĐENE U TESTU:
+(1) redirectTo sa query parametrom (?next=/admin) NIJE prolazio Supabase
+allowlist → pad na Site URL (produkciju!); ispravka: GoogleButton šalje
+čist /auth/callback, a default `next` u callback ruti promenjen sa
+/onboarding na /admin (pokriva i potvrdu mejla - korisnik bez salona se
+sa /admin ionako preusmerava na /onboarding). (2) Redirect URLs allowlist
+uopšte nije imala localhost - Mihajlo dodao `http://localhost:3000/**` i
+`https://terminer.rs/**`; wildcard usput POPRAVLJA i reset lozinke
+(?next=/nova-lozinka je do sada verovatno padao na landing na produkciji
+- checklist stavka "proveriti reset-password šablon" je bila stvarna
+rupa). JOŠ PROVERITI nekad: reset lozinke E2E na produkciji. POUKA:
+Supabase allowlist matchuje CEO URL - query parametri traže wildcard.
+
+**Novo od 8.7 (4) — GOOGLE PRIJAVA/REGISTRACIJA (kod gotov; podešavanje
+provajdera opisano dole, URAĐENO 8.7):**
 `GoogleButton` + `AuthDivider` u [components/google-button.tsx](src/components/google-button.tsx)
 (zvanični G znak inline SVG, `signInWithOAuth({provider:"google"})` sa
 `redirectTo: /auth/callback?next=/admin`); dugmad na /prijava ("Nastavi
