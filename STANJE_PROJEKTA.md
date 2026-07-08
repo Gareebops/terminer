@@ -4,6 +4,33 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 8.7 (4) — GOOGLE PRIJAVA/REGISTRACIJA (kod gotov i verifikovan
+do authorize endpointa; ČEKA Mihajlovo podešavanje provajdera):**
+`GoogleButton` + `AuthDivider` u [components/google-button.tsx](src/components/google-button.tsx)
+(zvanični G znak inline SVG, `signInWithOAuth({provider:"google"})` sa
+`redirectTo: /auth/callback?next=/admin`); dugmad na /prijava ("Nastavi
+sa Google nalogom") i /registracija ("Registruj se Google nalogom") ispod
+"ili" separatora. Server strana NIJE dirana - OAuth koristi ISTU PKCE
+razmenu koda kao potvrda mejla (`/auth/callback` → exchangeCodeForSession;
+@supabase/ssr deli verifier kroz cookie). next=/admin pokriva oba
+slučaja: postojeći vlasnik ulazi u admin, novi korisnik se sa /admin
+preusmerava na /onboarding (nema članstvo). Google korisnici nemaju
+telefon u metadata - polje se nigde u kodu ne konzumira, pa ništa ne puca;
+Supabase automatski povezuje Google identitet sa postojećim nalogom istog
+POTVRĐENOG mejla. VERIFIKOVANO: dugmad renderuju, klik gađa
+`{supabase}/auth/v1/authorize?provider=google` koji uredno vraća 400
+"provider is not enabled" dok se ne uključi. MIHAJLO za aktivaciju:
+(1) Google Cloud Console → OAuth consent screen (External, ime Terminer,
+domen terminer.rs, PUBLISH u production - u testing modu rade samo test
+korisnici; za email/profile scope nema Google review-a) → Credentials →
+OAuth Client ID (Web): Authorized redirect URI =
+`https://hmsvyoyjlwkdhevsbavh.supabase.co/auth/v1/callback`;
+(2) Supabase Dashboard → Authentication → Providers → Google → Enable +
+Client ID/Secret; (3) proveriti da Redirect URLs sadrže
+localhost:3000/auth/callback i terminer.rs/auth/callback (email potvrda
+već koristi iste, pa najverovatnije jesu); (4) živi test: Google
+registracija → /onboarding, Google prijava postojećim → /admin.
+
 **Novo od 8.7 (3) — UNIVERZALIZACIJA UI-ja (verifikovano kroz svež nalog,
 test podaci obrisani):** platforma se obraća SVIM vrstama salona, ne samo
 frizerima. (1) Copy: meta opis (layout.tsx) nabraja frizerske/kozmetičke/

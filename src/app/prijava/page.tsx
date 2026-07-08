@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { AuthDivider, GoogleButton } from "@/components/google-button";
 import { PasswordInput } from "@/components/password-input";
 import { TerminerLogo } from "@/components/terminer-logo";
 
@@ -115,6 +116,8 @@ function LoginForm() {
               Pošalji ponovo link za potvrdu
             </Button>
           )}
+          <AuthDivider />
+          <GoogleButton label="Nastavi sa Google nalogom" />
           <p className="text-center text-sm text-muted-foreground">
             Nemaš nalog?{" "}
             <Link href="/registracija" className="underline">

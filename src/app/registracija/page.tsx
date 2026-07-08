@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { AuthDivider, GoogleButton } from "@/components/google-button";
 import { PasswordInput } from "@/components/password-input";
 import { TerminerLogo } from "@/components/terminer-logo";
 
@@ -180,6 +181,8 @@ export default function RegisterPage() {
             <Button type="submit" className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85" disabled={loading}>
               {loading ? "Kreiranje naloga..." : "Napravi nalog"}
             </Button>
+            <AuthDivider />
+            <GoogleButton label="Registruj se Google nalogom" />
             <p className="text-center text-xs text-muted-foreground">
               Registracijom prihvataš{" "}
               <Link href="/uslovi" className="underline">
