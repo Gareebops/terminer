@@ -502,16 +502,26 @@ export function CalendarView({
   const [blockToRemove, setBlockToRemove] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  // Linija "sada": server daje početno vreme, klijent je pomera na minut
+  // Linija "sada": server daje početno vreme u zoni salona, klijent ga dalje
+  // pomera prema stvarno proteklom vremenu. Brojanje otkucaja (+1 na minut)
+  // je zaostajalo: pozadinski tabovi prigušuju tajmere, a tokom spavanja
+  // računara interval uopšte ne kuca, pa se propušteni minuti nikad ne
+  // nadoknade. Elapsed pristup + tick na fokus se sam ispravi pri povratku.
   const [nowMin, setNowMin] = useState(nowMinutes);
-  useEffect(() => setNowMin(nowMinutes), [nowMinutes]);
   useEffect(() => {
+    setNowMin(nowMinutes);
     if (nowMinutes === null) return;
-    const id = setInterval(
-      () => setNowMin((m) => (m === null ? m : m + 1)),
-      60_000
-    );
-    return () => clearInterval(id);
+    const anchoredAt = Date.now();
+    const tick = () =>
+      setNowMin(nowMinutes + Math.round((Date.now() - anchoredAt) / 60_000));
+    const id = setInterval(tick, 30_000);
+    document.addEventListener("visibilitychange", tick);
+    window.addEventListener("focus", tick);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", tick);
+      window.removeEventListener("focus", tick);
+    };
   }, [nowMinutes]);
 
   // Pri otvaranju današnjeg dana grid se sam dovede do trenutnog vremena
