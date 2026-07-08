@@ -1,8 +1,56 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 7. jul 2026. Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 8. jul 2026. Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
+
+**Novo od 8.7 (2) — VELIKI UX PAKET (ceo izveštaj UX pregleda rešen; 5
+commita, sve verifikovano kroz preview, bez migracija):** posle prolaska
+kroz sve tokove urađeno redom:
+(1) **Wizard**: korak "Kod koga" ima **"Svejedno mi je"** (staffId "any" —
+server računa uniju slotova svih koji rade uslugu, pri upisu bira
+NASUMIČNO među slobodnima, na 23P01 proba sledećeg kandidata; ime
+dodeljenog vraća `createBooking.staffName`); **neradni dani prigušeni** u
+traci dana (uz prvi upit slotova stiže `days` iz `computeOpenDays` —
+pravilo+izuzeci, bez rezervacija; neradan preselektovan dan sam preskoči
+na prvi radni); dugme sa **native date pickerom** za skok na datum;
+"Danas" u traci = **datum salona** (`todayISO` prop iz zakazi/page);
+ekran uspeha UVEK nudi **link za otkazivanje** (kopiranje; klijent bez
+emaila ranije nije mogao da otkaže) + telefon salona. PAŽNJA: server
+akcije se sa klijenta dispatchuju SEKVENCIJALNO (Next docs) — zato days
+ide kroz `getAvailableSlots({includeDays})`, ne kroz posebnu akciju.
+(2) **Slotovi**: `generateAvailableSlots` nudi i početke TAČNO NA KRAJU
+zauzeća (20-min usluga u 12:00 → nudi se i 12:20, ne samo 12:30) — mrtvo
+vreme nestalo; testovi prošireni (41 ukupno).
+(3) **Otkazivanje** traži potvrdu ("Da, otkaži") umesto jednog klika.
+(4) **Auth**: registracija hvata Supabase anti-enumeration odgovor za
+postojeći potvrđen email (`data.user.identities.length === 0` → "Nalog
+već postoji" umesto večnog "Proveri sanduče"); `PasswordInput`
+(prikaži/sakrij) na prijavi/registraciji/novoj lozinki; onboarding kaže
+da je adresa sajta trajna; odjava vodi na /prijava.
+(5) **Kalendar**: klik na PRAZNO mesto u koloni otvara "Ručno
+zakazivanje" sa tim zaposlenim i vremenom (snap 15 min; dijalog je sada
+kontrolisan, remount kroz nonce); `DateJump` (native picker) u zaglavlju;
+dijalog prikazuje zauzetost izabranog zaposlenog (`getStaffDayBusy`) i
+ima polje Napomena; 23P01 na "Vrati na Potvrđeno" daje jasnu poruku.
+(6) **Rezervacije**: pretraga kroz URL (?q=) i BAZU (ilike ime +
+normalizovan telefon, PostgREST or() sa sanitizovanim vrednostima) — 
+nalazi i istoriju stariju od 200; polje ostaje vidljivo kad nema
+rezultata (debounce 350ms + useTransition spinner).
+(7) **Raspored**: prošli dani tekuće nedelje prigušeni/neklikabilni.
+(8) **Zaposleni**: kartica "Ime i opis" (ime/bio/aktivan) na detalju;
+upsertStaff revalidira i javni sajt.
+(9) **Fakture**: markInvoicePaid auto-stornira ostale neplaćene fakture
+ISTOG perioda (duplikati od menjanja plana u modalu; ide u audit log);
+istorija vlasniku krije pregažene duplikate (samo najskorija izdata po
+period_from), superadmin vidi sve.
+(10) **Optimizacije**: moveRow = 2 update-a (swap) kad su sort_order
+raznoliki; createBooking limiti telefon+IP paralelno, getWorkWindow
+izuzetak+pravilo paralelno; normalizePhone hvata "381..." bez plusa;
+mejl klijentu pri admin otkazivanju kroz `after()` iz next/server.
+SVESNO ODLOŽENO: ISR/keširanje javnog sajta salona (nalaz 6.4 izveštaja)
+— zahteva odvajanje anon čitanja od owner-preview toka (cookies forsira
+dinamiku); prvo izmeriti na produkciji da li je uopšte usko grlo.
 
 **Novo od 8.7 (1) — HORIZONT ZAKAZIVANJA PO ZAPOSLENOM (migracija primenjena
 8.7, E2E VERIFIKOVAN: Đorđe na 3 → traka 3 dana, Marko default 60, vraćeno
