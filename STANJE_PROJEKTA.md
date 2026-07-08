@@ -21,6 +21,16 @@ uopšte nije imala localhost - Mihajlo dodao `http://localhost:3000/**` i
 - checklist stavka "proveriti reset-password šablon" je bila stvarna
 rupa). JOŠ PROVERITI nekad: reset lozinke E2E na produkciji. POUKA:
 Supabase allowlist matchuje CEO URL - query parametri traže wildcard.
+GOOGLE BRANDING: 8.7. Mihajlo popunio OAuth consent Branding (App name
+Terminer, logo 512px iz TerminerMark SVG-a, home/privatnost/uslovi,
+authorized domain terminer.rs) i POSLAO NA BRAND VERIFIKACIJU - dok
+Google ne odobri (tipično 2-5 radnih dana) consent ekran prikazuje
+supabase domen; posle odobrenja "Sign in to Terminer" + logo. Prijava
+radi sve vreme. KAD STIGNE ODOBRENJE: proveriti ekran uživo. Potpuno
+uklanjanje supabase domena iz sitnog teksta = Supabase Custom Domain
+(~$35/mes sa Pro planom) - svesno ODLOŽENO do prelaska na plaćeni plan;
+tada: CNAME auth.terminer.rs, novi redirect URI u Google klijentu,
+NEXT_PUBLIC_SUPABASE_URL na Vercelu/.env.local/mobile, redeploy.
 
 **Novo od 8.7 (4) — GOOGLE PRIJAVA/REGISTRACIJA (kod gotov; podešavanje
 provajdera opisano dole, URAĐENO 8.7):**
