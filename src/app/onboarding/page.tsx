@@ -71,6 +71,12 @@ export default function OnboardingPage() {
                   }}
                 />
               </div>
+              {/* Za promenu sluga ne postoji UI - bolje reći odmah nego da
+                  vlasnik posle traži gde da je promeni */}
+              <p className="text-xs text-muted-foreground">
+                Ovo postaje trajna adresa tvog sajta i kasnije se ne menja -
+                izaberi je pažljivo.
+              </p>
             </div>
             <Button type="submit" className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85" disabled={pending}>
               {pending ? "Kreiranje..." : "Napravi salon"}

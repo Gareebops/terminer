@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/password-input";
 import { TerminerLogo } from "@/components/terminer-logo";
 
 function LoginForm() {
@@ -93,9 +94,9 @@ function LoginForm() {
                 Zaboravljena lozinka?
               </Link>
             </div>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
+              autoComplete="current-password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}

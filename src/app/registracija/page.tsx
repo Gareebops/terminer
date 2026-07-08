@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { PasswordInput } from "@/components/password-input";
 import { TerminerLogo } from "@/components/terminer-logo";
 
 export default function RegisterPage() {
@@ -53,6 +54,15 @@ export default function RegisterPage() {
           ? "Nalog sa ovim emailom već postoji."
           : "Registracija nije uspela. Pokušaj ponovo."
       );
+      return;
+    }
+    // Postojeći potvrđen nalog: Supabase sa uključenom email potvrdom NE
+    // vraća grešku (anti-enumeration) nego "uspeh" sa praznim identities -
+    // bez ove provere korisnik bi čekao mejl koji nikad ne stiže
+    if (data.user && data.user.identities?.length === 0) {
+      toast.error("Nalog sa ovim emailom već postoji.", {
+        action: { label: "Prijavi se", onClick: () => router.push("/prijava") },
+      });
       return;
     }
     // Email potvrda uključena → session je null dok korisnik ne klikne link
@@ -158,9 +168,8 @@ export default function RegisterPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Lozinka (min 8 karaktera)</Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 autoComplete="new-password"
                 required
                 minLength={8}
