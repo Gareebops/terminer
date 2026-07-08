@@ -191,7 +191,9 @@ function DayRowsEditor({
   return (
     <div className="space-y-3">
       {days.map((d) => (
-        <div key={d.dayOfWeek} className="flex items-center gap-3">
+        // Na telefonu red ne staje u širinu (prekid + w-full gura vremena u
+        // svoj red, uvučen ispod naziva dana); od sm: sve u jednoj liniji
+        <div key={d.dayOfWeek} className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <Switch
             checked={d.isWorking}
             onCheckedChange={(c) => setDay(d.dayOfWeek, { isWorking: c })}
@@ -203,17 +205,17 @@ function DayRowsEditor({
             {DAY_NAMES_SR[d.dayOfWeek]}
           </Label>
           {d.isWorking ? (
-            <div className="flex items-center gap-2">
+            <div className="flex w-full items-center gap-2 pl-12 sm:w-auto sm:pl-0">
               <Input
                 type="time"
-                className="w-28"
+                className="min-w-0 flex-1 sm:w-28 sm:flex-none"
                 value={d.startTime}
                 onChange={(e) => setDay(d.dayOfWeek, { startTime: e.target.value })}
               />
               <span className="text-muted-foreground">–</span>
               <Input
                 type="time"
-                className="w-28"
+                className="min-w-0 flex-1 sm:w-28 sm:flex-none"
                 value={d.endTime}
                 onChange={(e) => setDay(d.dayOfWeek, { endTime: e.target.value })}
               />
