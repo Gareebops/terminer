@@ -39,6 +39,19 @@ const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const uuidSchema = z
   .string()
   .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "Neispravan ID.");
+// "any" = klijentu je svejedno kod koga - server bira među svima koji
+// rade uslugu
+const staffIdSchema = uuidSchema.or(z.literal("any"));
+
+type Db = ReturnType<typeof createAdminClient>;
+
+interface BookingContext {
+  db: Db;
+  tenant: Tenant;
+  service: Service;
+  // Jedan izabrani član tima, ili svi koji rade uslugu (staffId "any")
+  staffList: Staff[];
+}
 
 // Namerno NE filtriramo po is_published: vlasnik testira zakazivanje i pre
 // objave sajta. Anonimni posetilac ne može da dođe do UUID-jeva usluga i
@@ -47,10 +60,7 @@ async function loadBookingContext(
   slug: string,
   staffId: string,
   serviceId: string
-): Promise<
-  | { db: ReturnType<typeof createAdminClient>; tenant: Tenant; staff: Staff; service: Service }
-  | { error: string }
-> {
+): Promise<BookingContext | { error: string }> {
   const db = createAdminClient();
   const { data: tenant } = await db
     .from("tenants")
@@ -69,6 +79,33 @@ async function loadBookingContext(
     return { error: "Online zakazivanje je trenutno pauzirano. Pozovi salon telefonom." };
   }
 
+  if (staffId === "any") {
+    const [serviceRes, linksRes] = await Promise.all([
+      db.from("services").select("*").eq("id", serviceId).eq("tenant_id", tenant.id).eq("is_active", true).maybeSingle(),
+      db.from("staff_services").select("staff_id").eq("tenant_id", tenant.id).eq("service_id", serviceId),
+    ]);
+    if (!serviceRes.data) return { error: "Usluga nije pronađena ili je neaktivna." };
+    const ids = (linksRes.data ?? []).map((l) => l.staff_id);
+    const { data: staff } = ids.length
+      ? await db
+          .from("staff")
+          .select("*")
+          .eq("tenant_id", tenant.id)
+          .eq("is_active", true)
+          .in("id", ids)
+          .order("sort_order")
+      : { data: [] };
+    if (!staff || staff.length === 0) {
+      return { error: "Trenutno niko ne radi ovu uslugu. Probaj drugu ili pozovi salon." };
+    }
+    return {
+      db,
+      tenant: tenant as Tenant,
+      service: serviceRes.data as Service,
+      staffList: staff as Staff[],
+    };
+  }
+
   const [staffRes, serviceRes, linkRes] = await Promise.all([
     db.from("staff").select("*").eq("id", staffId).eq("tenant_id", tenant.id).eq("is_active", true).maybeSingle(),
     db.from("services").select("*").eq("id", serviceId).eq("tenant_id", tenant.id).eq("is_active", true).maybeSingle(),
@@ -82,45 +119,53 @@ async function loadBookingContext(
   return {
     db,
     tenant: tenant as Tenant,
-    staff: staffRes.data as Staff,
     service: serviceRes.data as Service,
+    staffList: [staffRes.data as Staff],
   };
 }
 
-// Radno okno za frizera na dati datum: izuzetak za datum ima prednost,
+// Radno okno za člana tima na dati datum: izuzetak za datum ima prednost,
 // inače pravilo (nedeljno radno vreme, uz A/B parnost kod rotacije).
+// Oba upita idu paralelno - jedan round-trip manje po danu.
 async function getWorkWindow(
-  db: ReturnType<typeof createAdminClient>,
+  db: Db,
   tenantId: string,
   staff: Staff,
   date: string
 ): Promise<WorkWindow> {
   // tenant_id filter i ovde iako FK garantuje integritet - service-role
   // klijent zaobilazi RLS, pa nijedan upit ne sme bez tenant granice
-  const { data: exception } = await db
-    .from("shift_assignments")
-    .select("*")
-    .eq("tenant_id", tenantId)
-    .eq("staff_id", staff.id)
-    .eq("date", date)
-    .maybeSingle();
+  const [excRes, whRes] = await Promise.all([
+    db
+      .from("shift_assignments")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .eq("staff_id", staff.id)
+      .eq("date", date)
+      .maybeSingle(),
+    db
+      .from("working_hours")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .eq("staff_id", staff.id)
+      .eq("day_of_week", dayOfWeek(date))
+      .eq("week_parity", parityForStaff(date, staff))
+      .maybeSingle(),
+  ]);
 
-  if (exception) return resolveWindow(date, staff, [], exception as ScheduleException);
-
-  const { data: wh } = await db
-    .from("working_hours")
-    .select("*")
-    .eq("tenant_id", tenantId)
-    .eq("staff_id", staff.id)
-    .eq("day_of_week", dayOfWeek(date))
-    .eq("week_parity", parityForStaff(date, staff))
-    .maybeSingle();
-
-  return resolveWindow(date, staff, wh ? [(wh as WorkingHours)] : [], null);
+  if (excRes.data) {
+    return resolveWindow(date, staff, [], excRes.data as ScheduleException);
+  }
+  return resolveWindow(
+    date,
+    staff,
+    whRes.data ? [whRes.data as WorkingHours] : [],
+    null
+  );
 }
 
 async function getBusyRanges(
-  db: ReturnType<typeof createAdminClient>,
+  db: Db,
   tenantId: string,
   staffId: string,
   date: string
@@ -147,27 +192,26 @@ async function getBusyRanges(
   }));
 }
 
-type BookingContext = Exclude<
-  Awaited<ReturnType<typeof loadBookingContext>>,
-  { error: string }
->;
-
 // Termin ne sme da počne "za minut" - salonu treba vremena da vidi
 // rezervaciju. Današnji slotovi počinju tek posle ovog razmaka.
 const MIN_LEAD_MINUTES = 30;
 
-async function computeSlots(ctx: BookingContext, date: string): Promise<string[]> {
+async function computeSlots(
+  ctx: BookingContext,
+  staff: Staff,
+  date: string
+): Promise<string[]> {
   const now = nowInZone(ctx.tenant.timezone);
   if (date < now.date) return [];
   // Horizont po zaposlenom (wizard traka nudi isti broj dana). Horizont N =
   // N ponuđenih dana računajući danas, pa je poslednji dozvoljen danas+N-1.
-  const lastBookable = addDaysISO(now.date, bookingHorizonDays(ctx.staff) - 1);
+  const lastBookable = addDaysISO(now.date, bookingHorizonDays(staff) - 1);
   if (date > lastBookable) return [];
 
-  const window = await getWorkWindow(ctx.db, ctx.tenant.id, ctx.staff, date);
+  const window = await getWorkWindow(ctx.db, ctx.tenant.id, staff, date);
   if (!window) return [];
 
-  const busy = await getBusyRanges(ctx.db, ctx.tenant.id, ctx.staff.id, date);
+  const busy = await getBusyRanges(ctx.db, ctx.tenant.id, staff.id, date);
 
   return generateAvailableSlots({
     workStart: window.start,
@@ -179,24 +223,90 @@ async function computeSlots(ctx: BookingContext, date: string): Promise<string[]
   });
 }
 
+// Slotovi po svakom članu iz konteksta; za jednog je to obična lista,
+// za "any" se uniraju u getAvailableSlots / biraju u createBooking
+async function computeSlotsPerStaff(
+  ctx: BookingContext,
+  date: string
+): Promise<string[][]> {
+  return Promise.all(ctx.staffList.map((s) => computeSlots(ctx, s, date)));
+}
+
+// Dostupnost po danu za traku u wizardu: radi li IKO iz konteksta tog dana
+// (pravilo + izuzeci; rezervacije se ne gledaju - ovo kaže "radno/neradno",
+// slotove i dalje računa izbor konkretnog dana). Dužina = najduži horizont.
+export type DayAvailability = { date: string; open: boolean }[];
+
+async function computeOpenDays(ctx: BookingContext): Promise<DayAvailability> {
+  const now = nowInZone(ctx.tenant.timezone);
+  const horizon = Math.max(...ctx.staffList.map(bookingHorizonDays));
+  const last = addDaysISO(now.date, horizon - 1);
+  const ids = ctx.staffList.map((s) => s.id);
+
+  const [hoursRes, excRes] = await Promise.all([
+    ctx.db
+      .from("working_hours")
+      .select("*")
+      .eq("tenant_id", ctx.tenant.id)
+      .in("staff_id", ids),
+    ctx.db
+      .from("shift_assignments")
+      .select("*")
+      .eq("tenant_id", ctx.tenant.id)
+      .in("staff_id", ids)
+      .gte("date", now.date)
+      .lte("date", last),
+  ]);
+  const hours = (hoursRes.data ?? []) as WorkingHours[];
+  const exceptions = (excRes.data ?? []) as ScheduleException[];
+
+  const days: DayAvailability = [];
+  for (let i = 0; i < horizon; i++) {
+    const date = addDaysISO(now.date, i);
+    const open = ctx.staffList.some(
+      (s) =>
+        i < bookingHorizonDays(s) &&
+        resolveWindow(
+          date,
+          s,
+          hours,
+          exceptions.find((e) => e.staff_id === s.id && e.date === date) ?? null
+        ) !== null
+    );
+    days.push({ date, open });
+  }
+  return days;
+}
+
 export async function getAvailableSlots(input: {
   slug: string;
   staffId: string;
   serviceId: string;
   date: string;
-}): Promise<{ slots: string[] } | { error: string }> {
+  // Uz slotove vrati i radne/neradne dane horizonta - wizard ih traži
+  // jednom po izboru osobe (jedna akcija umesto dve: klijentski dispatcher
+  // server akcije ionako serijalizuje)
+  includeDays?: boolean;
+}): Promise<{ slots: string[]; days?: DayAvailability } | { error: string }> {
   const parsedDate = dateSchema.safeParse(input.date);
   if (!parsedDate.success) return { error: "Neispravan datum." };
+  if (!staffIdSchema.safeParse(input.staffId).success) return { error: "Neispravan ID." };
 
   const ctx = await loadBookingContext(input.slug, input.staffId, input.serviceId);
   if ("error" in ctx) return { error: ctx.error };
 
-  return { slots: await computeSlots(ctx, input.date) };
+  const [perStaff, days] = await Promise.all([
+    computeSlotsPerStaff(ctx, input.date),
+    input.includeDays ? computeOpenDays(ctx) : Promise.resolve(undefined),
+  ]);
+  const slots = [...new Set(perStaff.flat())].sort();
+
+  return days ? { slots, days } : { slots };
 }
 
 const createBookingSchema = z.object({
   slug: z.string().min(2),
-  staffId: uuidSchema,
+  staffId: staffIdSchema,
   serviceId: uuidSchema,
   date: dateSchema,
   time: z.string().regex(/^\d{2}:\d{2}$/),
@@ -216,7 +326,14 @@ const MAX_ACTIVE_PER_PHONE = 3;
 const MAX_PER_IP_PER_HOUR = 5;
 
 export type CreateBookingResult =
-  | { ok: true; bookingId: string; cancelToken: string; emailSent: boolean }
+  | {
+      ok: true;
+      bookingId: string;
+      cancelToken: string;
+      emailSent: boolean;
+      // Kome je termin dodeljen - kod "any" klijent tek ovde saznaje ime
+      staffName: string;
+    }
   | { ok: false; error: string };
 
 export async function createBooking(
@@ -244,48 +361,54 @@ export async function createBooking(
   // po telefonu se ne zaobilazi razmacima/crticama
   const phone = normalizePhone(input.customerPhone);
 
-  // Limit po telefonu: max aktivnih predstojećih rezervacija u ovom salonu
-  const { count: phoneCount } = await ctx.db
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("tenant_id", ctx.tenant.id)
-    .eq("customer_phone", phone)
-    .in("status", ["pending", "confirmed"])
-    .gte("date", now.date);
-  if ((phoneCount ?? 0) >= MAX_ACTIVE_PER_PHONE) {
+  // Anti-spam limiti idu paralelno - nezavisni su
+  const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const [phoneRes, ipRes] = await Promise.all([
+    // Limit po telefonu: max aktivnih predstojećih rezervacija u ovom salonu
+    ctx.db
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", ctx.tenant.id)
+      .eq("customer_phone", phone)
+      .in("status", ["pending", "confirmed"])
+      .gte("date", now.date),
+    // Limit po IP-u: max novih rezervacija na sat u ovom salonu. Ako kolona
+    // created_ip još ne postoji (migracija nije primenjena), preskoči limit
+    // umesto da oborimo zakazivanje.
+    ip
+      ? ctx.db
+          .from("bookings")
+          .select("id", { count: "exact", head: true })
+          .eq("tenant_id", ctx.tenant.id)
+          .eq("created_ip", ip)
+          .gte("created_at", since)
+      : Promise.resolve(null),
+  ]);
+  if ((phoneRes.count ?? 0) >= MAX_ACTIVE_PER_PHONE) {
     return {
       ok: false,
       error: `Sa ovim brojem telefona već postoje ${MAX_ACTIVE_PER_PHONE} aktivne rezervacije. Za dodatni termin pozovi salon.`,
     };
   }
-
-  // Limit po IP-u: max novih rezervacija na sat u ovom salonu. Ako kolona
-  // created_ip još ne postoji (migracija nije primenjena), preskoči limit
-  // umesto da oborimo zakazivanje.
-  let trackIp = false;
-  if (ip) {
-    const since = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const ipRes = await ctx.db
-      .from("bookings")
-      .select("id", { count: "exact", head: true })
-      .eq("tenant_id", ctx.tenant.id)
-      .eq("created_ip", ip)
-      .gte("created_at", since);
-    if (!ipRes.error) {
-      trackIp = true;
-      if ((ipRes.count ?? 0) >= MAX_PER_IP_PER_HOUR) {
-        return {
-          ok: false,
-          error: "Previše pokušaja zakazivanja odjednom. Sačekaj malo ili pozovi salon telefonom.",
-        };
-      }
-    }
+  const trackIp = !!ip && !!ipRes && !ipRes.error;
+  if (trackIp && (ipRes!.count ?? 0) >= MAX_PER_IP_PER_HOUR) {
+    return {
+      ok: false,
+      error: "Previše pokušaja zakazivanja odjednom. Sačekaj malo ili pozovi salon telefonom.",
+    };
   }
 
-  // Termin mora biti među trenutno dostupnim slotovima
-  const slots = await computeSlots(ctx, input.date);
-  if (!slots.includes(input.time)) {
+  // Termin mora biti među trenutno dostupnim slotovima. Kod "any" su
+  // kandidati svi koji u to vreme stvarno mogu - jedan se bira nasumično
+  // (statistički ravnomerno raspoređuje klijente), a na sudar se proba sledeći.
+  const perStaff = await computeSlotsPerStaff(ctx, input.date);
+  const candidates = ctx.staffList.filter((_, i) => perStaff[i].includes(input.time));
+  if (candidates.length === 0) {
     return { ok: false, error: "Termin više nije dostupan. Izaberi drugi." };
+  }
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
   }
 
   const endTime = fromMinutes(toMinutes(input.time) + ctx.service.duration_minutes);
@@ -309,35 +432,45 @@ export async function createBooking(
     .select("id")
     .maybeSingle();
 
-  const { data: booking, error } = await ctx.db
-    .from("bookings")
-    .insert({
-      tenant_id: ctx.tenant.id,
-      staff_id: ctx.staff.id,
-      service_id: ctx.service.id,
-      customer_id: customer?.id ?? null,
-      customer_name: input.customerName,
-      customer_phone: phone,
-      customer_email: input.customerEmail || null,
-      date: input.date,
-      start_time: input.time,
-      end_time: endTime,
-      starts_at: startsAt.toISOString(),
-      ends_at: endsAt.toISOString(),
-      note: input.note || null,
-      status: "confirmed",
-      ...(trackIp ? { created_ip: ip } : {}),
-    })
-    .select("id, cancel_token")
-    .single();
+  let booking: { id: string; cancel_token: string } | null = null;
+  let assigned: Staff | null = null;
+  for (const member of candidates) {
+    const { data, error } = await ctx.db
+      .from("bookings")
+      .insert({
+        tenant_id: ctx.tenant.id,
+        staff_id: member.id,
+        service_id: ctx.service.id,
+        customer_id: customer?.id ?? null,
+        customer_name: input.customerName,
+        customer_phone: phone,
+        customer_email: input.customerEmail || null,
+        date: input.date,
+        start_time: input.time,
+        end_time: endTime,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+        note: input.note || null,
+        status: "confirmed",
+        ...(trackIp ? { created_ip: ip } : {}),
+      })
+      .select("id, cancel_token")
+      .single();
 
-  if (error) {
-    // 23P01 = exclusion_violation → neko je u međuvremenu zauzeo termin
-    if (error.code === "23P01") {
-      return { ok: false, error: "Termin je upravo zauzet. Izaberi drugi." };
+    if (!error) {
+      booking = data;
+      assigned = member;
+      break;
     }
-    console.error("createBooking failed:", error);
-    return { ok: false, error: "Greška pri zakazivanju. Pokušaj ponovo." };
+    // 23P01 = exclusion_violation → neko je u međuvremenu zauzeo termin
+    // kod ovog člana; kod "any" probaj sledećeg kandidata
+    if (error.code !== "23P01") {
+      console.error("createBooking failed:", error);
+      return { ok: false, error: "Greška pri zakazivanju. Pokušaj ponovo." };
+    }
+  }
+  if (!booking || !assigned) {
+    return { ok: false, error: "Termin je upravo zauzet. Izaberi drugi." };
   }
 
   // Mejlovi (nikad ne obaraju booking): potvrda klijentu ako je ostavio
@@ -356,7 +489,7 @@ export async function createBooking(
         to: input.customerEmail,
         salonName: ctx.tenant.name,
         serviceName: ctx.service.name,
-        staffName: ctx.staff.name,
+        staffName: assigned.name,
         date: input.date,
         startTime: input.time,
         endTime,
@@ -373,7 +506,7 @@ export async function createBooking(
         kind: "new",
         salonName: ctx.tenant.name,
         serviceName: ctx.service.name,
-        staffName: ctx.staff.name,
+        staffName: assigned.name,
         date: input.date,
         startTime: input.time,
         endTime,
@@ -389,6 +522,7 @@ export async function createBooking(
     bookingId: booking.id,
     cancelToken: booking.cancel_token,
     emailSent: confirmation.sent,
+    staffName: assigned.name,
   };
 }
 

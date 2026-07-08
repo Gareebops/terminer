@@ -31,8 +31,18 @@ export function generateAvailableSlots(input: SlotInput): string[] {
   const step = input.step ?? 30;
   const start = toMinutes(input.workStart);
   const end = toMinutes(input.workEnd);
+  // Kandidati: mreža na `step` minuta + početak tačno na kraju svakog
+  // zauzeća. Bez toga usluga kraća od koraka ostavlja mrtvo vreme koje
+  // niko ne može da zakaže (20 min termina u 12:00 → sledeći ponuđeni
+  // 12:30, a 12:20 zauvek prazno).
+  const candidates = new Set<number>();
+  for (let t = start; t + input.durationMinutes <= end; t += step) candidates.add(t);
+  for (const b of input.busy) {
+    const t = toMinutes(b.end);
+    if (t >= start && t + input.durationMinutes <= end) candidates.add(t);
+  }
   const result: string[] = [];
-  for (let t = start; t + input.durationMinutes <= end; t += step) {
+  for (const t of [...candidates].sort((a, b) => a - b)) {
     if (input.isToday && input.nowMinutes !== undefined && t <= input.nowMinutes) continue;
     const slot = { start: fromMinutes(t), end: fromMinutes(t + input.durationMinutes) };
     if (input.busy.some((b) => overlaps(slot, b))) continue;

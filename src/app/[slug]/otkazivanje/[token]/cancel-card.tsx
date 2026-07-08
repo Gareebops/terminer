@@ -32,6 +32,9 @@ export function CancelCard({
   isPast: boolean;
 }) {
   const [cancelled, setCancelled] = useState(false);
+  // Otkazivanje traži potvrdu - slučajan klik iz mejla ne sme da obriše
+  // termin bez pitanja (nema "undo")
+  const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
 
   if (!booking) {
@@ -121,19 +124,39 @@ export function CancelCard({
           </p>
         )}
 
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
-          {canCancel && (
-            <Button variant="destructive" onClick={confirmCancel} disabled={pending}>
-              <CalendarX2 className="size-4" />
-              {pending ? "Otkazivanje…" : "Otkaži termin"}
+        {canCancel && confirming ? (
+          <div className="mx-auto mt-6 max-w-sm space-y-3 rounded-xl bg-destructive/10 p-4">
+            <p className="text-sm font-medium">
+              Sigurno otkazuješ termin? Mesto se odmah oslobađa za druge.
+            </p>
+            <div className="flex justify-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setConfirming(false)}
+                disabled={pending}
+              >
+                Odustani
+              </Button>
+              <Button variant="destructive" onClick={confirmCancel} disabled={pending}>
+                <CalendarX2 className="size-4" />
+                {pending ? "Otkazivanje…" : "Da, otkaži"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            {canCancel && (
+              <Button variant="destructive" onClick={() => setConfirming(true)}>
+                <CalendarX2 className="size-4" /> Otkaži termin
+              </Button>
+            )}
+            <Button variant={canCancel ? "outline" : "default"} asChild>
+              <Link href={isCancelled ? `/${slug}/zakazi` : `/${slug}`}>
+                {isCancelled ? "Zakaži novi termin" : "Nazad na sajt"}
+              </Link>
             </Button>
-          )}
-          <Button variant={canCancel ? "outline" : "default"} asChild>
-            <Link href={isCancelled ? `/${slug}/zakazi` : `/${slug}`}>
-              {isCancelled ? "Zakaži novi termin" : "Nazad na sajt"}
-            </Link>
-          </Button>
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

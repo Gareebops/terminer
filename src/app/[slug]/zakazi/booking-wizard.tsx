@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { CalendarPlus, Check, Clock } from "lucide-react";
+import { CalendarDays, CalendarPlus, Check, Clock, Copy, Users } from "lucide-react";
 import { ConfettiBurst } from "@/components/confetti";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -13,19 +13,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { createBooking, getAvailableSlots } from "@/lib/booking/actions";
+import {
+  createBooking,
+  getAvailableSlots,
+  type DayAvailability,
+} from "@/lib/booking/actions";
 import { buildICS, downloadICS } from "@/lib/booking/ics";
 import {
+  addDaysISO,
   bookingHorizonDays,
   DEFAULT_HORIZON_DAYS,
 } from "@/lib/booking/schedule";
-import { formatDateISO, formatPrice, DAY_NAMES_SR } from "@/lib/booking/slots";
+import { formatPrice, DAY_NAMES_SR } from "@/lib/booking/slots";
 import type { Service, Staff } from "@/lib/types";
 
 interface Props {
   slug: string;
   salonName: string;
   address?: string | null;
+  // Telefon salona - na ekranu uspeha kao alternativa linku za otkazivanje
+  salonPhone?: string | null;
+  // Današnji datum U ZONI SALONA (server prop) - browser klijenta iz druge
+  // vremenske zone bi "Danas" izračunao pogrešno
+  todayISO: string;
   services: Service[];
   staff: Staff[];
   staffServices: { staff_id: string; service_id: string }[];
@@ -94,49 +104,128 @@ function StepIndicator({
   );
 }
 
+// Dugme sa skrivenim native date inputom: skok na datum bez listanja
+// trake (kod horizonta od 60+ dana listanje je mučenje, na telefonu
+// native picker radi najbolje)
+function JumpToDate({
+  min,
+  max,
+  onPick,
+}: {
+  min: string;
+  max: string;
+  onPick: (date: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        aria-label="Izaberi datum iz kalendara"
+        title="Izaberi datum iz kalendara"
+        onClick={() => {
+          const el = inputRef.current;
+          if (!el) return;
+          // showPicker traži korisnički gest - klik na dugme jeste
+          if ("showPicker" in el) el.showPicker();
+          else (el as HTMLInputElement).focus();
+        }}
+        className="flex h-full min-h-16 w-12 flex-col items-center justify-center rounded-lg border transition-colors hover:bg-accent"
+      >
+        <CalendarDays className="size-5" />
+      </button>
+      <input
+        ref={inputRef}
+        type="date"
+        min={min}
+        max={max}
+        tabIndex={-1}
+        aria-hidden
+        className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
+        onChange={(e) => {
+          if (e.target.value >= min && e.target.value <= max) onPick(e.target.value);
+        }}
+      />
+    </div>
+  );
+}
+
 // Traka narednih dana - brže od punog kalendara. Broj dana = horizont
-// zakazivanja izabranog zaposlenog (server sprovodi istu granicu).
+// zakazivanja izabrane osobe (server sprovodi istu granicu); neradni dani
+// su prigušeni i neklikabilni čim server javi dostupnost.
 function DayStrip({
+  todayISO,
   count,
   selected,
+  openByDate,
   onSelect,
 }: {
+  todayISO: string;
   count: number;
   selected: string | null;
+  // null = dostupnost se još učitava (svi dani izgledaju obično)
+  openByDate: Map<string, boolean> | null;
   onSelect: (date: string) => void;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const days = useMemo(() => {
-    const out: { iso: string; dayName: string; label: string; isToday: boolean }[] = [];
-    const now = new Date();
+    const out: { iso: string; dayName: string; label: string }[] = [];
     for (let i = 0; i < count; i++) {
-      const d = new Date(now);
-      d.setDate(now.getDate() + i);
+      const iso = addDaysISO(todayISO, i);
+      const d = new Date(`${iso}T12:00:00`);
       out.push({
-        iso: formatDateISO(d),
-        dayName: i === 0 ? "Danas" : i === 1 ? "Sutra" : DAY_NAMES_SR[d.getDay()].slice(0, 3),
+        iso,
+        dayName:
+          i === 0 ? "Danas" : i === 1 ? "Sutra" : DAY_NAMES_SR[d.getDay()].slice(0, 3),
         label: `${d.getDate()}.${d.getMonth() + 1}.`,
-        isToday: i === 0,
       });
     }
     return out;
-  }, [count]);
+  }, [count, todayISO]);
+
+  // Izabrani dan uvek u vidokrugu - bitno posle skoka kroz mini-kalendar
+  useEffect(() => {
+    if (!selected) return;
+    containerRef.current
+      ?.querySelector(`[data-date="${selected}"]`)
+      ?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [selected]);
 
   return (
-    <div className="scrollbar-none flex gap-2 overflow-x-auto pb-2">
-      {days.map((d) => (
-        <button
-          key={d.iso}
-          onClick={() => onSelect(d.iso)}
-          className={`flex min-w-16 shrink-0 flex-col items-center rounded-lg border px-3 py-2 text-sm transition-colors ${
-            selected === d.iso
-              ? "border-primary bg-primary text-primary-foreground"
-              : "hover:bg-accent"
-          }`}
-        >
-          <span className="text-xs opacity-80">{d.dayName}</span>
-          <span className="font-semibold">{d.label}</span>
-        </button>
-      ))}
+    <div className="flex gap-2">
+      <JumpToDate
+        min={todayISO}
+        max={addDaysISO(todayISO, count - 1)}
+        onPick={onSelect}
+      />
+      <div ref={containerRef} className="scrollbar-none flex gap-2 overflow-x-auto pb-2">
+        {days.map((d) => {
+          const closed = openByDate ? openByDate.get(d.iso) === false : false;
+          return (
+            <button
+              key={d.iso}
+              data-date={d.iso}
+              disabled={closed}
+              title={closed ? "Ne radi" : undefined}
+              onClick={() => onSelect(d.iso)}
+              className={`flex min-w-16 shrink-0 flex-col items-center rounded-lg border px-3 py-2 text-sm transition-colors ${
+                selected === d.iso
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : closed
+                    ? "cursor-not-allowed opacity-40"
+                    : "hover:bg-accent"
+              }`}
+            >
+              <span className={`text-xs opacity-80 ${closed ? "line-through" : ""}`}>
+                {d.dayName}
+              </span>
+              <span className={`font-semibold ${closed ? "line-through" : ""}`}>
+                {d.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -208,6 +297,8 @@ export function BookingWizard({
   slug,
   salonName,
   address,
+  salonPhone,
+  todayISO,
   services,
   staff,
   staffServices,
@@ -219,9 +310,16 @@ export function BookingWizard({
   const [done, setDone] = useState(false);
   const [service, setService] = useState<Service | null>(null);
   const [member, setMember] = useState<Staff | null>(null);
-  const [date, setDate] = useState<string | null>(null);
+  // "Svejedno mi je": server bira među svima koji rade uslugu
+  const [anyStaff, setAnyStaff] = useState(false);
+  // Današnji dan preselektovan (datum salona stiže kao prop, pa se SSR i
+  // klijent slažu) - korak "Termin" odmah nudi slotove
+  const [date, setDate] = useState<string | null>(todayISO);
   const [slots, setSlots] = useState<string[] | null>(null);
   const [slotsError, setSlotsError] = useState<string | null>(null);
+  // Radni/neradni dani horizonta - stižu uz prvi upit slotova po osobi
+  const [days, setDays] = useState<DayAvailability | null>(null);
+  const daysKeyRef = useRef<string | null>(null);
   const [time, setTime] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -231,7 +329,11 @@ export function BookingWizard({
   // popuni biva odbijen na serveru
   const [website, setWebsite] = useState("");
   const [emailSent, setEmailSent] = useState(false);
-  // Korak "Frizer" je preskočen (uslugu radi samo jedan) - "Nazad" sa
+  // Rezultat uspešnog bookinga: dodeljena osoba (bitno kod "svejedno") i
+  // token za link otkazivanja na ekranu uspeha
+  const [result, setResult] = useState<{ cancelToken: string; staffName: string } | null>(null);
+  const [cancelCopied, setCancelCopied] = useState(false);
+  // Korak "Kod koga" je preskočen (uslugu radi samo jedan) - "Nazad" sa
   // termina tada vodi pravo na usluge
   const [staffSkipped, setStaffSkipped] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -241,13 +343,6 @@ export function BookingWizard({
     setStep(target);
   }
 
-  // Današnji dan je preselektovan - korak "Termin" odmah nudi slotove
-  // umesto praznog "Izaberi dan". U efektu (ne u useState init) da SSR i
-  // klijent ne bi izračunali različit datum oko ponoći.
-  useEffect(() => {
-    setDate((d) => d ?? formatDateISO(new Date()));
-  }, []);
-
   const availableStaff = useMemo(() => {
     if (!service) return [];
     const ids = new Set(
@@ -256,31 +351,59 @@ export function BookingWizard({
     return staff.filter((s) => ids.has(s.id));
   }, [service, staff, staffServices]);
 
+  // Ključ izbora osobe za upite ("any" = svejedno)
+  const staffKey = anyStaff ? "any" : (member?.id ?? null);
+
   useEffect(() => {
-    if (!service || !member || !date) return;
+    if (!service || !staffKey || !date) return;
     setSlots(null);
     setTime(null);
     setSlotsError(null);
     // Brzo preklikavanje dana: odgovor za stari dan sme da stigne posle
     // novog - zastareli rezultat se ignoriše da ne prikaže pogrešne termine
     let active = true;
-    getAvailableSlots({ slug, staffId: member.id, serviceId: service.id, date }).then(
-      (res) => {
-        if (!active) return;
-        if ("error" in res) {
-          // Trajna poruka umesto toasta - "nema termina" bi bilo obmanjujuće
-          // kad je zakazivanje pauzirano ili salon nedostupan
-          setSlotsError(res.error);
-          setSlots([]);
-        } else {
-          setSlots(res.slots);
+    getAvailableSlots({
+      slug,
+      staffId: staffKey,
+      serviceId: service.id,
+      date,
+      // Dostupnost dana se traži jednom po osobi, uz prvi upit slotova
+      includeDays: daysKeyRef.current !== staffKey,
+    }).then((res) => {
+      if (!active) return;
+      if ("error" in res) {
+        // Trajna poruka umesto toasta - "nema termina" bi bilo obmanjujuće
+        // kad je zakazivanje pauzirano ili salon nedostupan
+        setSlotsError(res.error);
+        setSlots([]);
+      } else {
+        setSlots(res.slots);
+        if (res.days) {
+          setDays(res.days);
+          daysKeyRef.current = staffKey;
         }
       }
-    );
+    });
     return () => {
       active = false;
     };
-  }, [slug, service, member, date]);
+  }, [slug, service, staffKey, date]);
+
+  // Ako je preselektovani dan neradan (npr. danas je nedelja), sam pređi
+  // na prvi radni - klijent ne treba da pogađa kad salon radi
+  useEffect(() => {
+    if (!days || !date) return;
+    const current = days.find((d) => d.date === date);
+    if (current && !current.open) {
+      const firstOpen = days.find((d) => d.open);
+      if (firstOpen) setDate(firstOpen.date);
+    }
+  }, [days, date]);
+
+  const openByDate = useMemo(
+    () => (days ? new Map(days.map((d) => [d.date, d.open])) : null),
+    [days]
+  );
 
   function pickService(s: Service) {
     setService(s);
@@ -288,19 +411,30 @@ export function BookingWizard({
       staffServices.filter((x) => x.service_id === s.id).map((x) => x.staff_id)
     );
     const eligible = staff.filter((m) => ids.has(m.id));
-    // Jedini koji radi uslugu se bira sam - korak "Frizer" se preskače
+    // Jedini koji radi uslugu se bira sam - korak "Kod koga" se preskače
     if (eligible.length === 1) {
       setMember(eligible[0]);
+      setAnyStaff(false);
+      setDays(null);
       setStaffSkipped(true);
       go(2);
     } else {
       setMember(null);
+      setAnyStaff(false);
+      setDays(null);
       setStaffSkipped(false);
       go(1);
     }
   }
 
-  // Klik na pređeni korak u indikatoru: preskočen korak "Frizer" vodi na usluge
+  function pickMember(m: Staff | null) {
+    setMember(m);
+    setAnyStaff(m === null);
+    setDays(null);
+    go(2);
+  }
+
+  // Klik na pređeni korak u indikatoru: preskočen korak "Kod koga" vodi na usluge
   function jumpToStep(target: Step) {
     if (target === 1 && staffSkipped) {
       go(0);
@@ -310,11 +444,11 @@ export function BookingWizard({
   }
 
   function submit() {
-    if (!service || !member || !date || !time) return;
+    if (!service || (!member && !anyStaff) || !date || !time) return;
     startTransition(async () => {
       const res = await createBooking({
         slug,
-        staffId: member.id,
+        staffId: anyStaff ? "any" : member!.id,
         serviceId: service.id,
         date,
         time,
@@ -326,6 +460,7 @@ export function BookingWizard({
       });
       if (res.ok) {
         setEmailSent(res.emailSent);
+        setResult({ cancelToken: res.cancelToken, staffName: res.staffName });
         setDone(true);
       } else {
         toast.error(res.error);
@@ -334,7 +469,7 @@ export function BookingWizard({
           setSlots(null);
           const r = await getAvailableSlots({
             slug,
-            staffId: member.id,
+            staffId: anyStaff ? "any" : member!.id,
             serviceId: service.id,
             date,
           });
@@ -355,10 +490,28 @@ export function BookingWizard({
     ? `${DAY_NAMES_SR[new Date(`${date}T12:00:00`).getDay()]}, ${new Date(`${date}T12:00:00`).toLocaleDateString("sr-RS")}`
     : "";
 
-  if (done && service && member && date && time) {
+  const horizonCount = days
+    ? days.length
+    : anyStaff
+      ? Math.max(DEFAULT_HORIZON_DAYS, ...availableStaff.map(bookingHorizonDays))
+      : member
+        ? bookingHorizonDays(member)
+        : DEFAULT_HORIZON_DAYS;
+
+  if (done && service && result && date && time) {
+    const cancelUrl = `${window.location.origin}/${slug}/otkazivanje/${result.cancelToken}`;
+    const copyCancelUrl = async () => {
+      try {
+        await navigator.clipboard.writeText(cancelUrl);
+        setCancelCopied(true);
+        setTimeout(() => setCancelCopied(false), 2000);
+      } catch {
+        toast.error("Kopiranje nije uspelo.");
+      }
+    };
     const details = [
       { k: "Usluga", v: service.name },
-      { k: "Kod koga", v: member.name },
+      { k: "Kod koga", v: result.staffName },
       { k: "Termin", v: `${dateLabel} u ${time}` },
       { k: "Cena", v: formatPrice(service.price, service.currency) },
     ];
@@ -418,11 +571,43 @@ export function BookingWizard({
                   </div>
                 ))}
               </dl>
-              {emailSent && (
-                <p className="mt-4 text-center text-sm text-muted-foreground">
-                  Potvrdu sa linkom za otkazivanje smo poslali na {email}.
+
+              {/* Link za otkazivanje UVEK - klijent bez emaila inače nema
+                  nikakav način da otkaže osim telefonom */}
+              <div className="mx-auto mt-5 max-w-md rounded-xl bg-muted/60 px-4 py-3 text-left">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {emailSent
+                    ? `Potvrda sa linkom za otkazivanje je poslata na ${email}. Link možeš i odmah da sačuvaš:`
+                    : "Ako ti termin ne bude odgovarao, otkaži ga ovim linkom - sačuvaj ga:"}
                 </p>
-              )}
+                <div className="mt-2 flex items-center gap-2">
+                  <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                    {cancelUrl}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={copyCancelUrl}
+                  >
+                    {cancelCopied ? (
+                      <Check className="size-3.5" />
+                    ) : (
+                      <Copy className="size-3.5" />
+                    )}
+                    {cancelCopied ? "Kopirano" : "Kopiraj"}
+                  </Button>
+                </div>
+                {salonPhone && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Za izmenu termina možeš i da pozoveš salon:{" "}
+                    <a href={`tel:${salonPhone}`} className="font-medium hover:underline">
+                      {salonPhone}
+                    </a>
+                  </p>
+                )}
+              </div>
+
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 <Button
                   variant="outline"
@@ -431,7 +616,7 @@ export function BookingWizard({
                       `termin-${date}.ics`,
                       buildICS({
                         title: `${service.name} - ${salonName}`,
-                        description: `Kod: ${member.name}`,
+                        description: `Kod: ${result.staffName}`,
                         location: address ?? undefined,
                         date,
                         startTime: time,
@@ -471,8 +656,10 @@ export function BookingWizard({
       {service && (
         <div className="mt-4 flex flex-wrap items-center gap-1.5">
           <SummaryChip key={`s-${service.id}`}>{service.name}</SummaryChip>
-          {member && (
-            <SummaryChip key={`m-${member.id}`}>{member.name}</SummaryChip>
+          {(member || anyStaff) && (
+            <SummaryChip key={`m-${member?.id ?? "any"}`}>
+              {member ? member.name : "Svejedno mi je"}
+            </SummaryChip>
           )}
           {date && time && (
             <SummaryChip key={`t-${date}-${time}`}>
@@ -521,14 +708,29 @@ export function BookingWizard({
 
           {step === 1 && (
             <div className="space-y-2">
+              {/* "Svejedno mi je" na vrhu - klijent koji ne poznaje tim ne
+                  mora da proverava dostupnost osobu po osobu */}
+              {availableStaff.length > 1 && (
+                <button
+                  className="flex w-full items-center gap-3 rounded-lg border border-dashed p-4 text-left transition-colors hover:bg-accent"
+                  onClick={() => pickMember(null)}
+                >
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Users className="size-5" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Svejedno mi je</p>
+                    <p className="text-sm text-muted-foreground">
+                      Prikaži termine celog tima - salon dodeljuje osobu
+                    </p>
+                  </div>
+                </button>
+              )}
               {availableStaff.map((m) => (
                 <button
                   key={m.id}
                   className="flex w-full items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent"
-                  onClick={() => {
-                    setMember(m);
-                    go(2);
-                  }}
+                  onClick={() => pickMember(m)}
                 >
                   {m.photo_url ? (
                     <Image
@@ -563,8 +765,10 @@ export function BookingWizard({
           {step === 2 && (
             <div>
               <DayStrip
-                count={member ? bookingHorizonDays(member) : DEFAULT_HORIZON_DAYS}
+                todayISO={todayISO}
+                count={horizonCount}
                 selected={date}
+                openByDate={openByDate}
                 onSelect={setDate}
               />
               <div className="mt-4 min-h-32">

@@ -74,7 +74,7 @@ describe("generateAvailableSlots", () => {
     ).toEqual(["09:00", "10:30", "11:00"]);
   });
 
-  it("blokada koja ne pada na pun slot seče oba susedna početka", () => {
+  it("blokada koja ne pada na pun slot seče susedne početke, ali nudi kraj blokade", () => {
     expect(
       generateAvailableSlots({
         workStart: "09:00",
@@ -82,7 +82,46 @@ describe("generateAvailableSlots", () => {
         durationMinutes: 30,
         busy: [{ start: "10:15", end: "10:45" }],
       })
-    ).toEqual(["09:00", "09:30", "11:00"]);
+      // 10:00 i 10:30 se preklapaju sa blokadom; 10:45 kreće tačno posle nje
+    ).toEqual(["09:00", "09:30", "10:45", "11:00"]);
+  });
+
+  it("nudi početak tačno na kraju zauzeća - kratka usluga ne ostavlja mrtvo vreme", () => {
+    expect(
+      generateAvailableSlots({
+        workStart: "09:00",
+        workEnd: "10:00",
+        durationMinutes: 20,
+        busy: [{ start: "09:00", end: "09:20" }],
+      })
+      // Bez kandidata na kraju zauzeća 09:20-09:30 bi bilo nezakazivo
+    ).toEqual(["09:20", "09:30"]);
+  });
+
+  it("kraj zauzeća blizu kraja radnog vremena se ne nudi ako usluga ne staje", () => {
+    expect(
+      generateAvailableSlots({
+        workStart: "09:00",
+        workEnd: "10:00",
+        durationMinutes: 30,
+        busy: [{ start: "09:30", end: "09:45" }],
+      })
+      // 09:45 + 30 min prelazi kraj radnog vremena
+    ).toEqual(["09:00"]);
+  });
+
+  it("filter 'danas' važi i za početke na kraju zauzeća", () => {
+    expect(
+      generateAvailableSlots({
+        workStart: "09:00",
+        workEnd: "11:00",
+        durationMinutes: 30,
+        busy: [{ start: "09:00", end: "09:20" }],
+        isToday: true,
+        nowMinutes: toMinutes("09:20"),
+      })
+      // 09:20 je tačno "sada" pa je isključen
+    ).toEqual(["09:30", "10:00", "10:30"]);
   });
 
   it("za danas ne nudi početke koji su već prošli (t <= sada)", () => {

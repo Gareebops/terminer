@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 // Kroz template iz [slug]/layout postaje "Zakaži termin | {salon}"
 export const metadata: Metadata = { title: "Zakaži termin" };
 import { ArrowLeft } from "lucide-react";
+import { nowInZone } from "@/lib/booking/timezone";
 import { getTenantSite } from "@/lib/tenant";
 import { BookingWizard } from "./booking-wizard";
 
@@ -37,6 +38,10 @@ export default async function BookingPage({
               ? [site.settings.address, site.settings.city].filter(Boolean).join(", ")
               : null
           }
+          salonPhone={site.settings?.phone ?? null}
+          // "Danas" u zoni salona - browser posetioca iz druge zone bi
+          // traku dana pomerio za ceo dan
+          todayISO={nowInZone(site.tenant.timezone).date}
           services={site.services}
           staff={site.staff}
           staffServices={site.staffServices}
