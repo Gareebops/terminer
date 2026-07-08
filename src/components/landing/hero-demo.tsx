@@ -112,7 +112,7 @@ function PhoneScreen({ phase, tapped }: { phase: number; tapped: boolean }) {
               exit={{ opacity: 0, x: -16, transition: { duration: 0.18 } }}
             >
               <p className="text-[10px] font-bold uppercase tracking-wider text-ink/40">
-                Izaberi frizera
+                Kod koga
               </p>
               {STAFF.map((m, i) => (
                 <motion.div key={m.name} variants={listItem}>

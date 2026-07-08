@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     template: "%s | Terminer",
   },
   description:
-    "Terminer je platforma za frizerske i beauty salone: sopstveni mini-sajt i online zakazivanje termina za par minuta.",
+    "Terminer je platforma za frizerske, kozmetičke i beauty salone, barbershope i masažne studije: sopstveni mini-sajt i online zakazivanje termina za par minuta.",
   openGraph: {
     type: "website",
     locale: "sr_RS",

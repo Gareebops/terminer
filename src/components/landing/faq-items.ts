@@ -12,11 +12,11 @@ export const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "Kako klijenti zakazuju?",
-    a: "Na tvom sajtu izaberu uslugu, frizera i slobodan termin - bez naloga i bez instaliranja aplikacije. Potvrda im stiže na email, a termin mogu i da otkažu linkom iz mejla. Ti dobijaš obaveštenje o svakoj rezervaciji.",
+    a: "Na tvom sajtu izaberu uslugu, osobu i slobodan termin - bez naloga i bez instaliranja aplikacije. Potvrda im stiže na email, a termin mogu i da otkažu linkom iz mejla. Ti dobijaš obaveštenje o svakoj rezervaciji.",
   },
   {
     q: "Radim sam/sama - da li mi ovo uopšte treba?",
-    a: "Baš tada najviše. Klijenti vide tvoje slobodne termine i zakažu sami, pa ne moraš da prekidaš šišanje zbog telefona - a propušten poziv više ne znači propuštenog klijenta.",
+    a: "Baš tada najviše. Klijenti vide tvoje slobodne termine i zakažu sami, pa ne moraš da prekidaš rad usred termina zbog telefona - a propušten poziv više ne znači propuštenog klijenta.",
   },
   {
     q: "Radimo u smenama - može li to da se podesi?",

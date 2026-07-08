@@ -217,7 +217,7 @@ function NewBookingDialog({
             <Label htmlFor="nb-note">Napomena</Label>
             <Input
               id="nb-note"
-              placeholder="npr. samo šišanje makazama"
+              placeholder="npr. posebna želja klijenta"
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />

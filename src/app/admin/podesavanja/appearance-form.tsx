@@ -337,7 +337,7 @@ export function AppearanceForm({
           <div>
             <Label htmlFor="site-dark">Tamna varijanta sajta</Label>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Tamna pozadina i svetao tekst - barbershop atmosfera.
+              Tamna pozadina i svetao tekst - upečatljiva, večernja atmosfera.
             </p>
           </div>
           <Switch

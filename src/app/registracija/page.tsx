@@ -124,7 +124,7 @@ export default function RegisterPage() {
       <TerminerLogo href="/" />
       <Card className="w-full max-w-sm rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
         <CardHeader>
-          <CardTitle className="text-2xl font-extrabold tracking-tight">Registruj svoj salon</CardTitle>
+          <CardTitle className="text-2xl font-extrabold tracking-tight">Registruj salon ili studio</CardTitle>
           {/* Najjači argument sa landinga ponovljen na koraku odluke */}
           <p className="text-sm text-muted-foreground">
             Prvih <span className="font-semibold text-ink">30 dana besplatno</span> - bez

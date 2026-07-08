@@ -88,7 +88,7 @@ export function OnboardingGuide({
         servicesCount > 0
           ? `${servicesCount} ${plural(servicesCount, ["usluga", "usluge", "usluga"])}`
           : undefined,
-      desc: "Šišanje, farbanje, brada... Trajanje određuje koliko termin zauzima u kalendaru.",
+      desc: "Šišanje, manikir, masaža - šta god radiš. Trajanje određuje koliko termin zauzima u kalendaru.",
       cta: { href: "/admin/usluge", label: "Dodaj usluge" },
     },
     {

@@ -80,7 +80,7 @@ export const FONT_PAIRS: FontPair[] = [
   {
     id: "modern",
     label: "Moderno",
-    description: "Space Grotesk + Inter - oštro, za barbershope",
+    description: "Space Grotesk + Inter - oštro i urbano",
     className: `${spaceGrotesk.variable} ${inter.variable}`,
     headingVar: "var(--font-space-grotesk)",
     sansVar: "var(--font-inter)",

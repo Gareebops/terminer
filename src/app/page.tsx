@@ -34,7 +34,7 @@ const features = [
   {
     icon: CalendarCheck,
     title: "Online zakazivanje",
-    text: "Klijenti sami biraju uslugu, frizera i slobodan termin. Nema više propuštenih poziva.",
+    text: "Klijenti sami biraju uslugu, osobu i slobodan termin. Nema više propuštenih poziva.",
     surface: "bg-mint",
   },
   {
@@ -89,8 +89,8 @@ export default function HomePage() {
             </HeroItem>
             <HeroItem>
               <p className="mt-6 max-w-lg text-lg text-white/60">
-                Registruj salon, unesi usluge i radno vreme, izaberi izgled - i
-                klijenti odmah mogu da zakazuju termine online.
+                Registruj salon ili studio, unesi usluge i radno vreme, izaberi
+                izgled - i klijenti odmah mogu da zakazuju termine online.
               </p>
             </HeroItem>
             <HeroItem>
@@ -140,7 +140,7 @@ export default function HomePage() {
             Jedna cena, sve uključeno
           </h2>
           <p className="mx-auto mt-3 max-w-xl font-medium text-ink/55">
-            Košta te otprilike jedno šišanje mesečno - a pokrije se prvom
+            Košta koliko jedan termin mesečno - a pokrije se prvom
             rezervacijom.
           </p>
         </div>

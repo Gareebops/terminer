@@ -4,6 +4,29 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 8.7 (3) — UNIVERZALIZACIJA UI-ja (verifikovano kroz svež nalog,
+test podaci obrisani):** platforma se obraća SVIM vrstama salona, ne samo
+frizerima. (1) Copy: meta opis (layout.tsx) nabraja frizerske/kozmetičke/
+beauty salone, barbershope i masažne studije (namerno "frizerske" prvo -
+SEO); landing feature "uslugu, osobu i termin"; cenovnik "Košta koliko
+jedan termin mesečno"; hero podnaslov i registracija "salon ili studio";
+FAQ bez "frizera" i "šišanja"; hero-demo korak "Kod koga" (ostaje
+barbershop primer - konkretno > generično); vodič korak 2 "Šišanje,
+manikir, masaža"; prazno stanje Usluga "od šišanja do masaže"; placeholder
+napomene u kalendaru neutralan; opisi font para "Moderno" i tamne
+varijante bez "barbershop". Reč "salon" OSTAJE krovni pojam proizvoda
+(industrijski prihvaćena; menjana samo na ulaznim tačkama). (2) PRIMERI
+USLUGA PO DELATNOSTI: `SAMPLE_SERVICE_SETS` u admin/actions.ts (frizerski
+8 / barbershop 7 / kozmetika i nokti 8 / masaža i spa 6, realne cene);
+`insertSampleServices(kind)` vraća i count; u praznom stanju Usluga
+dugme "Ubaci primere za..." otvara dropdown delatnosti. Bez migracije -
+ništa se ne čuva. VERIFIKOVANO kroz svež nalog (auth admin API →
+onboarding → prazan cenovnik → set "Masaža i spa" → 6 usluga + toast);
+nalog i tenant obrisani. SVESNO ODLOŽENO: `business_type` kolona (ima
+smisla tek uz vibe presete po delatnosti iz faze B/C) i drugi demo salon
+(marketing, ne kod). POUKA: Radix DropdownMenu se ne otvara na JS
+.click() u preview-u - treba preview_click (pravi pointer eventi).
+
 **Novo od 8.7 (2) — VELIKI UX PAKET (ceo izveštaj UX pregleda rešen; 5
 commita, sve verifikovano kroz preview, bez migracija):** posle prolaska
 kroz sve tokove urađeno redom:

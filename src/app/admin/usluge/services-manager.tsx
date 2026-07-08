@@ -13,6 +13,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -25,7 +31,16 @@ import {
   insertSampleServices,
   moveService,
   upsertService,
+  type SampleServiceKind,
 } from "../actions";
+
+// Primeri cenovnika po delatnosti - platforma služi svim vrstama salona
+const SAMPLE_KINDS: { id: SampleServiceKind; label: string }[] = [
+  { id: "frizerski", label: "Frizerski salon" },
+  { id: "barbershop", label: "Barbershop" },
+  { id: "kozmetika", label: "Kozmetika i nokti" },
+  { id: "masaza", label: "Masaža i spa" },
+];
 
 function ServiceForm({
   service,
@@ -119,15 +134,16 @@ export function ServicesManager({ services }: { services: Service[] }) {
   const [pending, startTransition] = useTransition();
   const [samplesPending, startSamples] = useTransition();
 
-  function addSamples() {
+  function addSamples(kind: SampleServiceKind) {
     startSamples(async () => {
-      const res = await insertSampleServices();
+      const res = await insertSampleServices(kind);
       if (res.ok) {
         // Primeri se ubacuju samo u prazan cenovnik = praktično uvek tokom
         // vodiča, pa toast nudi povratak na sledeći korak
-        toast.success("Ubačeno 8 primera - izmeni cene i trajanja po svom cenovniku.", {
-          action: { label: "Sledeći korak", onClick: () => router.push("/admin") },
-        });
+        toast.success(
+          `Ubačeno ${res.count ?? ""} primera - izmeni cene i trajanja po svom cenovniku.`,
+          { action: { label: "Sledeći korak", onClick: () => router.push("/admin") } }
+        );
       } else {
         toast.error(res.error ?? "Greška.");
       }
@@ -236,7 +252,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
             </span>
             <p className="mt-3 text-lg font-bold tracking-tight">Dodaj svoje usluge</p>
             <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-              Sve što radiš - šišanje, farbanje, brada - sa cenom i trajanjem.
+              Sve što radiš - od šišanja do masaže - sa cenom i trajanjem.
               Trajanje određuje koliko termin zauzima u kalendaru.
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-2">
@@ -249,18 +265,29 @@ export function ServicesManager({ services }: { services: Service[] }) {
               >
                 <Plus className="size-4" /> Dodaj uslugu
               </Button>
-              <Button
-                variant="outline"
-                className="rounded-full"
-                disabled={samplesPending}
-                onClick={addSamples}
-              >
-                <Sparkles className="size-4" />
-                {samplesPending ? "Ubacivanje..." : "Ubaci primere (8 usluga)"}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="rounded-full"
+                    disabled={samplesPending}
+                  >
+                    <Sparkles className="size-4" />
+                    {samplesPending ? "Ubacivanje..." : "Ubaci primere za..."}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  {SAMPLE_KINDS.map((k) => (
+                    <DropdownMenuItem key={k.id} onClick={() => addSamples(k.id)}>
+                      {k.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
-              Primere posle izmeni ili obriši - tu su da ne krećeš od nule.
+              Izaberi svoju delatnost - primere posle izmeni ili obriši, tu su
+              da ne krećeš od nule.
             </p>
           </div>
         )}

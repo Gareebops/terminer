@@ -356,20 +356,59 @@ export async function updateOnboarding(
   return { ok: true };
 }
 
-// Tipičan cenovnik za start - vlasnik menja cene/trajanja umesto da kreće
-// od praznog ekrana. Ubacuje se SAMO u prazan cenovnik.
-const SAMPLE_SERVICES = [
-  { name: "Muško šišanje", duration_minutes: 30, price: 700 },
-  { name: "Žensko šišanje", duration_minutes: 45, price: 1200 },
-  { name: "Dečije šišanje", duration_minutes: 20, price: 500 },
-  { name: "Feniranje", duration_minutes: 30, price: 800 },
-  { name: "Farbanje", duration_minutes: 90, price: 3500 },
-  { name: "Pramenovi", duration_minutes: 120, price: 4500 },
-  { name: "Oblikovanje brade", duration_minutes: 20, price: 400 },
-  { name: "Šišanje + brada", duration_minutes: 45, price: 1000 },
-];
+// Tipični cenovnici za start PO DELATNOSTI - platforma nije samo za
+// frizere, pa vlasnik bira svoj zanat i menja cene/trajanja umesto da
+// kreće od praznog ekrana. Ubacuju se SAMO u prazan cenovnik.
+const SAMPLE_SERVICE_SETS: Record<
+  string,
+  { name: string; duration_minutes: number; price: number }[]
+> = {
+  frizerski: [
+    { name: "Muško šišanje", duration_minutes: 30, price: 700 },
+    { name: "Žensko šišanje", duration_minutes: 45, price: 1200 },
+    { name: "Dečije šišanje", duration_minutes: 20, price: 500 },
+    { name: "Feniranje", duration_minutes: 30, price: 800 },
+    { name: "Farbanje", duration_minutes: 90, price: 3500 },
+    { name: "Pramenovi", duration_minutes: 120, price: 4500 },
+    { name: "Oblikovanje brade", duration_minutes: 20, price: 400 },
+    { name: "Šišanje + brada", duration_minutes: 45, price: 1000 },
+  ],
+  barbershop: [
+    { name: "Fade", duration_minutes: 40, price: 900 },
+    { name: "Klasično šišanje", duration_minutes: 30, price: 700 },
+    { name: "Šišanje mašinicom", duration_minutes: 20, price: 500 },
+    { name: "Oblikovanje brade", duration_minutes: 20, price: 500 },
+    { name: "Šišanje + brada", duration_minutes: 50, price: 1100 },
+    { name: "Klasično brijanje", duration_minutes: 30, price: 800 },
+    { name: "Dečije šišanje", duration_minutes: 20, price: 500 },
+  ],
+  kozmetika: [
+    { name: "Manikir", duration_minutes: 45, price: 1500 },
+    { name: "Gel lak", duration_minutes: 60, price: 2000 },
+    { name: "Izlivanje noktiju", duration_minutes: 90, price: 3500 },
+    { name: "Pedikir", duration_minutes: 60, price: 2000 },
+    { name: "Oblikovanje obrva", duration_minutes: 20, price: 600 },
+    { name: "Depilacija nogu", duration_minutes: 30, price: 1200 },
+    { name: "Tretman lica", duration_minutes: 60, price: 3000 },
+    { name: "Lash lift", duration_minutes: 60, price: 2500 },
+  ],
+  masaza: [
+    { name: "Relax masaža", duration_minutes: 60, price: 3000 },
+    { name: "Terapeutska masaža", duration_minutes: 45, price: 2800 },
+    { name: "Masaža leđa", duration_minutes: 30, price: 1800 },
+    { name: "Anticelulit masaža", duration_minutes: 45, price: 2500 },
+    { name: "Sportska masaža", duration_minutes: 60, price: 3200 },
+    { name: "Aromaterapijska masaža", duration_minutes: 75, price: 3800 },
+  ],
+};
 
-export async function insertSampleServices(): Promise<ActionResult> {
+export type SampleServiceKind = "frizerski" | "barbershop" | "kozmetika" | "masaza";
+
+export async function insertSampleServices(
+  kind: SampleServiceKind
+): Promise<ActionResult & { count?: number }> {
+  const set = SAMPLE_SERVICE_SETS[kind];
+  if (!set) return { ok: false, error: "Nepoznata delatnost." };
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
 
@@ -383,7 +422,7 @@ export async function insertSampleServices(): Promise<ActionResult> {
 
   const { data: inserted, error } = await supabase
     .from("services")
-    .insert(SAMPLE_SERVICES.map((s, i) => ({ tenant_id: tenant.id, sort_order: i, ...s })))
+    .insert(set.map((s, i) => ({ tenant_id: tenant.id, sort_order: i, ...s })))
     .select("id");
   if (error || !inserted) return { ok: false, error: "Ubacivanje nije uspelo." };
 
@@ -406,7 +445,7 @@ export async function insertSampleServices(): Promise<ActionResult> {
 
   revalidatePath("/admin/usluge");
   revalidatePath("/admin");
-  return { ok: true };
+  return { ok: true, count: set.length };
 }
 
 // ---------- Raspored: pravilo (nedeljno / smene A/B) + izuzeci po datumu ----------
