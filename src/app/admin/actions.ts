@@ -199,6 +199,8 @@ export async function upsertStaff(
   if (parsed.data.id) {
     const { error } = await supabase.from("staff").update(row).eq("id", parsed.data.id);
     if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+    // Ime/opis stoje i na javnom sajtu (sekcija Tim)
+    revalidatePath(`/${tenant.slug}`);
   } else {
     const { data: member, error } = await supabase
       .from("staff")

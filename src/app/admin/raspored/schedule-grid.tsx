@@ -234,19 +234,27 @@ export function ScheduleGrid({
                   (e) => e.staff_id === m.id && e.date === d
                 );
                 const info = cellInfo(d, m, hours, exception);
+                // Izuzetak za prošli dan nema smisla - ćelija je samo prikaz
+                const isPast = d < todayStr;
                 return (
                   <td
                     key={d}
                     className={`border-b p-1.5 text-center ${d === todayStr ? "bg-ink/[0.05]" : ""}`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => openCell(m, d)}
-                      title="Izmeni samo ovaj dan"
-                      className="cursor-pointer"
-                    >
-                      <CellChip window={info.window} kind={info.kind} />
-                    </button>
+                    {isPast ? (
+                      <span className="opacity-40" title="Prošao dan">
+                        <CellChip window={info.window} kind={info.kind} />
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openCell(m, d)}
+                        title="Izmeni samo ovaj dan"
+                        className="cursor-pointer"
+                      >
+                        <CellChip window={info.window} kind={info.kind} />
+                      </button>
+                    )}
                   </td>
                 );
               })}

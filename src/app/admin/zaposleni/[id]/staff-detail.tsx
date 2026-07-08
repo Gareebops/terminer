@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
 import { prepareImageForUpload } from "@/lib/image";
 import {
@@ -26,6 +27,7 @@ import {
   updateStaffPhoto,
   updateStaffServices,
   updateStaffSchedule,
+  upsertStaff,
 } from "../../actions";
 import { DAY_NAMES_SR, formatDateISO, formatPrice } from "@/lib/booking/slots";
 import {
@@ -73,6 +75,62 @@ function validateDays(days: DayRow[], prefix: string): string | null {
     }
   }
   return null;
+}
+
+// Ime/opis/aktivnost se menjaju i ovde - ranije samo kroz olovku na listi,
+// pa je izmena imena tražila povratak na Zaposlene
+function IdentityCard({ staff }: { staff: Staff }) {
+  const router = useRouter();
+  const [name, setName] = useState(staff.name);
+  const [bio, setBio] = useState(staff.bio ?? "");
+  const [isActive, setIsActive] = useState(staff.is_active);
+  const [pending, startTransition] = useTransition();
+
+  function save() {
+    startTransition(async () => {
+      const res = await upsertStaff({ id: staff.id, name, bio, isActive });
+      if (res.ok) {
+        toast.success("Sačuvano.");
+        // Naslov stranice (H1) renderuje server - povuci sveže ime
+        router.refresh();
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
+    });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Ime i opis</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="st-name">Ime *</Label>
+          <Input
+            id="st-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="st-bio">Kratak opis (prikazuje se na sajtu)</Label>
+          <Textarea
+            id="st-bio"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch id="st-active" checked={isActive} onCheckedChange={setIsActive} />
+          <Label htmlFor="st-active">Aktivan (prima rezervacije)</Label>
+        </div>
+        <Button onClick={save} disabled={pending || name.trim().length === 0}>
+          {pending ? "Čuvanje..." : "Sačuvaj"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }
 
 function PhotoCard({
@@ -470,6 +528,8 @@ export function StaffDetail({
 
   return (
     <div className="space-y-6">
+      <IdentityCard staff={staff} />
+
       <PhotoCard staffId={staff.id} tenantId={staff.tenant_id} photoUrl={staff.photo_url} />
 
       <Card>

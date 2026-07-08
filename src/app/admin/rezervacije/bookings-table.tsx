@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
-import { CalendarDays, Search } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { CalendarDays, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,6 @@ import {
   BOOKING_STATUS_LABELS,
   BOOKING_STATUS_STYLES,
 } from "@/lib/booking/status";
-import { normalizePhone } from "@/lib/phone";
 import { updateBookingStatus } from "../actions";
 import type { Booking, BookingStatus } from "@/lib/types";
 
@@ -37,12 +37,34 @@ type Row = Booking & {
 export function BookingsTable({
   bookings,
   history = false,
+  query = "",
 }: {
   bookings: Row[];
   history?: boolean;
+  // Aktivan upit pretrage (iz URL-a) - pretraga se izvršava u bazi, pa
+  // nalazi i istoriju stariju od učitanog limita
+  query?: string;
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(query);
+  const [searching, startSearch] = useTransition();
+
+  // Kucanje → debounce → URL (?q=) → server filtrira u bazi
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const trimmed = q.trim();
+      if (trimmed === query) return;
+      const params = new URLSearchParams();
+      if (history) params.set("prikaz", "istorija");
+      if (trimmed) params.set("q", trimmed);
+      const qs = params.toString();
+      startSearch(() => {
+        router.replace(`/admin/rezervacije${qs ? `?${qs}` : ""}`);
+      });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [q, query, history, router]);
 
   function setStatus(id: string, status: BookingStatus) {
     startTransition(async () => {
@@ -51,21 +73,9 @@ export function BookingsTable({
     });
   }
 
-  // Pretraga po imenu ili telefonu - telefon se poredi normalizovan, pa
-  // "060 123" nalazi i "+38160123..."
-  const filtered = useMemo(() => {
-    const term = q.trim().toLowerCase();
-    if (!term) return bookings;
-    const phoneTerm = normalizePhone(term).replace(/^\+381/, "");
-    return bookings.filter(
-      (b) =>
-        b.customer_name.toLowerCase().includes(term) ||
-        (phoneTerm.length >= 3 &&
-          normalizePhone(b.customer_phone).replace(/^\+381/, "").includes(phoneTerm))
-    );
-  }, [bookings, q]);
-
-  if (bookings.length === 0) {
+  // Bogato prazno stanje samo kad stvarno nema podataka; kod pretrage bez
+  // rezultata polje mora ostati vidljivo da se upit izmeni
+  if (bookings.length === 0 && !query) {
     return (
       <div className="rounded-[2rem] border border-dashed p-8 text-center">
         <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-mint/50 text-ink">
@@ -96,12 +106,15 @@ export function BookingsTable({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Traži po imenu ili telefonu"
-          className="pl-9"
+          className="pl-9 pr-9"
         />
+        {searching && (
+          <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+        )}
       </div>
-      {filtered.length === 0 ? (
+      {bookings.length === 0 ? (
         <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-          Nema rezultata za „{q.trim()}“.
+          Nema rezultata za „{query}“.
         </p>
       ) : (
         <Table>
@@ -118,7 +131,7 @@ export function BookingsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.map((b) => (
+            {bookings.map((b) => (
               <TableRow key={b.id}>
                 <TableCell>
                   {new Date(`${b.date}T12:00:00`).toLocaleDateString("sr-RS")}
