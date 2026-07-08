@@ -4,6 +4,47 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 8.7 (6) — PERFORMANSE: KEŠIRANJE JAVNIH PODATAKA + BATCH SLOTOVA
++ RATE LIMIT:** Javne stranice salona više ne diraju bazu na svaku posetu.
+(1) [lib/tenant.ts](src/lib/tenant.ts): `getTenantSite` sada prvo čita
+KEŠIRANU javnu varijantu (`unstable_cache`, anon klijent BEZ kolačića —
+vidi isto što i neulogovan posetilac; tag `tenant-site:{slug}`, TTL 300s
+kao zaštitna mreža) i pada nazad na sesijski klijent SAMO kad keš vrati
+null a posetilac ima `sb-*` kolačiće (preview neobjavljenog salona za
+vlasnika — ponašanje identično starom). `cookies()` se čita BEZUSLOVNO pre
+keša: drži rutu dinamičkom (svež HTML) i ne sme u cache scope. Invalidacija:
+`bustTenantSiteCache(slug)` (=`updateTag`, trenutna — vlasnik odmah vidi
+izmenu; sme SAMO iz server akcija) pozvana iz SVIH akcija koje menjaju
+javni sadržaj: usluge (upsert/delete/primeri/redosled), tim (upsert/delete/
+usluge člana/fotka/horizont), galerija, izgled, podešavanja, objava
+(admin/actions.ts); billing korekcije + suspenzija/brisanje (superadmin —
+paid_until/trial žive na keširanom tenant redu → pauza zakazivanja);
+createSalon (obara eventualni keširan "ne postoji"). (2) Booking kontekst
+(tenant+usluga+tim po slugu) keširan istim tagom, TTL 60s, u
+[lib/booking/actions.ts](src/lib/booking/actions.ts) — provere suspenzije/
+pauze pretplate su SVESNO VAN keša (računaju se iz keširanih polja pri
+svakom pozivu, isti redosled grešaka kao pre). Rezervacije/blokade/raspored
+se NIKAD ne keširaju. (3) Slotovi: umesto 4 upita PO ČLANU (getWorkWindow+
+getBusyRanges), `fetchDayData` vuče shift_assignments/working_hours/
+bookings/blocked_slots za SVE kandidate u 4 upita (`.in("staff_id",...)`)
+— "any" u salonu sa 5 ljudi pada sa ~24 na ~8 upita po izboru datuma;
+`resolveWindow` ionako bira red po članu/danu/parnosti (computeOpenDays
+je već radio ovako). (4) `getAvailableSlots` dobio in-memory rate limit
+30/min po IP-u (po instanci, kao domainCache; createBooking već ima
+limite u bazi) — poruka se prikazuje kroz postojeći slotsError u wizardu.
+(5) [proxy.ts](src/proxy.ts): bez `sb-*` kolačića preskače se ceo Supabase
+auth blok (getUser) — anonimni posetilac ne plaća ništa; /admin bez
+kolačića i dalje ide na /prijava (redirect proveren). VERIFIKOVANO:
+41/41 vitest, build čist, /demo renderuje kompletno kroz keš (toplo
+~120ms), getAvailableSlots direktnim pozivom akcije vraća slotove za
+"any" i za konkretnog člana, includeDays radi (nedelja closed), rate
+limit blokira tačno od 31. poziva, nepoznat slug 404, /admin 307 →
+/prijava. NIJE testirano uživo (nema kredencijala u sesiji): owner
+preview neobjavljenog salona ulogovanim nalogom — logika je 1:1 stari
+kod, ali baci pogled pri sledećoj prijavi. NAPOMENA za budući rad: novi
+upiti/akcije koje menjaju tenants/site_settings/services/staff/
+staff_services/gallery MORAJU zvati `bustTenantSiteCache(tenant.slug)`.
+
 **Novo od 8.7 (5) — GOOGLE AUTH VERIFIKOVAN E2E + ISPRAVKA REDIRECTA:**
 Mihajlo podesio Google Cloud OAuth klijent i uključio provider u Supabase.
 Živi test kroz njegov Chrome: dugme → Google account chooser → consent →

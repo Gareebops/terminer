@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { bustTenantSiteCache } from "@/lib/tenant";
 import { logAdminAction } from "@/lib/audit";
 
 // Superadmin = vlasnik platforme (SUPER_ADMIN_EMAIL u env).
@@ -59,7 +60,7 @@ export async function markInvoicePaid(invoiceId: string): Promise<ActionResult> 
 
   const { data: tenant } = await db
     .from("tenants")
-    .select("paid_until")
+    .select("paid_until, slug")
     .eq("id", invoice.tenant_id)
     .single();
   const newPaidUntil =
@@ -70,6 +71,9 @@ export async function markInvoicePaid(invoiceId: string): Promise<ActionResult> 
     .from("tenants")
     .update({ paid_until: newPaidUntil })
     .eq("id", invoice.tenant_id);
+  // paid_until živi na keširanom tenant redu (pauza online zakazivanja) -
+  // posle uplate zakazivanje mora odmah da proradi
+  if (tenant?.slug) bustTenantSiteCache(tenant.slug);
 
   await logAdminAction({
     adminEmail: me.email,
@@ -122,7 +126,7 @@ export async function extendTrial(
   const db = createAdminClient();
   const { data: tenant } = await db
     .from("tenants")
-    .select("trial_ends_at")
+    .select("trial_ends_at, slug")
     .eq("id", tenantId)
     .maybeSingle();
   if (!tenant) return { ok: false, error: "Salon nije pronađen." };
@@ -135,6 +139,7 @@ export async function extendTrial(
     .update({ trial_ends_at: next })
     .eq("id", tenantId);
   if (error) return { ok: false, error: "Izmena nije uspela." };
+  bustTenantSiteCache(tenant.slug);
   await logAdminAction({
     adminEmail: me.email,
     action: "produžena proba",
@@ -157,11 +162,14 @@ export async function setPaidUntil(
   if (!me) return { ok: false, error: "Nemaš pristup." };
 
   const db = createAdminClient();
-  const { error } = await db
+  const { data: updated, error } = await db
     .from("tenants")
     .update({ paid_until: date })
-    .eq("id", tenantId);
+    .eq("id", tenantId)
+    .select("slug")
+    .maybeSingle();
   if (error) return { ok: false, error: "Izmena nije uspela." };
+  if (updated?.slug) bustTenantSiteCache(updated.slug);
   await logAdminAction({
     adminEmail: me.email,
     action: "ručna korekcija plaćeno-do",
@@ -189,7 +197,7 @@ export async function extendSubscription(input: {
   const db = createAdminClient();
   const { data: tenant } = await db
     .from("tenants")
-    .select("paid_until")
+    .select("paid_until, slug")
     .eq("id", parsed.data.tenantId)
     .maybeSingle();
   if (!tenant) return { ok: false, error: "Salon nije pronađen." };
@@ -208,6 +216,7 @@ export async function extendSubscription(input: {
     .update({ paid_until: paidUntil })
     .eq("id", parsed.data.tenantId);
   if (error) return { ok: false, error: "Izmena nije uspela." };
+  bustTenantSiteCache(tenant.slug);
 
   await logAdminAction({
     adminEmail: me.email,

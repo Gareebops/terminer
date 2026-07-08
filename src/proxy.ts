@@ -80,6 +80,22 @@ export default async function proxy(request: NextRequest) {
     response.headers.set("x-tenant-slug", firstSegment);
   }
 
+  // Bez Supabase auth kolačića nema sesije za osvežavanje - preskoči ceo
+  // auth blok. To je ogromna većina saobraćaja (anonimni posetioci sajtova
+  // salona); getUser za njih ionako ne bi našao ništa.
+  const hasAuthCookies = request.cookies
+    .getAll()
+    .some((c) => c.name.startsWith("sb-"));
+  if (!hasAuthCookies) {
+    if (request.nextUrl.pathname.startsWith("/admin")) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/prijava";
+      url.searchParams.set("next", request.nextUrl.pathname);
+      return NextResponse.redirect(url);
+    }
+    return response;
+  }
+
   // --- Osvežavanje Supabase sesije (standardni @supabase/ssr obrazac) ---
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

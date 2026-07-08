@@ -1,8 +1,10 @@
 "use server";
 
+import { unstable_cache } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { tenantSiteTag } from "@/lib/tenant";
 import { sendBookingConfirmation, sendOwnerBookingNotice } from "@/lib/email";
 import {
   generateAvailableSlots,
@@ -15,9 +17,7 @@ import {
   addDaysISO,
   bookingHorizonDays,
   dayOfWeek,
-  parityForStaff,
   resolveWindow,
-  type WorkWindow,
 } from "@/lib/booking/schedule";
 import { isBookingPaused } from "@/lib/billing";
 import { normalizePhone } from "@/lib/phone";
@@ -56,35 +56,37 @@ interface BookingContext {
 // Namerno NE filtriramo po is_published: vlasnik testira zakazivanje i pre
 // objave sajta. Anonimni posetilac ne može da dođe do UUID-jeva usluga i
 // frizera neobjavljenog salona (RLS krije stranicu), pa je ovo bezbedno.
-async function loadBookingContext(
+//
+// Podaci konteksta (tenant/usluga/tim) se menjaju retko pa se keširaju:
+// tag obara svaka admin izmena (bustTenantSiteCache), TTL je zaštitna
+// mreža. Provere zavisne od vremena (suspenzija, pauza pretplate) NISU u
+// kešu - računaju se iz keširanih polja pri svakom pozivu, u
+// loadBookingContext. Rezervacije i blokade se ne keširaju nikad.
+type BookingContextData =
+  | { tenant: Tenant | null; error: string }
+  | { tenant: Tenant; error?: undefined; service: Service; staffList: Staff[] };
+
+async function fetchBookingContextData(
   slug: string,
   staffId: string,
   serviceId: string
-): Promise<BookingContext | { error: string }> {
+): Promise<BookingContextData> {
   const db = createAdminClient();
   const { data: tenant } = await db
     .from("tenants")
     .select("*")
     .eq("slug", slug)
     .maybeSingle();
-  if (!tenant) return { error: "Salon nije pronađen." };
-
-  // Suspendovan salon: nema zakazivanja ni za koga
-  if (tenant.suspended_at) {
-    return { error: "Salon trenutno nije dostupan." };
-  }
-
-  // Istekla pretplata pauzira samo online zakazivanje - sajt ostaje živ
-  if (isBookingPaused(tenant as Tenant)) {
-    return { error: "Online zakazivanje je trenutno pauzirano. Pozovi salon telefonom." };
-  }
+  if (!tenant) return { tenant: null, error: "Salon nije pronađen." };
 
   if (staffId === "any") {
     const [serviceRes, linksRes] = await Promise.all([
       db.from("services").select("*").eq("id", serviceId).eq("tenant_id", tenant.id).eq("is_active", true).maybeSingle(),
       db.from("staff_services").select("staff_id").eq("tenant_id", tenant.id).eq("service_id", serviceId),
     ]);
-    if (!serviceRes.data) return { error: "Usluga nije pronađena ili je neaktivna." };
+    if (!serviceRes.data) {
+      return { tenant: tenant as Tenant, error: "Usluga nije pronađena ili je neaktivna." };
+    }
     const ids = (linksRes.data ?? []).map((l) => l.staff_id);
     const { data: staff } = ids.length
       ? await db
@@ -96,10 +98,12 @@ async function loadBookingContext(
           .order("sort_order")
       : { data: [] };
     if (!staff || staff.length === 0) {
-      return { error: "Trenutno niko ne radi ovu uslugu. Probaj drugu ili pozovi salon." };
+      return {
+        tenant: tenant as Tenant,
+        error: "Trenutno niko ne radi ovu uslugu. Probaj drugu ili pozovi salon.",
+      };
     }
     return {
-      db,
       tenant: tenant as Tenant,
       service: serviceRes.data as Service,
       staffList: staff as Staff[],
@@ -112,106 +116,142 @@ async function loadBookingContext(
     db.from("staff_services").select("staff_id").eq("staff_id", staffId).eq("service_id", serviceId).maybeSingle(),
   ]);
   // Neutralno "član tima" - platforma služi i salonima gde nema frizera
-  if (!staffRes.data) return { error: "Član tima nije pronađen ili je neaktivan." };
-  if (!serviceRes.data) return { error: "Usluga nije pronađena ili je neaktivna." };
-  if (!linkRes.data) return { error: "Izabrani član tima ne radi ovu uslugu." };
+  if (!staffRes.data) {
+    return { tenant: tenant as Tenant, error: "Član tima nije pronađen ili je neaktivan." };
+  }
+  if (!serviceRes.data) {
+    return { tenant: tenant as Tenant, error: "Usluga nije pronađena ili je neaktivna." };
+  }
+  if (!linkRes.data) {
+    return { tenant: tenant as Tenant, error: "Izabrani član tima ne radi ovu uslugu." };
+  }
 
   return {
-    db,
     tenant: tenant as Tenant,
     service: serviceRes.data as Service,
     staffList: [staffRes.data as Staff],
   };
 }
 
-// Radno okno za člana tima na dati datum: izuzetak za datum ima prednost,
-// inače pravilo (nedeljno radno vreme, uz A/B parnost kod rotacije).
-// Oba upita idu paralelno - jedan round-trip manje po danu.
-async function getWorkWindow(
+const getBookingContextData = (slug: string, staffId: string, serviceId: string) =>
+  unstable_cache(
+    () => fetchBookingContextData(slug, staffId, serviceId),
+    ["booking-context", slug, staffId, serviceId],
+    { tags: [tenantSiteTag(slug)], revalidate: 60 }
+  )();
+
+async function loadBookingContext(
+  slug: string,
+  staffId: string,
+  serviceId: string
+): Promise<BookingContext | { error: string }> {
+  const data = await getBookingContextData(slug, staffId, serviceId);
+
+  // Isti redosled provera kao pre keširanja: suspenzija/pauza imaju
+  // prednost nad greškama o usluzi/članu tima
+  if (data.tenant) {
+    // Suspendovan salon: nema zakazivanja ni za koga
+    if (data.tenant.suspended_at) {
+      return { error: "Salon trenutno nije dostupan." };
+    }
+    // Istekla pretplata pauzira samo online zakazivanje - sajt ostaje živ
+    if (isBookingPaused(data.tenant)) {
+      return { error: "Online zakazivanje je trenutno pauzirano. Pozovi salon telefonom." };
+    }
+  }
+  if (data.error !== undefined) return { error: data.error };
+
+  return {
+    db: createAdminClient(),
+    tenant: data.tenant,
+    service: data.service,
+    staffList: data.staffList,
+  };
+}
+
+// Podaci dana za SVE članove iz konteksta odjednom - 4 upita bez obzira
+// na broj kandidata (ranije 4 po članu, pa je "any" u salonu sa 5 ljudi
+// koštao 20). resolveWindow sam bira red po članu/danu/parnosti.
+type DayData = {
+  exceptions: ScheduleException[];
+  hours: WorkingHours[];
+  // rezervacije + blokade zajedno; staff_id null = blokada celog salona
+  busy: { staff_id: string | null; start_time: string; end_time: string }[];
+};
+
+async function fetchDayData(
   db: Db,
   tenantId: string,
-  staff: Staff,
+  staffIds: string[],
   date: string
-): Promise<WorkWindow> {
+): Promise<DayData> {
   // tenant_id filter i ovde iako FK garantuje integritet - service-role
   // klijent zaobilazi RLS, pa nijedan upit ne sme bez tenant granice
-  const [excRes, whRes] = await Promise.all([
+  const [excRes, whRes, bookingsRes, blockedRes] = await Promise.all([
     db
       .from("shift_assignments")
       .select("*")
       .eq("tenant_id", tenantId)
-      .eq("staff_id", staff.id)
-      .eq("date", date)
-      .maybeSingle(),
+      .in("staff_id", staffIds)
+      .eq("date", date),
     db
       .from("working_hours")
       .select("*")
       .eq("tenant_id", tenantId)
-      .eq("staff_id", staff.id)
-      .eq("day_of_week", dayOfWeek(date))
-      .eq("week_parity", parityForStaff(date, staff))
-      .maybeSingle(),
-  ]);
-
-  if (excRes.data) {
-    return resolveWindow(date, staff, [], excRes.data as ScheduleException);
-  }
-  return resolveWindow(
-    date,
-    staff,
-    whRes.data ? [whRes.data as WorkingHours] : [],
-    null
-  );
-}
-
-async function getBusyRanges(
-  db: Db,
-  tenantId: string,
-  staffId: string,
-  date: string
-): Promise<TimeRange[]> {
-  const [bookings, blocked] = await Promise.all([
+      .in("staff_id", staffIds)
+      .eq("day_of_week", dayOfWeek(date)),
     db
       .from("bookings")
-      .select("start_time, end_time")
+      .select("staff_id, start_time, end_time")
       .eq("tenant_id", tenantId)
-      .eq("staff_id", staffId)
+      .in("staff_id", staffIds)
       .eq("date", date)
       .in("status", ["pending", "confirmed"]),
     db
       .from("blocked_slots")
-      .select("start_time, end_time, staff_id")
+      .select("staff_id, start_time, end_time")
       .eq("tenant_id", tenantId)
       .eq("date", date)
-      .or(`staff_id.eq.${staffId},staff_id.is.null`),
+      .or(`staff_id.in.(${staffIds.join(",")}),staff_id.is.null`),
   ]);
 
-  return [...(bookings.data ?? []), ...(blocked.data ?? [])].map((r) => ({
-    start: r.start_time.slice(0, 5),
-    end: r.end_time.slice(0, 5),
-  }));
+  return {
+    exceptions: (excRes.data ?? []) as ScheduleException[],
+    hours: (whRes.data ?? []) as WorkingHours[],
+    busy: [...(bookingsRes.data ?? []), ...(blockedRes.data ?? [])],
+  };
 }
 
 // Termin ne sme da počne "za minut" - salonu treba vremena da vidi
 // rezervaciju. Današnji slotovi počinju tek posle ovog razmaka.
 const MIN_LEAD_MINUTES = 30;
 
-async function computeSlots(
+// Čisto računanje nad već učitanim podacima dana - bez upita
+function computeSlotsForStaff(
   ctx: BookingContext,
   staff: Staff,
-  date: string
-): Promise<string[]> {
-  const now = nowInZone(ctx.tenant.timezone);
+  date: string,
+  now: ReturnType<typeof nowInZone>,
+  day: DayData
+): string[] {
   if (date < now.date) return [];
   // Horizont po zaposlenom (wizard traka nudi isti broj dana). Horizont N =
   // N ponuđenih dana računajući danas, pa je poslednji dozvoljen danas+N-1.
   const lastBookable = addDaysISO(now.date, bookingHorizonDays(staff) - 1);
   if (date > lastBookable) return [];
 
-  const window = await getWorkWindow(ctx.db, ctx.tenant.id, staff, date);
+  // Izuzetak za datum ima prednost, inače pravilo (nedeljno radno vreme,
+  // uz A/B parnost kod rotacije - resolveWindow bira red)
+  const exception =
+    day.exceptions.find((e) => e.staff_id === staff.id) ?? null;
+  const window = exception
+    ? resolveWindow(date, staff, [], exception)
+    : resolveWindow(date, staff, day.hours, null);
   if (!window) return [];
 
-  const busy = await getBusyRanges(ctx.db, ctx.tenant.id, staff.id, date);
+  const busy: TimeRange[] = day.busy
+    .filter((r) => r.staff_id === staff.id || r.staff_id === null)
+    .map((r) => ({ start: r.start_time.slice(0, 5), end: r.end_time.slice(0, 5) }));
 
   return generateAvailableSlots({
     workStart: window.start,
@@ -229,7 +269,23 @@ async function computeSlotsPerStaff(
   ctx: BookingContext,
   date: string
 ): Promise<string[][]> {
-  return Promise.all(ctx.staffList.map((s) => computeSlots(ctx, s, date)));
+  const now = nowInZone(ctx.tenant.timezone);
+
+  // Prošli datum ili datum iza svih horizonata: bez ijednog upita
+  if (date < now.date) return ctx.staffList.map(() => []);
+  const maxLast = addDaysISO(
+    now.date,
+    Math.max(...ctx.staffList.map(bookingHorizonDays)) - 1
+  );
+  if (date > maxLast) return ctx.staffList.map(() => []);
+
+  const day = await fetchDayData(
+    ctx.db,
+    ctx.tenant.id,
+    ctx.staffList.map((s) => s.id),
+    date
+  );
+  return ctx.staffList.map((s) => computeSlotsForStaff(ctx, s, date, now, day));
 }
 
 // Dostupnost po danu za traku u wizardu: radi li IKO iz konteksta tog dana
@@ -278,6 +334,32 @@ async function computeOpenDays(ctx: BookingContext): Promise<DayAvailability> {
   return days;
 }
 
+// Rate limit provere slotova - jedina javna akcija bez prirodne granice
+// (createBooking već ima limite po telefonu i IP-u u bazi). Po instanci,
+// kao domainCache u proxy-ju: dovoljno da niko jeftino ne dobuje bazu, a
+// čovek u wizardu (klik po datumu) limitu ni ne prilazi.
+const SLOTS_MAX_PER_WINDOW = 30;
+const SLOTS_WINDOW_MS = 60_000;
+const slotsHits = new Map<string, { count: number; windowStart: number }>();
+
+function slotsRateLimited(ip: string | null): boolean {
+  if (!ip) return false;
+  const now = Date.now();
+  const hit = slotsHits.get(ip);
+  if (!hit || now - hit.windowStart >= SLOTS_WINDOW_MS) {
+    // Usputno čišćenje isteklih prozora da mapa ne raste unedogled
+    if (slotsHits.size >= 5000) {
+      for (const [key, v] of slotsHits) {
+        if (now - v.windowStart >= SLOTS_WINDOW_MS) slotsHits.delete(key);
+      }
+    }
+    slotsHits.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+  hit.count += 1;
+  return hit.count > SLOTS_MAX_PER_WINDOW;
+}
+
 export async function getAvailableSlots(input: {
   slug: string;
   staffId: string;
@@ -291,6 +373,12 @@ export async function getAvailableSlots(input: {
   const parsedDate = dateSchema.safeParse(input.date);
   if (!parsedDate.success) return { error: "Neispravan datum." };
   if (!staffIdSchema.safeParse(input.staffId).success) return { error: "Neispravan ID." };
+
+  const hdrs = await headers();
+  const ip = (hdrs.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || null;
+  if (slotsRateLimited(ip)) {
+    return { error: "Previše zahteva odjednom. Sačekaj malo pa pokušaj ponovo." };
+  }
 
   const ctx = await loadBookingContext(input.slug, input.staffId, input.serviceId);
   if ("error" in ctx) return { error: ctx.error };

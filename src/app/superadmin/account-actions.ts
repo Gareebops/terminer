@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { bustTenantSiteCache } from "@/lib/tenant";
 import { logAdminAction } from "@/lib/audit";
 import { assertSuperAdmin } from "./actions";
 
@@ -89,6 +90,8 @@ export async function suspendTenant(input: {
     })
     .eq("id", ctx.tenant.id);
   if (error) return { ok: false, error: "Suspenzija nije uspela." };
+  // Suspendovan salon za javnost ne postoji - keširan sajt mora odmah dole
+  bustTenantSiteCache(ctx.tenant.slug);
 
   await logAdminAction({
     adminEmail: me.email,
@@ -116,6 +119,7 @@ export async function unsuspendTenant(tenantId: string): Promise<ActionResult> {
     .update({ suspended_at: null, suspended_reason: null })
     .eq("id", tenantId);
   if (error) return { ok: false, error: "Ukidanje suspenzije nije uspelo." };
+  bustTenantSiteCache(ctx.tenant.slug);
 
   await logAdminAction({
     adminEmail: me.email,
@@ -258,6 +262,7 @@ export async function deleteTenant(input: {
   // 2) Tenant red - kaskada nosi sve child tabele (uklj. fakture i članstva)
   const { error } = await ctx.db.from("tenants").delete().eq("id", ctx.tenant.id);
   if (error) return { ok: false, error: "Brisanje salona nije uspelo." };
+  bustTenantSiteCache(ctx.tenant.slug);
 
   // 3) Auth nalog vlasnika - samo ako ne vodi nijedan drugi salon
   let ownerDeleted = false;

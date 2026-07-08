@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { after } from "next/server";
 import { z } from "zod";
 import { getAdminContext } from "@/lib/admin";
+import { bustTenantSiteCache } from "@/lib/tenant";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendCustomerCancelledNotice } from "@/lib/email";
@@ -153,23 +154,27 @@ export async function upsertService(
     }
   }
 
+  // Usluge stoje na javnom sajtu i u booking wizardu (keširano po tagu)
+  bustTenantSiteCache(tenant.slug);
   revalidatePath("/admin/usluge");
   return { ok: true };
 }
 
 export async function deleteService(id: string): Promise<ActionResult> {
-  await getAdminContext();
+  const { tenant } = await getAdminContext();
   const supabase = await createClient();
   const { error } = await supabase.from("services").delete().eq("id", id);
   if (error) {
     // 23503 = FK sa bookings - usluga ima istoriju, samo je deaktiviraj
     if (error.code === "23503") {
       await supabase.from("services").update({ is_active: false }).eq("id", id);
+      bustTenantSiteCache(tenant.slug);
       revalidatePath("/admin/usluge");
       return { ok: true };
     }
     return { ok: false, error: "Brisanje nije uspelo." };
   }
+  bustTenantSiteCache(tenant.slug);
   revalidatePath("/admin/usluge");
   return { ok: true };
 }
@@ -204,6 +209,7 @@ export async function upsertStaff(
     const { error } = await supabase.from("staff").update(row).eq("id", parsed.data.id);
     if (error) return { ok: false, error: "Čuvanje nije uspelo." };
     // Ime/opis stoje i na javnom sajtu (sekcija Tim)
+    bustTenantSiteCache(tenant.slug);
     revalidatePath(`/${tenant.slug}`);
   } else {
     const { data: member, error } = await supabase
@@ -240,6 +246,7 @@ export async function upsertStaff(
       ),
     ]);
 
+    bustTenantSiteCache(tenant.slug);
     revalidatePath("/admin/zaposleni");
     return { ok: true, id: member.id };
   }
@@ -249,17 +256,19 @@ export async function upsertStaff(
 }
 
 export async function deleteStaff(id: string): Promise<ActionResult> {
-  await getAdminContext();
+  const { tenant } = await getAdminContext();
   const supabase = await createClient();
   const { error } = await supabase.from("staff").delete().eq("id", id);
   if (error) {
     if (error.code === "23503") {
       await supabase.from("staff").update({ is_active: false }).eq("id", id);
+      bustTenantSiteCache(tenant.slug);
       revalidatePath("/admin/zaposleni");
       return { ok: true };
     }
     return { ok: false, error: "Brisanje nije uspelo." };
   }
+  bustTenantSiteCache(tenant.slug);
   revalidatePath("/admin/zaposleni");
   return { ok: true };
 }
@@ -296,6 +305,7 @@ export async function updateStaffServices(
     if (error) return { ok: false, error: "Čuvanje nije uspelo." };
   }
 
+  bustTenantSiteCache(tenant.slug);
   revalidatePath(`/admin/zaposleni/${staffId}`);
   revalidatePath(`/${tenant.slug}`);
   return { ok: true };
@@ -443,6 +453,7 @@ export async function insertSampleServices(
     );
   }
 
+  bustTenantSiteCache(tenant.slug);
   revalidatePath("/admin/usluge");
   revalidatePath("/admin");
   return { ok: true, count: set.length };
@@ -1025,6 +1036,7 @@ export async function updateStaffPhoto(
 
   await removeStorageFile(supabase, current?.photo_url, photoUrl);
 
+  bustTenantSiteCache(tenant.slug);
   revalidatePath(`/admin/zaposleni/${staffId}`);
   revalidatePath("/admin/zaposleni");
   revalidatePath(`/${tenant.slug}`);
@@ -1039,7 +1051,7 @@ export async function updateStaffHorizon(
   staffId: string,
   days: number
 ): Promise<ActionResult> {
-  await getAdminContext();
+  const { tenant } = await getAdminContext();
   if (!HORIZON_CHOICES.includes(days as (typeof HORIZON_CHOICES)[number])) {
     return { ok: false, error: "Neispravna vrednost." };
   }
@@ -1050,6 +1062,8 @@ export async function updateStaffHorizon(
     .eq("id", staffId);
   if (error) return { ok: false, error: "Čuvanje nije uspelo." };
 
+  // Horizont živi na keširanom staff redu (booking kontekst) - obori tag
+  bustTenantSiteCache(tenant.slug);
   revalidatePath(`/admin/zaposleni/${staffId}`);
   return { ok: true };
 }
@@ -1096,6 +1110,7 @@ export async function updateAppearance(
     .update(patch)
     .eq("tenant_id", tenant.id);
   if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+  bustTenantSiteCache(tenant.slug);
   revalidatePath("/admin/podesavanja");
   revalidatePath(`/${tenant.slug}`);
   return { ok: true };
@@ -1134,6 +1149,7 @@ export async function updateSiteImage(
     url
   );
 
+  bustTenantSiteCache(tenant.slug);
   revalidatePath("/admin/podesavanja");
   revalidatePath(`/${tenant.slug}`);
   return { ok: true };
@@ -1153,6 +1169,7 @@ export async function addGalleryImage(url: string): Promise<ActionResult> {
     .insert({ tenant_id: tenant.id, image_url: url });
   if (error) return { ok: false, error: "Čuvanje nije uspelo." };
 
+  bustTenantSiteCache(tenant.slug);
   revalidatePath("/admin/galerija");
   revalidatePath(`/${tenant.slug}`);
   return { ok: true };
@@ -1175,6 +1192,7 @@ export async function deleteGalleryImage(id: string): Promise<ActionResult> {
   const path = row?.image_url?.split("/tenant-media/")[1];
   if (path) await supabase.storage.from("tenant-media").remove([path]);
 
+  bustTenantSiteCache(tenant.slug);
   revalidatePath("/admin/galerija");
   revalidatePath(`/${tenant.slug}`);
   return { ok: true };
@@ -1242,6 +1260,7 @@ async function moveRow(
     return { ok: false, error: "Čuvanje nije uspelo." };
   }
 
+  bustTenantSiteCache(tenant.slug);
   revalidatePath(adminPath);
   revalidatePath(`/${tenant.slug}`);
   return { ok: true };
@@ -1428,6 +1447,7 @@ export async function updateSettings(
     .eq("tenant_id", tenant.id);
 
   if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+  bustTenantSiteCache(tenant.slug);
   revalidatePath("/admin/podesavanja");
   revalidatePath(`/${tenant.slug}`);
   return { ok: true };
@@ -1474,6 +1494,9 @@ export async function setPublished(
     .update({ is_published: published })
     .eq("id", tenant.id);
   if (error) return { ok: false, error: "Izmena nije uspela." };
+  // Objava/skidanje sajta mora ODMAH da važi za javnost (keširan je i
+  // "ne postoji" rezultat za neobjavljen salon)
+  bustTenantSiteCache(tenant.slug);
   revalidatePath("/admin/podesavanja");
   revalidatePath(`/${tenant.slug}`);
   return { ok: true };

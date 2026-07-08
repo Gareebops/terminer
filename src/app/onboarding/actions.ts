@@ -4,6 +4,7 @@ import { z } from "zod";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { bustTenantSiteCache } from "@/lib/tenant";
 import { RESERVED_SLUGS } from "@/lib/reserved-slugs";
 
 const schema = z.object({
@@ -81,6 +82,10 @@ export async function createSalon(input: {
     console.error("createSalon setup failed:", memberRes.error, settingsRes.error);
     return { error: "Greška pri podešavanju salona. Kontaktiraj podršku." };
   }
+
+  // Ako je neko ranije posetio /{slug} dok salon nije postojao, keširan je
+  // "ne postoji" rezultat - obori ga da novi salon odmah bude dostupan
+  bustTenantSiteCache(parsed.data.slug);
 
   redirect("/admin");
 }
