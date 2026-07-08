@@ -4,10 +4,10 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
-**Novo od 8.7 (1) — HORIZONT ZAKAZIVANJA PO ZAPOSLENOM (čeka migraciju!):**
-`staff.booking_horizon_days` (migracija `20260707000001` — MIHAJLO treba
-`supabase db push`; kod je null-safe i PRE migracije, samo čuvanje u adminu
-uredno javlja grešku). Semantika: horizont N = klijenti vide narednih N dana
+**Novo od 8.7 (1) — HORIZONT ZAKAZIVANJA PO ZAPOSLENOM (migracija primenjena
+8.7, E2E VERIFIKOVAN: Đorđe na 3 → traka 3 dana, Marko default 60, vraćeno
+na null; na produkciji od 8.7):** `staff.booking_horizon_days` (migracija
+`20260707000001`). Semantika: horizont N = klijenti vide narednih N dana
 RAČUNAJUĆI danas (poslednji dozvoljen datum = danas+N-1); null = default 60
 (`DEFAULT_HORIZON_DAYS`), clamp 1-90 (`bookingHorizonDays` u
 [schedule.ts](src/lib/booking/schedule.ts), unit testovi). Sprovođenje:
