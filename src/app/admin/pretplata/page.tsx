@@ -16,6 +16,18 @@ export default async function SubscriptionPage() {
     .eq("tenant_id", tenant.id)
     .order("created_at", { ascending: false });
 
+  // Gledanje cena u modalu ume da izda i mesečnu i godišnju fakturu za
+  // isti period - vlasniku se za period prikazuje samo najskorija izdata
+  // (plaćene i stornirane se ne diraju; superadmin i dalje vidi sve)
+  const rows = (invoices ?? []) as Invoice[];
+  const visibleInvoices = rows.filter((inv) => {
+    if (inv.status !== "issued") return true;
+    const newestForPeriod = rows.find(
+      (o) => o.status === "issued" && o.period_from === inv.period_from
+    );
+    return newestForPeriod?.id === inv.id;
+  });
+
   return (
     <div>
       <h1 className="text-3xl font-extrabold tracking-tight">Pretplata</h1>
@@ -28,7 +40,7 @@ export default async function SubscriptionPage() {
           paidUntil={tenant.paid_until}
           trialEndsAt={tenant.trial_ends_at}
           billingInfo={tenant.billing_note ?? ""}
-          invoices={(invoices ?? []) as Invoice[]}
+          invoices={visibleInvoices}
         />
       </div>
     </div>

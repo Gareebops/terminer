@@ -8,6 +8,9 @@ export function normalizePhone(raw: string): string {
   p = p.startsWith("+") ? `+${p.slice(1).replace(/\+/g, "")}` : p.replace(/\+/g, "");
   // međunarodni prefiks "00" → "+"
   if (p.startsWith("00")) p = `+${p.slice(2)}`;
+  // "381..." bez plusa - prepisan međunarodni format (domaći brojevi
+  // počinju nulom, pa nema kolizije)
+  if (/^381\d{6,}$/.test(p)) p = `+${p}`;
   // domaći format sa vodećom nulom → +381 (tržište je Srbija)
   if (p.startsWith("0")) p = `+381${p.slice(1)}`;
   return p;

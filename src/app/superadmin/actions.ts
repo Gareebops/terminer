@@ -31,7 +31,7 @@ export async function markInvoicePaid(invoiceId: string): Promise<ActionResult> 
 
   const { data: invoice } = await db
     .from("invoices")
-    .select("id, tenant_id, period_to, status")
+    .select("id, tenant_id, period_from, period_to, status")
     .eq("id", invoiceId)
     .maybeSingle();
   if (!invoice) return { ok: false, error: "Faktura nije pronađena." };
@@ -44,6 +44,18 @@ export async function markInvoicePaid(invoiceId: string): Promise<ActionResult> 
     .update({ status: "paid", paid_at: new Date().toISOString() })
     .eq("id", invoiceId);
   if (error) return { ok: false, error: "Izmena nije uspela." };
+
+  // Sestrinske neplaćene fakture istog perioda (vlasnik je u modalu menjao
+  // plan pa su izdate i mesečna i godišnja) - plaćanjem jedne ostale
+  // postaju bespredmetne, storniraju se same
+  const { data: siblings } = await db
+    .from("invoices")
+    .update({ status: "cancelled" })
+    .eq("tenant_id", invoice.tenant_id)
+    .eq("period_from", invoice.period_from)
+    .eq("status", "issued")
+    .neq("id", invoiceId)
+    .select("id");
 
   const { data: tenant } = await db
     .from("tenants")
@@ -63,7 +75,11 @@ export async function markInvoicePaid(invoiceId: string): Promise<ActionResult> 
     adminEmail: me.email,
     action: "faktura označena plaćenom",
     tenantId: invoice.tenant_id,
-    details: { invoice_id: invoiceId, paid_until: newPaidUntil },
+    details: {
+      invoice_id: invoiceId,
+      paid_until: newPaidUntil,
+      auto_cancelled: (siblings ?? []).map((s) => s.id),
+    },
   });
   revalidatePath("/superadmin");
   return { ok: true };

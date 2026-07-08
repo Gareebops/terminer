@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { after } from "next/server";
 import { z } from "zod";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -63,7 +64,9 @@ export async function updateBookingStatus(
   }
 
   // Salon otkazuje termin: klijent koji je ostavio email saznaje odmah,
-  // sa linkom za novo zakazivanje. Mejl nikad ne obara izmenu statusa.
+  // sa linkom za novo zakazivanje. Mejl ide POSLE odgovora (after) -
+  // vlasnik ne čeka Resend da bi video promenu statusa; request API-ji
+  // (headers) se čitaju pre, u callback ulaze gotove vrednosti.
   if (
     status === "cancelled" &&
     before?.customer_email &&
@@ -78,7 +81,7 @@ export async function updateBookingStatus(
     const proto = hdrs.get("x-forwarded-proto") ?? "http";
     const host = hdrs.get("host") ?? "localhost:3000";
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? `${proto}://${host}`;
-    await sendCustomerCancelledNotice({
+    const notice = {
       to: before.customer_email,
       salonName: tenant.name,
       serviceName:
@@ -88,7 +91,8 @@ export async function updateBookingStatus(
       startTime: before.start_time.slice(0, 5),
       salonPhone: settings?.phone ?? null,
       bookingUrl: `${baseUrl}/${tenant.slug}/zakazi`,
-    });
+    };
+    after(() => sendCustomerCancelledNotice(notice));
   }
 
   // Status se vidi i u kalendaru i u statistici na Početnoj
@@ -1148,8 +1152,9 @@ const moveSchema = z.object({
   direction: z.enum(["up", "down"]),
 });
 
-// Zameni mesto sa susedom pa preupiši sort_order 0..n-1 za sve redove -
-// početno su svi na default 0, pa sam swap ne bi bio dovoljan
+// Zameni mesto sa susedom. Kad su sort_order vrednosti već raznolike,
+// dovoljna su 2 update-a (swap); samo prvi put (svi na default 0) se
+// preupisuje 0..n-1 za sve redove.
 async function moveRow(
   table: "services" | "gallery",
   input: z.infer<typeof moveSchema>,
@@ -1161,24 +1166,39 @@ async function moveRow(
   const supabase = await createClient();
 
   // Isti redosled kao na stranicama (sort_order, pa created_at)
-  const { data: rows } = await supabase
+  const { data } = await supabase
     .from(table)
-    .select("id")
+    .select("id, sort_order")
     .eq("tenant_id", tenant.id)
     .order("sort_order")
     .order("created_at");
-  const ids = (rows ?? []).map((r) => r.id as string);
-  const idx = ids.indexOf(parsed.data.id);
+  const rows = (data ?? []) as { id: string; sort_order: number }[];
+  const idx = rows.findIndex((r) => r.id === parsed.data.id);
   if (idx === -1) return { ok: false, error: "Stavka nije pronađena." };
   const swapWith = parsed.data.direction === "up" ? idx - 1 : idx + 1;
-  if (swapWith < 0 || swapWith >= ids.length) return { ok: true }; // već na kraju
+  if (swapWith < 0 || swapWith >= rows.length) return { ok: true }; // već na kraju
 
-  [ids[idx], ids[swapWith]] = [ids[swapWith], ids[idx]];
-  const results = await Promise.all(
-    ids.map((rowId, i) =>
-      supabase.from(table).update({ sort_order: i }).eq("id", rowId)
-    )
-  );
+  const distinct = new Set(rows.map((r) => r.sort_order)).size === rows.length;
+  const results = distinct
+    ? await Promise.all([
+        supabase
+          .from(table)
+          .update({ sort_order: rows[swapWith].sort_order })
+          .eq("id", rows[idx].id),
+        supabase
+          .from(table)
+          .update({ sort_order: rows[idx].sort_order })
+          .eq("id", rows[swapWith].id),
+      ])
+    : await (async () => {
+        const ids = rows.map((r) => r.id);
+        [ids[idx], ids[swapWith]] = [ids[swapWith], ids[idx]];
+        return Promise.all(
+          ids.map((rowId, i) =>
+            supabase.from(table).update({ sort_order: i }).eq("id", rowId)
+          )
+        );
+      })();
   if (results.some((r) => r.error)) {
     return { ok: false, error: "Čuvanje nije uspelo." };
   }

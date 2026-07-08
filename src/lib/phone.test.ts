@@ -11,6 +11,8 @@ describe("normalizePhone", () => {
   it("međunarodni oblici ostaju/postaju +381", () => {
     expect(normalizePhone("+381 60 123 456")).toBe("+38160123456");
     expect(normalizePhone("0038160123456")).toBe("+38160123456");
+    // prepisan međunarodni format bez plusa
+    expect(normalizePhone("38160123456")).toBe("+38160123456");
   });
 
   it("strani broj zadržava svoj prefiks", () => {
