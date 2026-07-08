@@ -15,6 +15,7 @@ import type {
   WorkingHours,
 } from "@/lib/types";
 import { CalendarView } from "./calendar-view";
+import { DateJump } from "./date-jump";
 
 function addDays(dateStr: string, n: number): string {
   const d = new Date(`${dateStr}T12:00:00`);
@@ -104,6 +105,7 @@ export default async function CalendarPage({
               <ChevronRight className="size-4" />
             </Link>
           </Button>
+          <DateJump day={day} />
           <Button variant="ghost" asChild>
             <Link href="/admin/kalendar">Danas</Link>
           </Button>

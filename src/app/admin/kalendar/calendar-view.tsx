@@ -40,7 +40,9 @@ import {
   adminCreateBooking,
   createBlockedSlot,
   deleteBlockedSlot,
+  getStaffDayBusy,
   updateBookingStatus,
+  type StaffDayBusy,
 } from "../actions";
 import { ScheduleConflictDialog } from "../schedule-conflict-dialog";
 
@@ -56,22 +58,46 @@ function NewBookingDialog({
   day,
   staff,
   services,
-  defaultOpen = false,
+  open,
+  onOpenChange,
+  // Klik na prazno mesto u gridu otvara dijalog sa preselektovanim
+  // zaposlenim i vremenom tog mesta
+  initialStaffId = "",
+  initialTime = "12:00",
 }: {
   day: string;
   staff: Staff[];
   services: Service[];
-  // Brza akcija sa Početne (?novo=1) otvara dijalog odmah
-  defaultOpen?: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  initialStaffId?: string;
+  initialTime?: string;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
   const [serviceId, setServiceId] = useState("");
-  const [staffId, setStaffId] = useState("");
+  const [staffId, setStaffId] = useState(initialStaffId);
   const [date, setDate] = useState(day);
-  const [time, setTime] = useState("12:00");
+  const [time, setTime] = useState(initialTime);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [note, setNote] = useState("");
+  // Zauzetost izabranog zaposlenog za izabrani dan - da se vreme ne
+  // kucka naslepo pa puca na "termin se preklapa"
+  const [busy, setBusy] = useState<StaffDayBusy | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!open || !staffId || !date) {
+      setBusy(null);
+      return;
+    }
+    let active = true;
+    getStaffDayBusy(staffId, date).then((res) => {
+      if (active) setBusy(res.ok ? res.busy : null);
+    });
+    return () => {
+      active = false;
+    };
+  }, [open, staffId, date]);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -83,12 +109,14 @@ function NewBookingDialog({
         time,
         customerName: name,
         customerPhone: phone,
+        note,
       });
       if (res.ok) {
         toast.success("Rezervacija je upisana.");
-        setOpen(false);
+        onOpenChange(false);
         setName("");
         setPhone("");
+        setNote("");
       } else {
         toast.error(res.error ?? "Greška.");
       }
@@ -96,12 +124,7 @@ function NewBookingDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" /> Nova rezervacija
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Ručno zakazivanje</DialogTitle>
@@ -159,6 +182,18 @@ function NewBookingDialog({
               />
             </div>
           </div>
+          {staffId && busy !== null && (
+            <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+              {busy.length === 0 ? (
+                "Taj dan još nema upisanih termina."
+              ) : (
+                <>
+                  <span className="font-medium">Zauzeto:</span>{" "}
+                  {busy.map((b) => `${b.start}–${b.end} (${b.label})`).join(", ")}
+                </>
+              )}
+            </p>
+          )}
           <div className="space-y-2">
             <Label htmlFor="nb-name">Ime klijenta *</Label>
             <Input
@@ -176,6 +211,15 @@ function NewBookingDialog({
               required
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="nb-note">Napomena</Label>
+            <Input
+              id="nb-note"
+              placeholder="npr. samo šišanje makazama"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
             />
           </div>
           <Button
@@ -500,6 +544,15 @@ export function CalendarView({
 }) {
   const [selected, setSelected] = useState<BookingRow | null>(null);
   const [blockToRemove, setBlockToRemove] = useState<string | null>(null);
+  // Dijalog ručnog zakazivanja: otvara ga dugme (bez prefilla) ili klik na
+  // prazno mesto u gridu (sa zaposlenim i vremenom tog mesta); nonce
+  // remount-uje dijalog da prefill legne u state
+  const [newBooking, setNewBooking] = useState<{
+    open: boolean;
+    staffId?: string;
+    time?: string;
+    nonce: number;
+  }>({ open: openNew, nonce: 0 });
   const [pending, startTransition] = useTransition();
 
   // Linija "sada": server daje početno vreme u zoni salona, klijent ga dalje
@@ -588,13 +641,21 @@ export function CalendarView({
   return (
     <div>
       <div className="mb-4 flex gap-2">
+        <Button
+          onClick={() => setNewBooking((s) => ({ open: true, nonce: s.nonce }))}
+        >
+          <Plus className="size-4" /> Nova rezervacija
+        </Button>
         {/* key={day}: promena dana kroz strelice resetuje datume u formama */}
         <NewBookingDialog
-          key={`nb-${day}`}
+          key={`nb-${day}-${newBooking.nonce}`}
           day={day}
           staff={staff}
           services={services}
-          defaultOpen={openNew}
+          open={newBooking.open}
+          onOpenChange={(o) => setNewBooking((s) => ({ ...s, open: o }))}
+          initialStaffId={newBooking.staffId}
+          initialTime={newBooking.time}
         />
         <BlockDialog key={`bl-${day}`} day={day} staff={staff} defaultOpen={openBlock} />
       </div>
@@ -668,8 +729,25 @@ export function CalendarView({
             return (
               <div
                 key={m.id}
-                className="relative border-l"
+                className="relative cursor-pointer border-l"
                 style={{ height: gridHeight }}
+                title="Klik na prazno mesto upisuje termin u to vreme"
+                onClick={(e) => {
+                  // Klik na termin/blokadu ima svoju akciju - preskoči
+                  if ((e.target as HTMLElement).closest("button")) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const raw = dayStart + (e.clientY - rect.top) / PX_PER_MIN;
+                  const snapped = Math.max(
+                    0,
+                    Math.min(24 * 60 - 15, Math.round(raw / 15) * 15)
+                  );
+                  setNewBooking((s) => ({
+                    open: true,
+                    staffId: m.id,
+                    time: fromMinutes(snapped),
+                    nonce: s.nonce + 1,
+                  }));
+                }}
               >
                 {hours.map((h) => (
                   <div
@@ -762,8 +840,8 @@ export function CalendarView({
         </div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
-        Klik na termin otvara detalje i promenu statusa; klik na blokadu je
-        uklanja.
+        Klik na prazno mesto upisuje termin u to vreme; klik na termin otvara
+        detalje i promenu statusa; klik na blokadu je uklanja.
       </p>
 
       <BookingDialog

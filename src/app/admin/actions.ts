@@ -50,7 +50,17 @@ export async function updateBookingStatus(
     .from("bookings")
     .update({ status })
     .eq("id", bookingId);
-  if (error) return { ok: false, error: "Izmena nije uspela." };
+  if (error) {
+    // 23P01: vraćanje otkazanog termina na "Potvrđeno" kad je slot u
+    // međuvremenu zauzet novom rezervacijom
+    if (error.code === "23P01") {
+      return {
+        ok: false,
+        error: "Ne može - termin se preklapa sa drugom rezervacijom u istom periodu.",
+      };
+    }
+    return { ok: false, error: "Izmena nije uspela." };
+  }
 
   // Salon otkazuje termin: klijent koji je ostavio email saznaje odmah,
   // sa linkom za novo zakazivanje. Mejl nikad ne obara izmenu statusa.
@@ -713,6 +723,56 @@ export async function createAbsence(
 
   revalidatePath("/admin/raspored");
   return { ok: true };
+}
+
+// Zauzetost zaposlenog za dan - dijalog ručnog zakazivanja je prikazuje
+// da vlasnik ne kucka vreme naslepo pa dobija "termin se preklapa"
+export type StaffDayBusy = { start: string; end: string; label: string }[];
+
+export async function getStaffDayBusy(
+  staffId: string,
+  date: string
+): Promise<{ ok: true; busy: StaffDayBusy } | { ok: false }> {
+  // Permisivni uuid + datum: vrednosti idu u PostgREST or() filter
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(staffId) ||
+    !/^\d{4}-\d{2}-\d{2}$/.test(date)
+  ) {
+    return { ok: false };
+  }
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+
+  const [bookingsRes, blockedRes] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("start_time, end_time, customer_name")
+      .eq("tenant_id", tenant.id)
+      .eq("staff_id", staffId)
+      .eq("date", date)
+      .in("status", ["pending", "confirmed"]),
+    supabase
+      .from("blocked_slots")
+      .select("start_time, end_time")
+      .eq("tenant_id", tenant.id)
+      .eq("date", date)
+      .or(`staff_id.eq.${staffId},staff_id.is.null`),
+  ]);
+
+  const busy: StaffDayBusy = [
+    ...(bookingsRes.data ?? []).map((b) => ({
+      start: b.start_time.slice(0, 5),
+      end: b.end_time.slice(0, 5),
+      label: b.customer_name,
+    })),
+    ...(blockedRes.data ?? []).map((b) => ({
+      start: b.start_time.slice(0, 5),
+      end: b.end_time.slice(0, 5),
+      label: "blokirano",
+    })),
+  ].sort((a, b) => a.start.localeCompare(b.start));
+
+  return { ok: true, busy };
 }
 
 const adminBookingSchema = z.object({
