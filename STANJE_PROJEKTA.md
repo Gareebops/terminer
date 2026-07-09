@@ -4,7 +4,22 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
-**Novo od 9.7 — TESTOVI + CI (GitHub Actions):** Do sada su postojali samo
+**⚠️ ROK 30.10.2026 — EKSPLICITNI GRANT-OVI (produkcija inače STAJE):**
+Supabase tog datuma trajno ukida auto-expose ponašanje (tabele bez
+eksplicitnog GRANT-a nedostupne kroz Data API, ČAK I ZA service_role).
+Produkcija se danas oslanja na auto-expose (jedino tenants ima eksplicitne
+kolonske grantove iz migracije javno_citanje); lokalni CI stack koristi
+privremeni flag `auto_expose_new_tables = true` u supabase/config.toml
+koji CLI istog datuma uklanja. PRE ROKA: migracija sa eksplicitnim
+GRANT-ovima za anon/authenticated/service_role (matrica: service_role sve;
+authenticated tenant tabele kroz RLS; anon samo select na javnim tabelama
+- pazi da ne pregazi kolonske grantove tenants-a), `supabase db push` na
+produkciju, ukloniti flag iz config.toml - integracioni testovi u
+tests/integration tačno pokrivaju ovu matricu pa čuvaju ispravnost.
+Otkriveno 9.7. pri podizanju CI-ja (novi CLI već primenjuje novi default).
+
+**Novo od 9.7 — TESTOVI + CI (GitHub Actions, CI ZELEN od prvog dana):**
+Do sada su postojali samo
 unit testovi čiste logike koje ništa nije pokretalo automatski (Vercel
 deployuje i kad testovi padaju!). Sada: (1) **CI workflow**
 [.github/workflows/ci.yml](.github/workflows/ci.yml) na svaki push/PR -
@@ -28,7 +43,11 @@ guard u tests/e2e/global-setup.ts i tests/integration/okruzenje.ts odbija/
 preskače sve što nije localhost (lokalno na Mihajlovom Macu nema Dockera
 pa se preskaču; .env.local pokazuje na PRODUKCIJU i testovi to ne smeju da
 diraju). E2E setup pravi nalog e2e-admin@terminer.test u lokalnoj bazi i
-kači ga na seed "demo" salon. Usput: Pencil dugme u uslugama dobilo
+kači ga na seed "demo" salon. Usput nađena i ispravljena DVA stvarna
+problema: (a) serviceSchema/staffSchema koristili strogi z.uuid() koji
+odbija seed ID-jeve - izmena seed usluge padala sa "Neispravni podaci"
+(sada permisivni uuidLoose, ista konvencija kao booking akcije i
+moveSchema); (b) auto-expose rok gore. Pencil dugme u uslugama dobilo
 title="Izmeni" (a11y + selektor za test). Lint NIJE u CI-ju - 15 zatečenih
 grešaka (react-hooks/set-state-in-effect po klijentskim komponentama) čeka
 posebno sređivanje; kad se očiste, dodati `npm run lint` korak u workflow.
