@@ -9,6 +9,9 @@ export default defineConfig({
   globalSetup: "./tests/e2e/global-setup.ts",
   timeout: 60_000,
   retries: process.env.CI ? 1 : 0,
+  // Deljena lokalna baza: testovi menjaju stanje (rezervacije, blokade),
+  // pa idu strogo jedan po jedan - suite je mali, determinizam je bitniji
+  workers: 1,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: "http://localhost:3000",
