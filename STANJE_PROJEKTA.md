@@ -18,6 +18,30 @@ produkciju, ukloniti flag iz config.toml - integracioni testovi u
 tests/integration tačno pokrivaju ovu matricu pa čuvaju ispravnost.
 Otkriveno 9.7. pri podizanju CI-ja (novi CLI već primenjuje novi default).
 
+**Novo od 9.7 (5) — LINT ČIST + U CI-ju; SUPERADMIN I RASPORED E2E (CI
+zelen iz prvog run-a; TEST PLAN ZATVOREN):** Svih 14 lint grešaka
+popravljeno BEZ ijednog eslint-disable (set-state-in-effect → izvedeno
+stanje / "adjusting state during render" / setState u timer callback-u;
+Link umesto <a> u error.tsx; srpski navodnici u domain-card) - rađeno
+paralelno kroz 9 subagenata, po fajlu verifikovano (eslint+tsc+testovi),
+ponašanje očuvano. `npm run lint` je sada TREĆI KORAK u CI unit jobu.
+eslint.config ignoriše .claude/** (worktree-ovi paralelnih sesija) i
+mobile/** (svoj lint). [superadmin.spec.ts](tests/e2e/superadmin.spec.ts):
+404 za ne-superadmina; suspenzija ODMAH skida keširan javni sajt
+(NAMENSKI salon sa-proba - demo se ne dira!) pa ukidanje; +14d proba /
++1 mes pretplata menjaju status; faktura "Označi plaćeno" + "Storno"
+(nativni confirm → page.on("dialog")). CI e2e job ima env
+SUPER_ADMIN_EMAIL=e2e-superadmin@terminer.test (global-setup pravi
+nalog BEZ salona; loginAsSuperAdmin ide na /prijava?next=/superadmin).
+[raspored.spec.ts](tests/e2e/raspored.spec.ts): izuzetak "Ne radi" kroz
+grid (?od=DATUM, ćelija = td.nth(((dow+6)%7)+1)) gasi dan u wizardu
+(data-date disabled); skraćeno okno 09-12 seče slotove posle podneva.
+Datumi +8/+9 dana - van domašaja ostalih specova. UKUPNO: 75 unit + 14
+integracionih + 15 E2E (7 fajlova); CI = lint + unit + build + lokalni
+Supabase (integracioni + Playwright). Od prvobitnog test plana NIŠTA
+nije ostalo otvoreno; sledeći nivo po potrebi: mobile app testovi (F1+),
+visual regression (posle launcha).
+
 **Novo od 9.7 (4) — ONBOARDING E2E + ANTI-SPAM GRANICA (CI zelen):**
 [onboarding.spec.ts](tests/e2e/onboarding.spec.ts): ceo funnel novog
 salona - registracija → "Proveri sanduče" → potvrdni link iz LOKALNOG
