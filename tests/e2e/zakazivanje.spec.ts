@@ -1,28 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
+import { dodjiDoDanaSaSlotovima, SLOT_RE } from "./fixtures";
 
 // Kritičan put od koga platforma živi: gost kroz wizard zakaže termin,
 // pa ga otkaže linkom sa ekrana potvrde (isti link ide u mejl).
-
-const SLOT_RE = /^\d{2}:\d{2}$/;
-
-// Današnji dan može biti neradan ili bez slobodnih termina (CI se vrti u
-// svako doba) - idi kroz traku dana dok se ne pojave slotovi. Oba gosta
-// koriste ISTU logiku, pa deterministički završe na istom danu.
-async function dodjiDoDanaSaSlotovima(page: Page): Promise<void> {
-  const slot = page.getByRole("button", { name: SLOT_RE }).first();
-  const prazno = page.getByText("Nema slobodnih termina");
-  const dani = page.locator(".scrollbar-none > button:not([disabled])");
-
-  for (let i = 1; i <= 10; i++) {
-    await Promise.race([
-      slot.waitFor({ timeout: 15_000 }).catch(() => {}),
-      prazno.waitFor({ timeout: 15_000 }).catch(() => {}),
-    ]);
-    if (await slot.isVisible()) return;
-    await dani.nth(i).click();
-  }
-  throw new Error("Nijedan slobodan termin u prvih 10 radnih dana - proveri seed.");
-}
 
 async function zakaziPrviSlobodan(
   page: Page,
