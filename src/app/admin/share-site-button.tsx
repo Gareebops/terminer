@@ -22,7 +22,9 @@ export function ShareSiteButton({ slug }: { slug: string }) {
   return (
     <button
       onClick={copy}
-      className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-[0_4px_24px_rgba(20,25,20,0.06)] transition-colors hover:bg-ink/5"
+      // col-span-2/justify-center važe samo u mobilnoj mreži brzih akcija
+      // na Početnoj (grid 2+1); u sm:flex redu su bez efekta
+      className="col-span-2 flex items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-[0_4px_24px_rgba(20,25,20,0.06)] transition-colors hover:bg-ink/5 sm:col-span-1 sm:justify-start"
     >
       {copied ? <Check className="size-4" /> : <Share2 className="size-4" />}
       Podeli sajt

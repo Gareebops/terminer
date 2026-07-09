@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, Ban, CalendarDays, Plus } from "lucide-react";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
-import { formatPrice, fromMinutes, toMinutes } from "@/lib/booking/slots";
+import { fromMinutes, toMinutes } from "@/lib/booking/slots";
 import { nowInZone } from "@/lib/booking/timezone";
 import { plural } from "@/lib/plural";
 import { CountUp } from "@/components/count-up";
@@ -163,7 +163,9 @@ export default async function AdminDashboardPage() {
 
   return (
     <div>
-      <div className="flex items-end justify-between">
+      {/* Mobil: naslov i CTA jedno ispod drugog (dugme pune širine);
+          od sm naviše originalni red sa dugmetom uz desnu ivicu */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">Početna</h1>
           <p className="mt-1 text-sm font-medium text-ink/50">
@@ -178,23 +180,24 @@ export default async function AdminDashboardPage() {
         </div>
         <Link
           href="/admin/kalendar"
-          className="flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
+          className="flex items-center justify-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
         >
           <CalendarDays className="size-4" /> Otvori kalendar
         </Link>
       </div>
 
-      {/* Brze akcije - najčešći poslovi na jedan klik */}
-      <div className="mt-4 flex flex-wrap gap-2">
+      {/* Brze akcije - najčešći poslovi na jedan klik. Mobil: uredna mreža
+          2+1 (Podeli sajt puna širina), od sm naviše originalni red */}
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <Link
           href="/admin/kalendar?novo=1"
-          className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-[0_4px_24px_rgba(20,25,20,0.06)] transition-colors hover:bg-ink/5"
+          className="flex items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-[0_4px_24px_rgba(20,25,20,0.06)] transition-colors hover:bg-ink/5 sm:justify-start"
         >
           <Plus className="size-4" /> Upiši termin
         </Link>
         <Link
           href="/admin/kalendar?blokada=1"
-          className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-[0_4px_24px_rgba(20,25,20,0.06)] transition-colors hover:bg-ink/5"
+          className="flex items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-[0_4px_24px_rgba(20,25,20,0.06)] transition-colors hover:bg-ink/5 sm:justify-start"
         >
           <Ban className="size-4" /> Blokiraj vreme
         </Link>
@@ -217,7 +220,7 @@ export default async function AdminDashboardPage() {
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         {/* Tamna hero kartica - današnji dan */}
-        <div className="rounded-[2rem] bg-ink p-7 text-white">
+        <div className="rounded-[2rem] bg-ink p-5 text-white sm:p-7">
           <div className="flex items-start justify-between">
             <div>
               <p className="flex items-center gap-2 text-sm font-semibold text-white/55">
@@ -238,23 +241,30 @@ export default async function AdminDashboardPage() {
             </Link>
           </div>
           {next && nextLabel && (
-            <div className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-full bg-mint px-4 py-2.5 text-sm text-ink">
+            // Mobil: dva čista reda (bez tačke na početku drugog) u rounded-2xl
+            // kartici - pill sa prelomljenim tekstom izgleda razlomljeno;
+            // od sm naviše originalni jednolinijski pill
+            <div className="mt-5 flex flex-col gap-0.5 rounded-2xl bg-mint px-4 py-3 text-sm text-ink sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-2 sm:gap-y-1 sm:rounded-full sm:py-2.5">
               <span className="font-bold">Sledeći termin {nextLabel}</span>
               <span className="text-ink/70">
-                · {next.customer_name}
+                <span className="hidden sm:inline">· </span>
+                {next.customer_name}
                 {next.services?.name && ` · ${next.services.name}`}
               </span>
             </div>
           )}
           <div className="mt-6 space-y-2">
             {todayBookings.slice(0, 6).map((b) => (
+              // Mobil: mreža sa vremenom levo i dva poravnata reda desno
+              // (ime, pa usluga · zaposleni) - ništa se ne lomi ni ne seče;
+              // od sm naviše originalni jednolinijski pill
               <div
                 key={b.id}
-                className="flex items-center gap-3 rounded-full bg-white/[0.06] px-4 py-2.5 text-sm"
+                className="grid grid-cols-[auto_1fr] items-center gap-x-3 rounded-2xl bg-white/[0.06] px-4 py-2.5 text-sm sm:flex sm:rounded-full"
               >
                 <span className="font-bold tabular-nums">{b.start_time.slice(0, 5)}</span>
-                <span className="font-semibold">{b.customer_name}</span>
-                <span className="ml-auto truncate text-white/50">
+                <span className="min-w-0 truncate font-semibold">{b.customer_name}</span>
+                <span className="col-start-2 min-w-0 truncate text-xs text-white/50 sm:ml-auto sm:text-sm">
                   {b.services?.name} · {b.staff?.name}
                 </span>
               </div>
