@@ -58,7 +58,9 @@ test("gost zakazuje termin kroz wizard pa ga otkazuje linkom", async ({ page }) 
   expect(cancelUrl).toBeTruthy();
 
   await page.goto(cancelUrl!);
-  await expect(page.getByText("Petar E2E Petrović")).toBeVisible();
+  // Stranica otkazivanja oslovljava klijenta samo imenom ("Petar, ako ti
+  // termin ne odgovara…"), a dugme postoji samo za aktivnu rezervaciju
+  await expect(page.getByText(/Petar,/)).toBeVisible();
   await page.getByRole("button", { name: "Otkaži termin" }).click();
   await page.getByRole("button", { name: "Da, otkaži" }).click();
   await expect(page.getByText("Termin je otkazan")).toBeVisible({ timeout: 15_000 });
