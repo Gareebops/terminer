@@ -34,6 +34,14 @@ import type {
 
 type ActionResult = { ok: boolean; error?: string };
 
+// Permisivni uuid (kao u booking akcijama i moveSchema dole) - Zodov
+// .uuid() traži RFC 4122 verziju pa odbija seed ID-jeve, zbog čega
+// izmena seed usluge/zaposlenog na lokalnom stacku pada sa
+// "Neispravni podaci"
+const uuidLoose = z
+  .string()
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+
 export async function updateBookingStatus(
   bookingId: string,
   status: BookingStatus
@@ -104,7 +112,7 @@ export async function updateBookingStatus(
 }
 
 const serviceSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: uuidLoose.optional(),
   name: z.string().trim().min(1, "Unesi naziv usluge.").max(100),
   description: z.string().trim().max(300).optional(),
   durationMinutes: z.coerce.number().int().min(5).max(480),
@@ -180,7 +188,7 @@ export async function deleteService(id: string): Promise<ActionResult> {
 }
 
 const staffSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: uuidLoose.optional(),
   name: z.string().trim().min(1, "Unesi ime.").max(100),
   bio: z.string().trim().max(300).optional(),
   isActive: z.boolean(),

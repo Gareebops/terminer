@@ -4,8 +4,9 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
-**Novo od 9.7 (2) — EKSPLICITNI GRANT-ovi ZA API ROLE (⚠️ ČEKA `supabase db
-push` OD MIHAJLA):** Supabase 30.10.2026. trajno gasi auto-expose — tabela u
+**Novo od 9.7 (3) — EKSPLICITNI GRANT-ovi ZA API ROLE (⚠️ ČEKA `supabase db
+push` OD MIHAJLA):** Zatvara upozorenje "ROK 30.10.2026" otkriveno pri
+podizanju CI-ja. Supabase tog datuma trajno gasi auto-expose — tabela u
 public šemi bez eksplicitnog GRANT-a postaje nedostupna kroz Data API i za
 service_role. Migracija
 [20260709000001_eksplicitni_grantovi.sql](supabase/migrations/20260709000001_eksplicitni_grantovi.sql)
@@ -39,7 +40,27 @@ ZA MIHAJLA: pokreni `supabase db push` (produkcija do tada radi po starom
 auto-expose ponašanju, bez žurbe pre 30.10.2026); posle pusha proveriti
 /demo i admin uživo.
 
-**Novo od 9.7 — TESTOVI + CI (GitHub Actions):** Do sada su postojali samo
+**Novo od 9.7 (2) — DRUGI TALAS TESTOVA + DST BUG FIX:** (1) Integracioni
+test IZOLACIJE SALONA [izolacija.test.ts](tests/integration/izolacija.test.ts):
+ulogovani vlasnik salona A ne vidi/ne menja klijente, rezervacije, radno
+vreme ni neobjavljeni tenant red salona B (authenticated RLS putanja -
+dopuna anon testovima). (2) Unit: [timezone.test.ts](src/lib/booking/timezone.test.ts)
+(DST prelazi 29.3/25.10, nepostojeće i dvosmisleno vreme, prelaz preko
+ponoći), [invoice.test.ts](src/lib/invoice.test.ts) (tačan NBS IPS QR
+payload, poziv na broj, 18-cifreni račun, sr format iznosa, godišnji <
+12×mesečni), [ics.test.ts](src/lib/booking/ics.test.ts) (CRLF, floating
+vreme, iCalendar escape, UID). Ukupno 75 unit + 14 integracionih + 4 E2E.
+(3) NAĐEN I ISPRAVLJEN PRAVI BUG kroz nove testove: zonedToUtc je u noći
+DST prelaza grešio SAT VREMENA (jednoprolazna procena pomaka padne sa
+pogrešne strane skazaljke) → starts_at/ends_at termina 00-02h na dan
+prelaska bili pogrešni; sada dvoprolazni algoritam (standard), nepostojeće
+vreme se gura napred preko rupe. Preostalo za testiranje (prioritetom):
+admin E2E paket (kalendar upis, blokada→wizard, statusi, raspored kroz UI,
+objava), onboarding E2E (mailpit hvata mejlove lokalno), anti-spam granice,
+superadmin akcije, lint čišćenje pa lint u CI.
+
+**Novo od 9.7 — TESTOVI + CI (GitHub Actions, CI ZELEN od prvog dana):**
+Do sada su postojali samo
 unit testovi čiste logike koje ništa nije pokretalo automatski (Vercel
 deployuje i kad testovi padaju!). Sada: (1) **CI workflow**
 [.github/workflows/ci.yml](.github/workflows/ci.yml) na svaki push/PR -
@@ -63,7 +84,11 @@ guard u tests/e2e/global-setup.ts i tests/integration/okruzenje.ts odbija/
 preskače sve što nije localhost (lokalno na Mihajlovom Macu nema Dockera
 pa se preskaču; .env.local pokazuje na PRODUKCIJU i testovi to ne smeju da
 diraju). E2E setup pravi nalog e2e-admin@terminer.test u lokalnoj bazi i
-kači ga na seed "demo" salon. Usput: Pencil dugme u uslugama dobilo
+kači ga na seed "demo" salon. Usput nađena i ispravljena DVA stvarna
+problema: (a) serviceSchema/staffSchema koristili strogi z.uuid() koji
+odbija seed ID-jeve - izmena seed usluge padala sa "Neispravni podaci"
+(sada permisivni uuidLoose, ista konvencija kao booking akcije i
+moveSchema); (b) auto-expose rok gore. Pencil dugme u uslugama dobilo
 title="Izmeni" (a11y + selektor za test). Lint NIJE u CI-ju - 15 zatečenih
 grešaka (react-hooks/set-state-in-effect po klijentskim komponentama) čeka
 posebno sređivanje; kad se očiste, dodati `npm run lint` korak u workflow.

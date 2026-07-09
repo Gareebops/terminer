@@ -28,8 +28,13 @@ function tzOffsetMs(timeZone: string, utcDate: Date): number {
 // "2026-07-01" + "14:30" u zoni salona → UTC Date
 export function zonedToUtc(dateStr: string, timeStr: string, timeZone: string): Date {
   const utcGuess = new Date(`${dateStr}T${timeStr}:00Z`);
-  const offset = tzOffsetMs(timeZone, utcGuess);
-  return new Date(utcGuess.getTime() - offset);
+  let ts = utcGuess.getTime() - tzOffsetMs(timeZone, utcGuess);
+  // Druga iteracija: prva procena u noći DST prelaza ume da padne sa
+  // pogrešne strane skazaljke (offset očitan u pogrešnom režimu) i termin
+  // dobije sat greške - preračunaj pomak u već približenom trenutku.
+  // Nepostojeće vreme (02:30 na dan skoka) se time standardno gura napred.
+  ts = utcGuess.getTime() - tzOffsetMs(timeZone, new Date(ts));
+  return new Date(ts);
 }
 
 // Trenutni datum ("YYYY-MM-DD") i minuti od ponoći u zoni salona
