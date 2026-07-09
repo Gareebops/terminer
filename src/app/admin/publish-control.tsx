@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Copy, ExternalLink, Globe, Rocket } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +14,10 @@ import {
 } from "@/components/ui/dialog";
 import { ConfettiBurst } from "@/components/confetti";
 import { setPublished } from "./actions";
+
+// Host se ne menja tokom života stranice - useSyncExternalStore nam treba
+// samo zbog server/klijent snapshot-a, pa je subscribe prazan (i stabilan).
+const emptySubscribe = () => () => {};
 
 // Objava sajta je NAJVAŽNIJA akcija vlasnika - zato živi u layoutu (vidljiva
 // na svakoj admin stranici), a ne kao switch zakopan u podešavanjima.
@@ -42,11 +46,24 @@ export function PublishControl({
     staff: number;
   } | null>(null);
   const [copied, setCopied] = useState(false);
-  const [host, setHost] = useState("terminer.rs");
+  // Pravi host je poznat tek u browseru - na serveru (i tokom hidracije)
+  // fallback, posle React sam ubaci window vrednost. Bez setState u efektu.
+  const host = useSyncExternalStore(
+    emptySubscribe,
+    () => window.location.host,
+    () => "terminer.rs"
+  );
   const [pending, startTransition] = useTransition();
 
-  useEffect(() => setPublishedState(isPublished), [isPublished]);
-  useEffect(() => setHost(window.location.host), []);
+  // router.refresh (posle objave/sklanjanja) donosi svež isPublished sa
+  // servera - uskladi lokalno stanje tokom rendera (React obrazac za promenu
+  // propa), a ne u efektu. justPublished ostaje netaknut, pa proslava
+  // objave preživljava refresh.
+  const [prevIsPublished, setPrevIsPublished] = useState(isPublished);
+  if (prevIsPublished !== isPublished) {
+    setPrevIsPublished(isPublished);
+    setPublishedState(isPublished);
+  }
 
   const siteUrl = `${typeof window !== "undefined" ? window.location.origin : "https://terminer.rs"}/${slug}`;
   const siteLabel = `${host}/${slug}`;

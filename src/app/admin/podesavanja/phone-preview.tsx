@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { brandGradient } from "@/lib/color";
@@ -23,10 +23,14 @@ export function PhonePreview({
 }) {
   const [loaded, setLoaded] = useState(false);
 
-  // Novi refreshKey = novi iframe - kreni ponovo od "učitava se"
-  useEffect(() => {
+  // Novi refreshKey = novi iframe - kreni ponovo od "učitava se".
+  // Reset tokom rendera (React obrazac "adjusting state during render")
+  // umesto effect-a, pa nema međukadra sa starim stanjem.
+  const [prevRefreshKey, setPrevRefreshKey] = useState(refreshKey);
+  if (prevRefreshKey !== refreshKey) {
+    setPrevRefreshKey(refreshKey);
     setLoaded(false);
-  }, [refreshKey]);
+  }
 
   // Sakrij scrollbarove unutar "ekrana" (skrolovanje i dalje radi) -
   // iframe je same-origin pa stil možemo da ubacimo direktno

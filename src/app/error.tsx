@@ -1,6 +1,7 @@
 "use client"; // error boundary mora biti klijentska komponenta
 
 import * as Sentry from "@sentry/nextjs";
+import Link from "next/link";
 import { useEffect } from "react";
 
 // Brendirani ekran za neuhvaćene greške ispod root layouta. Poruka je
@@ -38,12 +39,12 @@ export default function Error({
           >
             Pokušaj ponovo
           </button>
-          <a
+          <Link
             href="/"
             className="rounded-full border border-white/20 px-7 py-3.5 font-semibold text-white/90 transition-colors hover:bg-white/10"
           >
             Nazad na početnu
-          </a>
+          </Link>
         </div>
         {error.digest ? (
           <p className="mt-6 text-xs font-medium text-white/35">

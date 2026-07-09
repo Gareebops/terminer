@@ -311,12 +311,18 @@ export function HeroDemo({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     if (reduce) return;
     const cfg = PHASES[phase];
-    setTapped(false);
     const timers: ReturnType<typeof setTimeout>[] = [];
     if (cfg.tapAt !== null) {
       timers.push(setTimeout(() => setTapped(true), cfg.tapAt));
     }
-    timers.push(setTimeout(() => setPhase((phase + 1) % PHASES.length), cfg.dur));
+    // Reset tap-a ide u isti timer koji menja fazu: React batchuje oba
+    // setState-a u jedan render, pa nova faza uvek kreće bez tap markera.
+    timers.push(
+      setTimeout(() => {
+        setTapped(false);
+        setPhase((phase + 1) % PHASES.length);
+      }, cfg.dur)
+    );
     return () => timers.forEach(clearTimeout);
   }, [phase, reduce]);
 

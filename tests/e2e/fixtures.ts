@@ -4,10 +4,17 @@ import type { Page } from "@playwright/test";
 export const DEMO_TENANT_ID = "00000000-0000-0000-0000-000000000001";
 export const DEMO_SLUG = "demo";
 
-// Nalog koji global-setup kreira u LOKALNOJ bazi (nikad ne postoji u
+// Nalozi koje global-setup kreira u LOKALNOJ bazi (nikad ne postoje u
 // produkciji - guard u setup-u ionako odbija sve što nije localhost)
 export const E2E_ADMIN = {
   email: "e2e-admin@terminer.test",
+  password: "e2e-Lozinka-123!",
+};
+
+// Vlasnik platforme: BEZ tenant_members reda (superadmin panel ne traži
+// salon); CI postavlja SUPER_ADMIN_EMAIL na ovu adresu pre buildovanja
+export const E2E_SUPERADMIN = {
+  email: "e2e-superadmin@terminer.test",
   password: "e2e-Lozinka-123!",
 };
 
@@ -17,6 +24,16 @@ export async function loginAsAdmin(page: Page): Promise<void> {
   await page.fill("#password", E2E_ADMIN.password);
   await page.getByRole("button", { name: "Prijavi se" }).click();
   await page.waitForURL("**/admin");
+}
+
+export async function loginAsSuperAdmin(page: Page): Promise<void> {
+  // ?next= vodi pravo na panel - superadmin nema salon, pa bi default
+  // /admin završio na /onboarding
+  await page.goto("/prijava?next=/superadmin");
+  await page.fill("#email", E2E_SUPERADMIN.email);
+  await page.fill("#password", E2E_SUPERADMIN.password);
+  await page.getByRole("button", { name: "Prijavi se" }).click();
+  await page.waitForURL("**/superadmin");
 }
 
 // Datumi u zoni salona (Europe/Belgrade) - CI radi u UTC, pa bi posle

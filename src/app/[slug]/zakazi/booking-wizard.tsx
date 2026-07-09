@@ -354,11 +354,21 @@ export function BookingWizard({
   // Ključ izbora osobe za upite ("any" = svejedno)
   const staffKey = anyStaff ? "any" : (member?.id ?? null);
 
-  useEffect(() => {
-    if (!service || !staffKey || !date) return;
+  // Promena izbora poništava stare slotove odmah tokom rendera (React
+  // obrazac "adjusting state during render" sa poređenjem prethodnog
+  // ključa) - nema međukadra sa terminima starog izbora, a effect ispod
+  // ostaje samo za mrežni poziv
+  const selectionKey = `${slug}|${service?.id ?? ""}|${staffKey ?? ""}|${date ?? ""}`;
+  const [prevSelectionKey, setPrevSelectionKey] = useState(selectionKey);
+  if (prevSelectionKey !== selectionKey) {
+    setPrevSelectionKey(selectionKey);
     setSlots(null);
     setTime(null);
     setSlotsError(null);
+  }
+
+  useEffect(() => {
+    if (!service || !staffKey || !date) return;
     // Brzo preklikavanje dana: odgovor za stari dan sme da stigne posle
     // novog - zastareli rezultat se ignoriše da ne prikaže pogrešne termine
     let active = true;
@@ -390,15 +400,17 @@ export function BookingWizard({
   }, [slug, service, staffKey, date]);
 
   // Ako je preselektovani dan neradan (npr. danas je nedelja), sam pređi
-  // na prvi radni - klijent ne treba da pogađa kad salon radi
-  useEffect(() => {
-    if (!days || !date) return;
+  // na prvi radni - klijent ne treba da pogađa kad salon radi. Podešavanje
+  // tokom rendera umesto effect-a: skok na prvi radni dan odmah, bez
+  // međukadra sa neradnim danom (setDate prebacuje na radni dan, pa se
+  // uslov u sledećem prolazu više ne pali)
+  if (days && date) {
     const current = days.find((d) => d.date === date);
     if (current && !current.open) {
       const firstOpen = days.find((d) => d.open);
-      if (firstOpen) setDate(firstOpen.date);
+      if (firstOpen && firstOpen.date !== date) setDate(firstOpen.date);
     }
-  }, [days, date]);
+  }
 
   const openByDate = useMemo(
     () => (days ? new Map(days.map((d) => [d.date, d.open])) : null),

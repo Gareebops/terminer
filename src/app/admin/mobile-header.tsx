@@ -24,8 +24,14 @@ export function MobileHeader({
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  // Klik na stavku menija menja rutu - drawer se sam zatvara
-  useEffect(() => setOpen(false), [pathname]);
+  // Klik na stavku menija menja rutu - drawer se sam zatvara.
+  // Obrazac "adjusting state during render" iz React dokumentacije:
+  // poredimo prethodnu rutu i zatvaramo drawer bez effect-a.
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setOpen(false);
+  }
 
   useEffect(() => {
     if (!open) return;
