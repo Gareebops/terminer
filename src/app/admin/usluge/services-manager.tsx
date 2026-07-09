@@ -232,6 +232,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
               <Button
                 variant="ghost"
                 size="icon"
+                title="Izmeni"
                 onClick={() => {
                   setEditing(s);
                   setOpen(true);

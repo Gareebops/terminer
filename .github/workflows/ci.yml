@@ -1,0 +1,70 @@
+# CI: nijedna slomljena izmena ne sme tiho do produkcije. Vercel deployuje
+# svaki push nezavisno od ovoga - CI je mreža koja hvata pre/pored deploya.
+# Job 1: unit testovi + build (dummy env - proverava kompajliranje i tipove).
+# Job 2: lokalni Supabase (migracije + seed) → integracioni (RLS, dupla
+# rezervacija) + Playwright E2E (wizard, otkazivanje, admin, keš).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  testovi-i-build:
+    name: Unit testovi + build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # Dummy env: build ne sme da zavisi od tajni; upiti pri prerenderu
+      # (sitemap) uredno vrate prazno na nepostojećem hostu
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy-anon
+          SUPABASE_SERVICE_ROLE_KEY: dummy-service
+
+  e2e:
+    name: Integracioni + E2E (lokalni Supabase)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Pokreni lokalni Supabase (migracije + seed)
+        run: supabase start
+      - name: Izvezi lokalne ključeve u env
+        run: |
+          supabase status -o env \
+            --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
+            --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_ANON_KEY \
+            --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY \
+            | grep -E '^(NEXT_PUBLIC_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY)=' \
+            | sed 's/"//g' >> "$GITHUB_ENV"
+      - name: Integracioni testovi (RLS + dupla rezervacija)
+        run: npm run test:integration
+      # Build sa lokalnim env-om - NEXT_PUBLIC_* se pri buildu upisuju u bundle
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: E2E testovi (Playwright)
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

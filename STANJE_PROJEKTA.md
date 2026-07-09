@@ -4,6 +4,35 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 9.7 — TESTOVI + CI (GitHub Actions):** Do sada su postojali samo
+unit testovi čiste logike koje ništa nije pokretalo automatski (Vercel
+deployuje i kad testovi padaju!). Sada: (1) **CI workflow**
+[.github/workflows/ci.yml](.github/workflows/ci.yml) na svaki push/PR -
+job "testovi-i-build" (vitest + `next build` sa dummy env, bez tajni) i
+job "e2e" (podigne LOKALNI Supabase kroz `supabase start` - migracije +
+seed automatski, config.toml je u repou - pa integracioni + Playwright).
+(2) **Billing unit testovi** [billing.test.ts](src/lib/billing.test.ts):
+12 testova za subscriptionInfo/isBookingPaused (granice trial/grace/
+expired, paid_until do kraja dana, proba poštovana posle istekle uplate).
+(3) **Integracioni** (tests/integration/, `npm run test:integration`,
+vitest.integration.config.ts): RLS izolacija (anonimac ne vidi bookings/
+customers/neobjavljene salone/billing kolone; kontrolna da objavljen salon
+JESTE vidljiv) + dupla rezervacija (dva paralelna inserta → tačno jedan
+prođe, 23P01; otkazan termin oslobađa slot). (4) **E2E Playwright**
+(tests/e2e/, `npm run test:e2e`, mobilni viewport - Pixel 7): gost kroz
+wizard zakaže pa otkaže linkom; zauzet slot nestaje iz ponude; admin
+prijava + dashboard; **keš regresija** - izmena cene u adminu ODMAH
+vidljiva na javnom sajtu (čuva bustTenantSiteCache od 8.7). VAŽNO O
+BEZBEDNOSTI: integracioni i E2E rade ISKLJUČIVO protiv lokalnog stacka -
+guard u tests/e2e/global-setup.ts i tests/integration/okruzenje.ts odbija/
+preskače sve što nije localhost (lokalno na Mihajlovom Macu nema Dockera
+pa se preskaču; .env.local pokazuje na PRODUKCIJU i testovi to ne smeju da
+diraju). E2E setup pravi nalog e2e-admin@terminer.test u lokalnoj bazi i
+kači ga na seed "demo" salon. Usput: Pencil dugme u uslugama dobilo
+title="Izmeni" (a11y + selektor za test). Lint NIJE u CI-ju - 15 zatečenih
+grešaka (react-hooks/set-state-in-effect po klijentskim komponentama) čeka
+posebno sređivanje; kad se očiste, dodati `npm run lint` korak u workflow.
+
 **Novo od 8.7 (6) — PERFORMANSE: KEŠIRANJE JAVNIH PODATAKA + BATCH SLOTOVA
 + RATE LIMIT:** Javne stranice salona više ne diraju bazu na svaku posetu.
 (1) [lib/tenant.ts](src/lib/tenant.ts): `getTenantSite` sada prvo čita
