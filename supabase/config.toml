@@ -16,18 +16,13 @@ extra_search_path = ["public", "extensions"]
 # The maximum number of rows returns from a view, table, or stored procedure. Limits payload size
 # for accidental or malicious requests.
 max_rows = 1000
-# Controls whether new tables, views, sequences and functions created in the `public` schema by
-# `postgres` are reachable through the Data API roles (`anon`, `authenticated`, `service_role`)
-# without explicit GRANTs. When unset, new entities are NOT auto-exposed, matching the new cloud
-# default. Set to `true` to keep the legacy behaviour of auto-exposing new entities; this is
-# deprecated and the field is removed on 2026-10-30 once the always-revoked behaviour is permanent.
-# UKLJUČENO ZA PARITET SA PRODUKCIJOM: prod projekat (kreiran 1.7.2026)
-# auto-expose-uje tabele, pa lokalni stack (CI testovi) mora isto - inače
-# service_role/anon dobijaju 42501 na svemu što migracije ne grantuju
-# eksplicitno. PRE 2026-10-30 dodati migraciju sa eksplicitnim GRANT-ovima
-# (vidi STANJE_PROJEKTA.md) - tada ovaj flag nestaje iz CLI-ja, a i cloud
-# prelazi na always-revoked.
-auto_expose_new_tables = true
+# NAPOMENA: privremeni flag `auto_expose_new_tables` uklonjen 9.7.2026 -
+# kompletna matrica privilegija za API role (anon, authenticated,
+# service_role) sada živi u migraciji 20260709000001_eksplicitni_grantovi.sql
+# (always-revoked model, isti kao novi cloud default od 2026-10-30). Nova
+# tabela u public šemi NIJE dostupna kroz Data API dok je migracija
+# eksplicitno ne grantuje (service_role jedini dobija sve automatski kroz
+# default privilegije).
 
 [api.tls]
 # Enable HTTPS endpoints locally using a self-signed certificate.
