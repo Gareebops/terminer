@@ -18,6 +18,25 @@ produkciju, ukloniti flag iz config.toml - integracioni testovi u
 tests/integration tačno pokrivaju ovu matricu pa čuvaju ispravnost.
 Otkriveno 9.7. pri podizanju CI-ja (novi CLI već primenjuje novi default).
 
+**Novo od 9.7 (2) — DRUGI TALAS TESTOVA + DST BUG FIX:** (1) Integracioni
+test IZOLACIJE SALONA [izolacija.test.ts](tests/integration/izolacija.test.ts):
+ulogovani vlasnik salona A ne vidi/ne menja klijente, rezervacije, radno
+vreme ni neobjavljeni tenant red salona B (authenticated RLS putanja -
+dopuna anon testovima). (2) Unit: [timezone.test.ts](src/lib/booking/timezone.test.ts)
+(DST prelazi 29.3/25.10, nepostojeće i dvosmisleno vreme, prelaz preko
+ponoći), [invoice.test.ts](src/lib/invoice.test.ts) (tačan NBS IPS QR
+payload, poziv na broj, 18-cifreni račun, sr format iznosa, godišnji <
+12×mesečni), [ics.test.ts](src/lib/booking/ics.test.ts) (CRLF, floating
+vreme, iCalendar escape, UID). Ukupno 75 unit + 14 integracionih + 4 E2E.
+(3) NAĐEN I ISPRAVLJEN PRAVI BUG kroz nove testove: zonedToUtc je u noći
+DST prelaza grešio SAT VREMENA (jednoprolazna procena pomaka padne sa
+pogrešne strane skazaljke) → starts_at/ends_at termina 00-02h na dan
+prelaska bili pogrešni; sada dvoprolazni algoritam (standard), nepostojeće
+vreme se gura napred preko rupe. Preostalo za testiranje (prioritetom):
+admin E2E paket (kalendar upis, blokada→wizard, statusi, raspored kroz UI,
+objava), onboarding E2E (mailpit hvata mejlove lokalno), anti-spam granice,
+superadmin akcije, lint čišćenje pa lint u CI.
+
 **Novo od 9.7 — TESTOVI + CI (GitHub Actions, CI ZELEN od prvog dana):**
 Do sada su postojali samo
 unit testovi čiste logike koje ništa nije pokretalo automatski (Vercel
