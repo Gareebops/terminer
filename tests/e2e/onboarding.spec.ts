@@ -33,8 +33,14 @@ test("registracija sa potvrdom mejla do kreiranog salona", async ({ page }) => {
   await page.getByRole("button", { name: "Napravi salon" }).click();
 
   await page.waitForURL("**/admin", { timeout: 20_000 });
-  await expect(page.getByRole("heading", { name: "Početna" })).toBeVisible();
+
+  // Novog vlasnika dočekuje welcome ekran sa imenom salona (modal - Radix
+  // stavlja aria-hidden na ostatak strane, pa se dashboard proverava POSLE
+  // zatvaranja)
+  await expect(page.getByText("Dobro došli u Terminer")).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText("E2E Onboarding Salon").first()).toBeVisible();
+  await page.getByRole("button", { name: "Krenimo" }).click();
+  await expect(page.getByRole("heading", { name: "Početna" })).toBeVisible();
 
   // Počisti za sledeći (retry) run na istom stacku
   const service = createClient(
