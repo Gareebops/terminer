@@ -40,6 +40,27 @@ ZA MIHAJLA: pokreni `supabase db push` (produkcija do tada radi po starom
 auto-expose ponašanju, bez žurbe pre 30.10.2026); posle pusha proveriti
 /demo i admin uživo.
 
+**Novo od 9.7 (4) — ONBOARDING E2E + ANTI-SPAM GRANICA (CI zelen):**
+[onboarding.spec.ts](tests/e2e/onboarding.spec.ts): ceo funnel novog
+salona - registracija → "Proveri sanduče" → potvrdni link iz LOKALNOG
+mail hvatača (fixtures `nadjiPotvrdniLink`: Mailpit API pa Inbucket
+fallback, port 54324) → PKCE razmena kroz /auth/callback (ista putanja
+kao Google auth!) → /onboarding → salon kreiran → welcome ekran
+("Dobro došli u Terminer" + "Krenimo") → dashboard; test se sam čisti
+(jedinstven email/slug po pokušaju + brisanje). [antispam.spec.ts](tests/e2e/antispam.spec.ts):
+3 aktivne rezervacije istim telefonom (service role, 06-07:30 van grida)
+→ četvrta kroz wizard odbijena porukom o limitu. E2E sada 9 testova.
+CONFIG PARITET: [supabase/config.toml](supabase/config.toml) sada ima
+enable_confirmations=true (kao produkcija - lokalni dev registracija
+TRAŽI potvrdu mejla; hvatač na http://127.0.0.1:54324), site_url
+localhost:3000 (PKCE kolačić je per-origin), redirect glob allowlist,
+email_sent=100. DVE E2E LEKCIJE: (a) Radix Dialog stavlja aria-hidden
+na ostatak strane - getByRole "ne vidi" elemente ispod modala, asertuj
+modal pa ga zatvori; (b) posle server akcije sačekaj toast PRE
+navigacije, inače trka (kalendar flake ispravljen čekanjem
+"Rezervacija je upisana."). Preostalo od plana: superadmin akcije,
+raspored kroz UI, lint čišćenje pa lint u CI.
+
 **Novo od 9.7 (3) — ADMIN E2E PAKET (CI zelen iz prvog run-a):**
 [kalendar.spec.ts](tests/e2e/kalendar.spec.ts): ručni upis termina kroz
 kalendar (?novo=1, Radix select-ovi kroz getByRole dialog/combobox/option)

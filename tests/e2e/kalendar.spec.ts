@@ -27,6 +27,9 @@ test("admin ručno upisuje termin, duplikat istog termina je odbijen", async ({ 
 
   await page.goto("/admin/kalendar?novo=1");
   await popuniRucnoZakazivanje(page, "18:30");
+  // Sačekaj potvrdu upisa PRE navigacije - inače trka između server akcije
+  // i odlaska na Rezervacije (viđeno kao flake na CI-ju)
+  await expect(page.getByText("Rezervacija je upisana.")).toBeVisible({ timeout: 15_000 });
 
   // Termin je u Rezervacijama sa tačnim vremenom i statusom
   await page.goto("/admin/rezervacije");
