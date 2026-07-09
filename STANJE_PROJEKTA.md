@@ -40,6 +40,18 @@ ZA MIHAJLA: pokreni `supabase db push` (produkcija do tada radi po starom
 auto-expose ponašanju, bez žurbe pre 30.10.2026); posle pusha proveriti
 /demo i admin uživo.
 
+**Novo od 9.7 (3) — ADMIN E2E PAKET (CI zelen iz prvog run-a):**
+[kalendar.spec.ts](tests/e2e/kalendar.spec.ts): ručni upis termina kroz
+kalendar (?novo=1, Radix select-ovi kroz getByRole dialog/combobox/option)
++ duplikat odbijen porukom o preklapanju; blokada celog salona 12-13h →
+slotovi 12:00/12:30 nestaju iz javnog wizarda na tačno tom danu
+(DayStrip [data-date] selektor), 13:00 ostaje; otkazivanje kroz tabelu
+Rezervacija (Izmeni → Otkazano → badge). E2E sada 7 testova. VAŽNO za
+buduće E2E: playwright.config `workers: 1` (deljena baza → strogo redom);
+datumi SE RAČUNAJU U ZONI SALONA kroz fixtures `sledeciRadniDan()` (CI je
+UTC; preskače nedelju). Preostalo od test plana: onboarding E2E (mailpit),
+anti-spam granice, superadmin akcije, raspored kroz UI, lint čišćenje.
+
 **Novo od 9.7 (2) — DRUGI TALAS TESTOVA + DST BUG FIX:** (1) Integracioni
 test IZOLACIJE SALONA [izolacija.test.ts](tests/integration/izolacija.test.ts):
 ulogovani vlasnik salona A ne vidi/ne menja klijente, rezervacije, radno
