@@ -24,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { formatPrice } from "@/lib/booking/slots";
+import { formatPriceRange } from "@/lib/booking/slots";
 import type { Service } from "@/lib/types";
 import {
   deleteService,
@@ -53,6 +53,8 @@ function ServiceForm({
   const [description, setDescription] = useState(service?.description ?? "");
   const [duration, setDuration] = useState(String(service?.duration_minutes ?? 30));
   const [price, setPrice] = useState(String(service?.price ?? ""));
+  // Prazno polje = fiksna cena (price_max null u bazi)
+  const [priceMax, setPriceMax] = useState(String(service?.price_max ?? ""));
   const [isActive, setIsActive] = useState(service?.is_active ?? true);
   const [pending, startTransition] = useTransition();
 
@@ -65,6 +67,7 @@ function ServiceForm({
         description,
         durationMinutes: Number(duration),
         price: Number(price || 0),
+        priceMax: priceMax.trim() === "" ? null : Number(priceMax),
         isActive,
       });
       if (res.ok) {
@@ -90,7 +93,7 @@ function ServiceForm({
           onChange={(e) => setDescription(e.target.value)}
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label htmlFor="s-duration">Trajanje (min) *</Label>
           <Input
@@ -112,6 +115,17 @@ function ServiceForm({
             min={0}
             value={price}
             onChange={(e) => setPrice(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="s-price-max">do (opciono)</Label>
+          <Input
+            id="s-price-max"
+            type="number"
+            min={0}
+            placeholder="raspon"
+            value={priceMax}
+            onChange={(e) => setPriceMax(e.target.value)}
           />
         </div>
       </div>
@@ -206,7 +220,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
                 {!s.is_active && <Badge variant="outline">Neaktivna</Badge>}
               </p>
               <p className="text-sm text-muted-foreground">
-                {s.duration_minutes} min · {formatPrice(s.price, s.currency)}
+                {s.duration_minutes} min · {formatPriceRange(s.price, s.price_max, s.currency)}
               </p>
             </div>
             <div className="flex gap-1">

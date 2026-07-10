@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatDateISO,
+  formatPriceRange,
   fromMinutes,
   generateAvailableSlots,
   overlaps,
@@ -166,5 +167,29 @@ describe("formatDateISO", () => {
   it("formatira lokalni datum kao YYYY-MM-DD sa vodećim nulama", () => {
     expect(formatDateISO(new Date(2026, 0, 5))).toBe("2026-01-05");
     expect(formatDateISO(new Date(2026, 11, 31))).toBe("2026-12-31");
+  });
+});
+
+describe("formatPriceRange", () => {
+  it("bez gornje granice: obična cena", () => {
+    expect(formatPriceRange(700, null)).toBe("700 RSD");
+    expect(formatPriceRange(700, undefined)).toBe("700 RSD");
+  });
+
+  it("raspon: en-dash između cena, valuta jednom", () => {
+    expect(formatPriceRange(700, 1000)).toBe("700–1.000 RSD");
+    expect(formatPriceRange(1000, 1500, "RSD")).toBe("1.000–1.500 RSD");
+  });
+
+  it("srpski format hiljada u obe granice", () => {
+    expect(formatPriceRange(3500, 12000)).toBe("3.500–12.000 RSD");
+  });
+
+  it("decimale iz numeric(10,2) kolone se ispisuju po sr-RS pravilima", () => {
+    expect(formatPriceRange(700.5, 1000.25)).toBe("700,5–1.000,25 RSD");
+  });
+
+  it("valuta važi i na fiksnoj grani", () => {
+    expect(formatPriceRange(700, null, "EUR")).toBe("700 EUR");
   });
 });

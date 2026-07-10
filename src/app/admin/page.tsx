@@ -145,6 +145,8 @@ export default async function AdminDashboardPage() {
     services: { name: string; price: number; currency: string } | null;
   }[];
 
+  // Kod raspona cene (price_max) namerno računa donju granicu - "očekivani"
+  // promet ne sme da obećava više nego što je sigurno
   const monthRevenue = monthRows.reduce((sum, r) => sum + Number(r.services?.price ?? 0), 0);
   const currency = monthRows[0]?.services?.currency ?? "RSD";
 

@@ -29,7 +29,7 @@ import {
   updateStaffSchedule,
   upsertStaff,
 } from "../../actions";
-import { DAY_NAMES_SR, formatDateISO, formatPrice } from "@/lib/booking/slots";
+import { DAY_NAMES_SR, formatDateISO, formatPriceRange } from "@/lib/booking/slots";
 import {
   addDaysISO,
   DEFAULT_HORIZON_DAYS,
@@ -547,7 +547,7 @@ export function StaffDetail({
               <Label htmlFor={`svc-${s.id}`} className="flex-1 font-normal">
                 {s.name}
                 <span className="ml-2 text-muted-foreground">
-                  {s.duration_minutes} min · {formatPrice(s.price, s.currency)}
+                  {s.duration_minutes} min · {formatPriceRange(s.price, s.price_max, s.currency)}
                 </span>
               </Label>
             </div>

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { FadeUp, HeroItem, HeroStagger } from "@/components/animate";
 import { Button } from "@/components/ui/button";
-import { DAY_NAMES_SR, formatPrice, fromMinutes } from "@/lib/booking/slots";
+import { DAY_NAMES_SR, formatPriceRange, fromMinutes } from "@/lib/booking/slots";
 import { GalleryGrid } from "./gallery-grid";
 import { MobileBookCta } from "./mobile-book-cta";
 import {
@@ -251,7 +251,7 @@ export default async function SalonPage({
                 </span>
                 {settings?.show_prices !== false && (
                   <span className="min-w-20 text-right font-semibold text-primary">
-                    {formatPrice(s.price, s.currency)}
+                    {formatPriceRange(s.price, s.price_max, s.currency)}
                   </span>
                 )}
               </div>

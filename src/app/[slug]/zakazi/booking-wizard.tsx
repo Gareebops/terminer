@@ -24,7 +24,7 @@ import {
   bookingHorizonDays,
   DEFAULT_HORIZON_DAYS,
 } from "@/lib/booking/schedule";
-import { formatPrice, DAY_NAMES_SR } from "@/lib/booking/slots";
+import { formatPriceRange, DAY_NAMES_SR } from "@/lib/booking/slots";
 import type { Service, Staff } from "@/lib/types";
 
 interface Props {
@@ -525,7 +525,7 @@ export function BookingWizard({
       { k: "Usluga", v: service.name },
       { k: "Kod koga", v: result.staffName },
       { k: "Termin", v: `${dateLabel} u ${time}` },
-      { k: "Cena", v: formatPrice(service.price, service.currency) },
+      { k: "Cena", v: formatPriceRange(service.price, service.price_max, service.currency) },
     ];
     return (
       <>
@@ -679,7 +679,7 @@ export function BookingWizard({
             </SummaryChip>
           )}
           <SummaryChip key={`p-${service.id}`} accent>
-            {formatPrice(service.price, service.currency)}
+            {formatPriceRange(service.price, service.price_max, service.currency)}
           </SummaryChip>
         </div>
       )}
@@ -706,7 +706,7 @@ export function BookingWizard({
                     </p>
                   </div>
                   <span className="shrink-0 font-semibold text-primary">
-                    {formatPrice(s.price, s.currency)}
+                    {formatPriceRange(s.price, s.price_max, s.currency)}
                   </span>
                 </button>
               ))}

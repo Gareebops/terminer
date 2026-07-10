@@ -82,6 +82,8 @@ export interface Service {
   description: string | null;
   duration_minutes: number;
   price: number;
+  // Gornja granica raspona cene; null = fiksna cena (price)
+  price_max: number | null;
   currency: string;
   is_active: boolean;
   sort_order: number;

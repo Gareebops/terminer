@@ -18,6 +18,26 @@ produkciju, ukloniti flag iz config.toml - integracioni testovi u
 tests/integration tačno pokrivaju ovu matricu pa čuvaju ispravnost.
 Otkriveno 9.7. pri podizanju CI-ja (novi CLI već primenjuje novi default).
 
+**Novo od 10.7 — RASPON CENE USLUGE (od-do):** Usluga može imati raspon
+umesto fiksne cene. Migracija [20260710000001_cena_raspon.sql](supabase/migrations/20260710000001_cena_raspon.sql):
+`services.price_max numeric(10,2) null` + CHECK `services_price_range`
+(price_max is null OR price_max > price); `price` ostaje POČETNA (donja)
+cena - "Očekivani promet" na Početnoj namerno sabira donju granicu.
+MIGRACIJA SE PRIMENJUJE PRE DEPLOYA (upsertService šalje price_max pri
+svakom čuvanju; stara baza bi odbila upis) - stari kod sa novom kolonom
+radi, novi kod bez kolone NE. Prikaz: `formatPriceRange` u
+[slots.ts](src/lib/booking/slots.ts) ("700 RSD" / "700–1.000 RSD",
+en-dash, valuta jednom; null i UNDEFINED = fiksna cena pa radi i pre
+migracije) - javni cenovnik, wizard (lista+čip+potvrda), admin usluge,
+staff detalj. Forma: treće polje "do (opciono)" (#s-price-max), prazno =
+fiksna. Validacija: u akciji čitljiva poruka "Najviša cena mora biti veća
+od početne." + cene se ZAOKRUŽUJU na 2 decimale u Zod šemi pre poređenja
+(numeric(10,2) - sub-cent razlika bi prošla app proveru a pala na CHECK);
+23514 se mapira u istu poruku kao mreža. Testovi: +5 unit
+(formatPriceRange rubovi), +1 E2E u admin.spec.ts (validacija → čuvanje →
+sajt → wizard → vraćanje na fiksnu). Diff prošao adversarialnu reviziju
+(3 sočiva × verifikacija) - svi potvrđeni nalazi ispravljeni.
+
 **Novo od 9.7 (5) — LINT ČIST + U CI-ju; SUPERADMIN I RASPORED E2E (CI
 zelen iz prvog run-a; TEST PLAN ZATVOREN):** Svih 14 lint grešaka
 popravljeno BEZ ijednog eslint-disable (set-state-in-effect → izvedeno

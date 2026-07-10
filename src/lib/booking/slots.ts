@@ -62,6 +62,17 @@ export function formatPrice(price: number, currency = "RSD"): string {
   return `${Number(price).toLocaleString("sr-RS")} ${currency}`;
 }
 
+// Cena ili raspon: "700 RSD" odnosno "700–1.000 RSD" (en-dash, bez
+// razmaka - kompaktno za čipove i uske mobilne kartice)
+export function formatPriceRange(
+  price: number,
+  priceMax: number | null | undefined,
+  currency = "RSD"
+): string {
+  if (priceMax == null) return formatPrice(price, currency);
+  return `${Number(price).toLocaleString("sr-RS")}–${Number(priceMax).toLocaleString("sr-RS")} ${currency}`;
+}
+
 export const DAY_NAMES_SR = [
   "Nedelja",
   "Ponedeljak",

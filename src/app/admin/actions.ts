@@ -116,7 +116,17 @@ const serviceSchema = z.object({
   name: z.string().trim().min(1, "Unesi naziv usluge.").max(100),
   description: z.string().trim().max(300).optional(),
   durationMinutes: z.coerce.number().int().min(5).max(480),
-  price: z.coerce.number().min(0),
+  // Zaokruživanje na 2 decimale PRE poređenja raspona: kolone su
+  // numeric(10,2), pa bi sub-cent razlika prošla app proveru a pala na
+  // CHECK constraintu sa generičkom porukom
+  price: z.coerce.number().min(0).transform((v) => Math.round(v * 100) / 100),
+  // Gornja granica raspona; null/izostavljeno = fiksna cena
+  priceMax: z.coerce
+    .number()
+    .min(0)
+    .transform((v) => Math.round(v * 100) / 100)
+    .nullable()
+    .optional(),
   isActive: z.boolean(),
 });
 
@@ -127,6 +137,11 @@ export async function upsertService(
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
   }
+  // Ista granica kao CHECK u bazi (services_price_range) - ovde radi
+  // čitljive poruke umesto sirove greške constrainta
+  if (parsed.data.priceMax != null && parsed.data.priceMax <= parsed.data.price) {
+    return { ok: false, error: "Najviša cena mora biti veća od početne." };
+  }
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
 
@@ -136,6 +151,7 @@ export async function upsertService(
     description: parsed.data.description || null,
     duration_minutes: parsed.data.durationMinutes,
     price: parsed.data.price,
+    price_max: parsed.data.priceMax ?? null,
     is_active: parsed.data.isActive,
   };
 
@@ -143,7 +159,13 @@ export async function upsertService(
     ? await supabase.from("services").update(row).eq("id", parsed.data.id).select("id").single()
     : await supabase.from("services").insert(row).select("id").single();
 
-  if (error) return { ok: false, error: "Čuvanje nije uspelo." };
+  if (error) {
+    // 23514 = services_price_range CHECK - mreža ispod app provere iznad
+    if (error.code === "23514") {
+      return { ok: false, error: "Najviša cena mora biti veća od početne." };
+    }
+    return { ok: false, error: "Čuvanje nije uspelo." };
+  }
 
   // Nova usluga se podrazumevano dodeljuje svim zaposlenima
   if (!parsed.data.id) {
