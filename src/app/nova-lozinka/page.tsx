@@ -18,13 +18,15 @@ export default function NewPasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (password.length < 8) {
-      toast.error("Lozinka mora imati bar 8 karaktera.");
+      setFieldError("Lozinka mora imati bar 8 karaktera.");
       return;
     }
+    setFieldError(null);
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.updateUser({ password });
@@ -47,7 +49,7 @@ export default function NewPasswordPage() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 bg-canvas px-4 py-16 font-display">
       <TerminerLogo href="/" />
-      <Card className="w-full max-w-sm rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
+      <Card className="w-full max-w-sm rounded-3xl border-0 shadow-card">
         <CardHeader>
           <CardTitle className="text-2xl font-extrabold tracking-tight">Nova lozinka</CardTitle>
         </CardHeader>
@@ -58,13 +60,24 @@ export default function NewPasswordPage() {
               <PasswordInput
                 id="password"
                 autoComplete="new-password"
+                className="h-11"
                 required
                 minLength={8}
+                aria-invalid={!!fieldError}
+                aria-describedby={fieldError ? "password-error" : undefined}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setFieldError(null);
+                }}
               />
+              {fieldError && (
+                <p id="password-error" className="text-xs font-medium text-red-700">
+                  {fieldError}
+                </p>
+              )}
             </div>
-            <Button type="submit" className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85" disabled={loading}>
+            <Button type="submit" variant="brand-mint" className="h-11 w-full" disabled={loading}>
               {loading ? "Čuvanje..." : "Sačuvaj novu lozinku"}
             </Button>
             <p className="text-center text-sm text-muted-foreground">

@@ -38,7 +38,7 @@ export default function OnboardingPage() {
 
   return (
     <main className="flex flex-1 items-center justify-center bg-canvas px-4 py-16 font-display">
-      <Card className="w-full max-w-md rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
+      <Card className="w-full max-w-md rounded-3xl border-0 shadow-card">
         <CardHeader>
           <CardTitle className="text-2xl font-extrabold tracking-tight">Napravi svoj salon</CardTitle>
         </CardHeader>
@@ -48,6 +48,7 @@ export default function OnboardingPage() {
               <Label htmlFor="name">Naziv salona</Label>
               <Input
                 id="name"
+                className="h-11"
                 required
                 placeholder="npr. Studio Milica"
                 value={name}
@@ -63,6 +64,7 @@ export default function OnboardingPage() {
                 <span className="text-sm text-muted-foreground">terminer.rs/</span>
                 <Input
                   id="slug"
+                  className="h-11"
                   required
                   value={slug}
                   onChange={(e) => {
@@ -78,7 +80,7 @@ export default function OnboardingPage() {
                 izaberi je pažljivo.
               </p>
             </div>
-            <Button type="submit" className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85" disabled={pending}>
+            <Button type="submit" variant="brand-mint" className="h-11 w-full" disabled={pending}>
               {pending ? "Kreiranje..." : "Napravi salon"}
             </Button>
           </form>

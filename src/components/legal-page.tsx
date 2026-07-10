@@ -29,9 +29,9 @@ export function LegalPage({
       </header>
 
       <article className="mx-auto max-w-3xl px-4 pb-16">
-        <div className="rounded-[2rem] bg-white p-8 shadow-[0_4px_24px_rgba(20,25,20,0.06)] sm:p-12">
+        <div className="rounded-[2rem] bg-white p-8 shadow-card sm:p-12">
           <h1 className="text-3xl font-extrabold tracking-tight">{title}</h1>
-          <p className="mt-2 text-sm font-medium text-ink/50">
+          <p className="mt-2 text-sm font-medium text-ink/70">
             Poslednja izmena: {updated}
           </p>
           <div className="legal-prose mt-8 space-y-6 text-[15px] leading-relaxed text-ink/80 [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-ink [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5">
@@ -40,7 +40,7 @@ export function LegalPage({
         </div>
       </article>
 
-      <footer className="mx-auto flex max-w-3xl items-center justify-between px-4 pb-10 text-sm font-medium text-ink/50">
+      <footer className="mx-auto flex max-w-3xl items-center justify-between px-4 pb-10 text-sm font-medium text-ink/70">
         <span>© {new Date().getFullYear()} Terminer</span>
         <span>Napravljeno u Srbiji</span>
       </footer>

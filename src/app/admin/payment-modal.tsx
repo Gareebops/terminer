@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { TerminerMark } from "@/components/terminer-logo";
+import { datumSr } from "@/lib/datum";
 import { formatAmount, PLANS, type PlanId } from "@/lib/invoice";
 import {
   preparePayment,
@@ -84,7 +85,7 @@ export function PaymentModal({
     });
   }
 
-  const fmt = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString("sr-RS");
+  const fmt = (d: string) => datumSr(d);
   const needsBilling = result && !result.ok && result.needBillingInfo;
 
   return (
@@ -165,9 +166,9 @@ export function PaymentModal({
               </div>
               <p className="mt-4 text-3xl font-extrabold tracking-tight text-ink">
                 {formatAmount(result.amount)}{" "}
-                <span className="text-base font-bold text-ink/50">RSD</span>
+                <span className="text-base font-bold text-ink/70">RSD</span>
               </p>
-              <p className="mt-0.5 text-sm font-medium text-ink/60">
+              <p className="mt-0.5 text-sm font-medium text-ink/70">
                 {result.plan === "monthly" ? "Mesečna" : "Godišnja"} članarina
               </p>
               <span className="mt-2 rounded-full bg-mint px-3 py-1 text-xs font-bold text-ink">

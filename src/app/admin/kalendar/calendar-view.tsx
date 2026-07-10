@@ -125,7 +125,7 @@ function NewBookingDialog({
         setPhone("");
         setNote("");
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -156,7 +156,7 @@ function NewBookingDialog({
             <Label>Zaposleni *</Label>
             <Select value={staffId} onValueChange={setStaffId} required>
               <SelectTrigger className="w-full">
-                <SelectValue placeholder="Izaberi radnika" />
+                <SelectValue placeholder="Izaberi zaposlenog" />
               </SelectTrigger>
               <SelectContent>
                 {staff.map((m) => (
@@ -279,7 +279,7 @@ function BlockDialog({
       } else if ("conflicts" in res && res.conflicts) {
         setConflicts(res.conflicts);
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -404,7 +404,7 @@ function BookingDialog({
         setConfirmCancel(false);
         onClose();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -591,23 +591,31 @@ export function CalendarView({
     };
   }, [nowMinutes]);
 
-  // Pri otvaranju današnjeg dana grid se sam dovede do trenutnog vremena
+  // Pri otvaranju današnjeg dana grid se sam dovede do trenutnog vremena.
+  // Skrol ide UNUTAR grid kontejnera, ne kroz celu stranicu - inače
+  // auto-scroll sakrije zaglavlje sa navigacijom dana.
   const nowRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    nowRef.current?.scrollIntoView({ block: "center" });
+    const el = scrollRef.current;
+    const now = nowRef.current;
+    if (!el || !now) return;
+    const top =
+      now.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
+    el.scrollTop = top - el.clientHeight / 2;
   }, []);
 
   function removeBlock(id: string) {
     startTransition(async () => {
       const res = await deleteBlockedSlot(id);
-      if (!res.ok) toast.error(res.error ?? "Greška.");
+      if (!res.ok) toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       setBlockToRemove(null);
     });
   }
 
   if (staff.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
+      <p className="rounded-lg border border-dashed p-8 text-center text-ink/70">
         Prvo dodaj zaposlene.
       </p>
     );
@@ -674,19 +682,20 @@ export function CalendarView({
         <BlockDialog key={`bl-${day}`} day={day} staff={staff} defaultOpen={openBlock} />
       </div>
 
-      <div className="overflow-x-auto rounded-[2rem] bg-white p-3 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
+      <div className="rounded-[2rem] bg-white p-3 shadow-card">
+        <div ref={scrollRef} className="max-h-[70dvh] overflow-auto">
         <div
           className="grid"
           style={{
             gridTemplateColumns: `56px repeat(${staff.length}, minmax(160px, 1fr))`,
           }}
         >
-          {/* Zaglavlje */}
-          <div className="border-b bg-muted/40 p-2" />
+          {/* Zaglavlje - sticky da imena ostanu vidljiva dok se grid skroluje */}
+          <div className="sticky top-0 z-20 border-b bg-muted p-2" />
           {staff.map((m) => (
             <div
               key={m.id}
-              className="border-b border-l bg-muted/40 p-2 text-center text-sm font-medium"
+              className="sticky top-0 z-20 border-b border-l bg-muted p-2 text-center text-sm font-medium"
             >
               <span className="inline-flex max-w-full items-center justify-center gap-2">
                 {m.photo_url ? (
@@ -724,7 +733,7 @@ export function CalendarView({
                 className="absolute right-1 z-10 -translate-y-1/2"
                 style={{ top: top(nowMin!) }}
               >
-                <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white">
+                <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white">
                   {fromMinutes(nowMin!)}
                 </span>
               </div>
@@ -779,7 +788,7 @@ export function CalendarView({
                 )}
                 {win === null ? (
                   <div className="absolute inset-0" style={{ backgroundImage: HATCH }}>
-                    <span className="absolute left-1/2 top-8 -translate-x-1/2 rounded-full bg-white px-3 py-1 text-xs font-medium text-ink/50 ring-1 ring-ink/10">
+                    <span className="absolute left-1/2 top-8 -translate-x-1/2 rounded-full bg-white px-3 py-1 text-xs font-medium text-ink/70 ring-1 ring-ink/10">
                       Ne radi
                     </span>
                   </div>
@@ -807,7 +816,7 @@ export function CalendarView({
                       key={b.id}
                       onClick={() => setBlockToRemove(b.id)}
                       title={`Blokirano${b.reason ? `: ${b.reason}` : ""} - klik za uklanjanje`}
-                      className="absolute inset-x-1 rounded-xl bg-ink/[0.04] px-2 py-1 text-left text-xs text-ink/60 ring-1 ring-ink/10 hover:ring-red-400"
+                      className="absolute inset-x-1 rounded-xl bg-ink/[0.04] px-2 py-1 text-left text-xs text-ink/70 ring-1 ring-ink/10 hover:ring-red-400"
                       style={{
                         top: top(s),
                         height: (e - s) * PX_PER_MIN,
@@ -831,7 +840,7 @@ export function CalendarView({
                       title={`${b.customer_name} · ${b.customer_phone} - klik za detalje`}
                       className={`absolute inset-x-1 overflow-hidden rounded-xl px-2 py-1 text-left text-xs transition-shadow hover:ring-2 hover:ring-ink/30 ${
                         dimmed
-                          ? "bg-ink/10 text-ink/60 ring-1 ring-ink/10"
+                          ? "bg-ink/10 text-ink/70 ring-1 ring-ink/10"
                           : "bg-ink text-white"
                       } ${b.status === "no_show" ? "line-through" : ""}`}
                       style={{ top: top(s), height: Math.max((e - s) * PX_PER_MIN, 22) }}
@@ -852,10 +861,12 @@ export function CalendarView({
             );
           })}
         </div>
+        </div>
       </div>
       <p className="mt-3 text-xs text-muted-foreground">
         Klik na prazno mesto upisuje termin u to vreme; klik na termin otvara
-        detalje i promenu statusa; klik na blokadu je uklanja.
+        detalje i promenu statusa; klik na blokadu je uklanja. Sve isto možeš
+        i kroz dugmad „Nova rezervacija“ i „Blokiraj termin“.
       </p>
 
       <BookingDialog
@@ -870,6 +881,7 @@ export function CalendarView({
         title="Ukloniti blokadu?"
         description="Vreme ponovo postaje dostupno za online zakazivanje."
         confirmLabel="Ukloni"
+        pendingLabel="Uklanjanje..."
         pending={pending}
         onConfirm={() => blockToRemove && removeBlock(blockToRemove)}
         onCancel={() => setBlockToRemove(null)}

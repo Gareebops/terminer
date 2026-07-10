@@ -1,8 +1,46 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 9. jul 2026. Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 10. jul 2026. Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
+
+**Novo od 10.7 (3) — UI/UX AUDIT IMPLEMENTIRAN U CELOSTI (31 nalaz, Mihajlo
+odobrio "sve"):** Kompletan dizajn audit (inventar → 7 dimenzija → nalazi →
+implementacija). NOVE KONVENCIJE ZA BUDUĆI KOD: (1) **Kontrast AA**: sekundarni
+tekst je `text-ink/70` (na canvas/beloj), `text-ink/80` na mint/lavandi,
+kickeri `text-ink/60`; opaciteti ispod /60 SAMO za dekoraciju (ink/50 na
+canvas je bio 3.2:1 - merjeno). Upozorenja `bg-red-600` (ne red-500 - beli
+tekst na red-500 je 3.76). (2) **Touch targeti**: javni tok + auth inputi i
+CTA `h-11` (44px); slotovi u wizardu h-11; admin icon dugmad `max-sm:size-10`.
+(3) **Dugmad brenda**: Button ima `variant="brand"` (ink pill) i
+`"brand-mint"` + `size="pill"` (h-10) - NE pisati ručne
+`rounded-full bg-ink...` linkove. (4) **Senka kartica**: klasa `shadow-card`
+(token u globals @theme) umesto arbitrary vrednosti. (5) **Datumi**: SVE
+korisničke datume formatira [src/lib/datum.ts](src/lib/datum.ts)
+(datumSr/datumVremeSr, sr-Latn-RS) - direktan `toLocaleDateString("sr-RS")`
+vraća ćirilicu za imena dana. (6) **Generička greška**: "Nešto nije uspelo.
+Pokušaj ponovo." (ne "Greška."). OSTALO URAĐENO: inline validacija (prijava/
+registracija/nova-lozinka/wizard korak 4 - poruke ispod polja + aria-invalid,
+dugme uvek aktivno); wizard koraci u browser istoriji (pushState sa STATE
+OBJEKTOM bez promene URL-a - `{...history.state, korak: N}` + popstate;
+LEKCIJA: pushState koji menja searchParams okida Next router re-render);
+kalendar auto-scroll na "sada" ide UNUTAR grid kontejnera (max-h-[70dvh],
+sticky zaglavlje kolona) umesto cele strane; drawer admin menija i lightbox
+galerije prebačeni na Radix Dialog (focus trap; bez data-slot da ih
+admin-scope CSS ne prefarba); rezervacije na telefonu = kartice umesto
+tabele od 8 kolona; HeroDemo compact na landingu ispod sm; "Pregled sajta"
+plutajuće dugme u Podešavanjima ispod xl; stat kartice Početne su linkovi;
+wizard nudi "Pogledaj [sledeći radni dan] →" kad dan nema termina; galerija
+kontrole vidljive na focus (group-focus-within); aria-label na sve icon-only
+dugmad; sr-only h2 na landingu; podešavanja izgleda: tihi "✓ Sačuvano" uz
+kontrolu umesto 8 toastova (toast samo za greške); ConfirmDialog ima
+pendingLabel prop; sidebar/mobilna traka `rounded-[2rem]` (DS spoljne
+kartice; kompaktne kartice u listama su svesno 1rem). VERIFIKovano: 88 unit,
+lint, tsc, build zeleni; tok wizarda + istorija + kontrasti kroz preview.
+LEKCIJA ZA TESTIRANJE KROZ PREVIEW: skriven tab ima visibility:hidden i 0
+rAF frejmova - framer-motion exit animacije se NIKAD ne završe pa
+AnimatePresence mode="wait" izgleda "zamrznuto"; to je artefakt okruženja,
+ne bag (proveriti document.visibilityState pre debugovanja animacija).
 
 **Novo od 9.7 (3) — EKSPLICITNI GRANT-ovi ZA API ROLE (⚠️ ČEKA `supabase db
 push` OD MIHAJLA):** Zatvara upozorenje "ROK 30.10.2026" otkriveno pri

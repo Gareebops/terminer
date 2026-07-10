@@ -20,6 +20,9 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [unconfirmed, setUnconfirmed] = useState(false);
+  // Inline umesto toasta: toast nestane pre nego što ga korisnik pročita,
+  // a čitači ekrana ga često preskoče
+  const [formError, setFormError] = useState<string | null>(null);
   // Dolazak sa linka za potvrdu naloga (auth/callback bez sesije)
   const justConfirmed = search.get("potvrdjen") === "1";
   // Link iz mejla nije mogao da napravi sesiju (istekao / drugi browser)
@@ -27,6 +30,7 @@ function LoginForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFormError(null);
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -34,9 +38,9 @@ function LoginForm() {
     if (error) {
       if (error.message.toLowerCase().includes("not confirmed")) {
         setUnconfirmed(true);
-        toast.error("Nalog još nije potvrđen - proveri mejl.");
+        setFormError("Nalog još nije potvrđen - proveri mejl ili zatraži nov link ispod.");
       } else {
-        toast.error("Pogrešan email ili lozinka.");
+        setFormError("Pogrešan email ili lozinka.");
       }
       return;
     }
@@ -58,7 +62,7 @@ function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
+    <Card className="w-full max-w-sm rounded-3xl border-0 shadow-card">
       <CardHeader>
         <CardTitle className="text-2xl font-extrabold tracking-tight">Prijava</CardTitle>
       </CardHeader>
@@ -75,11 +79,20 @@ function LoginForm() {
           </p>
         )}
         <form onSubmit={onSubmit} className="space-y-4">
+          {formError && (
+            <p
+              role="alert"
+              className="rounded-lg bg-red-100 px-3 py-2 text-sm font-semibold text-red-950"
+            >
+              {formError}
+            </p>
+          )}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
+              className="h-11"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -98,12 +111,13 @@ function LoginForm() {
             <PasswordInput
               id="password"
               autoComplete="current-password"
+              className="h-11"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
-          <Button type="submit" className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85" disabled={loading}>
+          <Button type="submit" variant="brand-mint" className="h-11 w-full" disabled={loading}>
             {loading ? "Prijavljivanje..." : "Prijavi se"}
           </Button>
           {unconfirmed && (

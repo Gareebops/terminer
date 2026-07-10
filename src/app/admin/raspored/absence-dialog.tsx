@@ -54,7 +54,7 @@ export function AbsenceDialog({ staff }: { staff: Staff[] }) {
       } else if ("conflicts" in res && res.conflicts) {
         setConflicts(res.conflicts);
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }

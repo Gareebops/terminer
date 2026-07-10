@@ -16,7 +16,7 @@ export function PasswordInput({
       <Input
         {...props}
         type={visible ? "text" : "password"}
-        className={`pr-10 ${className ?? ""}`}
+        className={`pr-11 ${className ?? ""}`}
       />
       <button
         type="button"
@@ -24,7 +24,7 @@ export function PasswordInput({
         aria-label={visible ? "Sakrij lozinku" : "Prikaži lozinku"}
         title={visible ? "Sakrij lozinku" : "Prikaži lozinku"}
         onClick={() => setVisible((v) => !v)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+        className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground"
       >
         {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </button>

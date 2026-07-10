@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { SiteSettings } from "@/lib/types";
 import { AppearanceForm } from "./appearance-form";
 import { DomainCard } from "./domain-card";
@@ -47,6 +49,17 @@ export function SettingsShell({
           />
         </div>
       </div>
+
+      {/* Ispod xl nema živog pregleda - plutajuće dugme otvara sajt,
+          da se boja/font ne biraju naslepo */}
+      <Button
+        asChild
+        className="fixed bottom-4 right-4 z-40 h-11 rounded-full px-5 shadow-lg xl:hidden"
+      >
+        <a href={`/${slug}`} target="_blank" rel="noreferrer">
+          <ExternalLink className="size-4" /> Pregled sajta
+        </a>
+      </Button>
     </div>
   );
 }

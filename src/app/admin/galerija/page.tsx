@@ -17,7 +17,7 @@ export default async function GalleryPage() {
   return (
     <div>
       <h1 className="text-3xl font-extrabold tracking-tight">Galerija radova</h1>
-      <p className="mt-1 text-sm font-medium text-ink/50">
+      <p className="mt-1 text-sm font-medium text-ink/70">
         Fotografije se prikazuju na tvom sajtu u sekciji „Izdvojeni radovi“.
       </p>
       <div className="mt-6">

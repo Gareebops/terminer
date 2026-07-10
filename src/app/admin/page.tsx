@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fromMinutes, toMinutes } from "@/lib/booking/slots";
 import { nowInZone } from "@/lib/booking/timezone";
 import { plural } from "@/lib/plural";
+import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/count-up";
 import type { OnboardingState, SiteSettings } from "@/lib/types";
 import { OnboardingGuide } from "./onboarding-guide";
@@ -170,7 +171,7 @@ export default async function AdminDashboardPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">Početna</h1>
-          <p className="mt-1 text-sm font-medium text-ink/50">
+          <p className="mt-1 text-sm font-medium text-ink/70">
             {/* sr-Latn: podrazumevani sr-RS ispisuje imena dana ćirilicom */}
             {greeting} ·{" "}
             {todayDate.toLocaleDateString("sr-Latn-RS", {
@@ -180,12 +181,11 @@ export default async function AdminDashboardPage() {
             })}
           </p>
         </div>
-        <Link
-          href="/admin/kalendar"
-          className="flex items-center justify-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-85"
-        >
-          <CalendarDays className="size-4" /> Otvori kalendar
-        </Link>
+        <Button asChild variant="brand" size="pill">
+          <Link href="/admin/kalendar">
+            <CalendarDays className="size-4" /> Otvori kalendar
+          </Link>
+        </Button>
       </div>
 
       {/* Brze akcije - najčešći poslovi na jedan klik. Mobil: uredna mreža
@@ -193,13 +193,13 @@ export default async function AdminDashboardPage() {
       <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         <Link
           href="/admin/kalendar?novo=1"
-          className="flex items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-[0_4px_24px_rgba(20,25,20,0.06)] transition-colors hover:bg-ink/5 sm:justify-start"
+          className="flex items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-card transition-colors hover:bg-ink/5 sm:justify-start"
         >
           <Plus className="size-4" /> Upiši termin
         </Link>
         <Link
           href="/admin/kalendar?blokada=1"
-          className="flex items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-[0_4px_24px_rgba(20,25,20,0.06)] transition-colors hover:bg-ink/5 sm:justify-start"
+          className="flex items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-card transition-colors hover:bg-ink/5 sm:justify-start"
         >
           <Ban className="size-4" /> Blokiraj vreme
         </Link>
@@ -289,36 +289,55 @@ export default async function AdminDashboardPage() {
         <div className="grid gap-4">
           <div className="rounded-[2rem] bg-mint p-6">
             {/* Sabira i zakazane buduće termine - zato "očekivani" */}
-            <p className="text-sm font-semibold text-ink/60">Očekivani promet ovog meseca</p>
+            <p className="text-sm font-semibold text-ink/80">Očekivani promet ovog meseca</p>
             <p className="mt-1 text-4xl font-extrabold tracking-tight">
               <CountUp value={monthRevenue} suffix={` ${currency}`} />
             </p>
-            <p className="mt-1 text-sm font-semibold text-ink/60">
+            <p className="mt-1 text-sm font-semibold text-ink/80">
               {monthRows.length} {plural(monthRows.length, ["termin", "termina", "termina"])}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-[2rem] bg-lavender p-6">
-              <p className="text-sm font-semibold text-ink/60">Ove nedelje</p>
+            {/* Stat kartice su linkovi - broj vodi na spisak iza njega */}
+            <Link
+              href="/admin/rezervacije"
+              className="group rounded-[2rem] bg-lavender p-6 transition-shadow hover:shadow-[0_8px_32px_rgba(20,25,20,0.14)]"
+            >
+              <p className="flex items-center justify-between text-sm font-semibold text-ink/80">
+                Ove nedelje
+                <ArrowUpRight className="size-4 opacity-0 transition-opacity group-hover:opacity-100" />
+              </p>
               <p className="mt-1 text-4xl font-extrabold tracking-tight">
                 <CountUp value={weekRes.count ?? 0} />
               </p>
-              <p className="mt-1 text-sm font-semibold text-ink/60">
+              <p className="mt-1 text-sm font-semibold text-ink/80">
                 {plural(weekRes.count ?? 0, ["termin", "termina", "termina"])}
               </p>
-            </div>
-            <div className="rounded-[2rem] bg-white p-6 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
-              <p className="text-sm font-semibold text-ink/50">Klijenata</p>
+            </Link>
+            <Link
+              href="/admin/rezervacije?prikaz=istorija"
+              className="group rounded-[2rem] bg-white p-6 shadow-card transition-shadow hover:shadow-[0_8px_32px_rgba(20,25,20,0.14)]"
+            >
+              <p className="flex items-center justify-between text-sm font-semibold text-ink/70">
+                Klijenata
+                <ArrowUpRight className="size-4 opacity-0 transition-opacity group-hover:opacity-100" />
+              </p>
               <p className="mt-1 text-4xl font-extrabold tracking-tight">
                 <CountUp value={customersRes.count ?? 0} />
               </p>
-              <p className="mt-1 text-sm font-semibold text-ink/50">u evidenciji</p>
-            </div>
+              <p className="mt-1 text-sm font-semibold text-ink/70">u evidenciji</p>
+            </Link>
           </div>
-          <div className="rounded-[2rem] bg-white p-6 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
-            <p className="text-base font-bold tracking-tight">Top usluge ovog meseca</p>
+          <div className="rounded-[2rem] bg-white p-6 shadow-card">
+            <Link
+              href="/admin/usluge"
+              className="group flex items-center justify-between text-base font-bold tracking-tight hover:underline"
+            >
+              Top usluge ovog meseca
+              <ArrowUpRight className="size-4 opacity-0 transition-opacity group-hover:opacity-100" />
+            </Link>
             {topServices.length === 0 && (
-              <p className="mt-3 text-sm text-ink/50">Još nema rezervacija.</p>
+              <p className="mt-3 text-sm text-ink/70">Još nema rezervacija.</p>
             )}
             <ul className="mt-4 space-y-3">
               {topServices.map((s, i) => (

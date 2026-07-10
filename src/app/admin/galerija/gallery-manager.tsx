@@ -60,7 +60,7 @@ export function GalleryManager({
       const { data } = supabase.storage.from("tenant-media").getPublicUrl(path);
       const res = await addGalleryImage(data.publicUrl);
       if (res.ok) ok += 1;
-      else toast.error(res.error ?? "Greška.");
+      else toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
     }
     setUploading(false);
     if (ok > 0) {
@@ -75,7 +75,7 @@ export function GalleryManager({
   function remove(id: string) {
     startTransition(async () => {
       const res = await deleteGalleryImage(id);
-      if (!res.ok) toast.error(res.error ?? "Greška.");
+      if (!res.ok) toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       setToDelete(null);
     });
   }
@@ -83,7 +83,7 @@ export function GalleryManager({
   function move(id: string, direction: "up" | "down") {
     startTransition(async () => {
       const res = await moveGalleryImage(id, direction);
-      if (!res.ok) toast.error(res.error ?? "Greška.");
+      if (!res.ok) toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
     });
   }
 
@@ -97,10 +97,12 @@ export function GalleryManager({
         className="hidden"
         onChange={onFiles}
       />
-      <Button disabled={uploading} onClick={() => fileRef.current?.click()}>
-        <Upload className="size-4" />
-        {uploading ? "Otpremanje..." : "Dodaj fotografije"}
-      </Button>
+      {images.length > 0 && (
+        <Button disabled={uploading} onClick={() => fileRef.current?.click()}>
+          <Upload className="size-4" />
+          {uploading ? "Otpremanje..." : "Dodaj fotografije"}
+        </Button>
+      )}
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {/* Kontrole su na telefonu uvek vidljive (nema hovera), na desktopu
@@ -117,16 +119,18 @@ export function GalleryManager({
             <button
               onClick={() => setToDelete(g.id)}
               title="Obriši"
-              className="absolute right-2 top-2 rounded-md bg-black/60 p-1.5 text-white transition sm:opacity-0 sm:group-hover:opacity-100"
+              aria-label="Obriši fotografiju"
+              className="absolute right-2 top-2 rounded-md bg-black/60 p-2.5 text-white transition focus-visible:opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
             >
               <Trash2 className="size-4" />
             </button>
-            <div className="absolute bottom-2 left-2 flex gap-1 transition sm:opacity-0 sm:group-hover:opacity-100">
+            <div className="absolute bottom-2 left-2 flex gap-1 transition sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
               <button
                 onClick={() => move(g.id, "up")}
                 disabled={pending || i === 0}
                 title="Pomeri napred"
-                className="rounded-md bg-black/60 p-1.5 text-white disabled:opacity-40"
+                aria-label="Pomeri napred"
+                className="rounded-md bg-black/60 p-2.5 text-white focus-visible:opacity-100 disabled:opacity-40"
               >
                 <ArrowLeft className="size-4" />
               </button>
@@ -134,7 +138,8 @@ export function GalleryManager({
                 onClick={() => move(g.id, "down")}
                 disabled={pending || i === images.length - 1}
                 title="Pomeri nazad"
-                className="rounded-md bg-black/60 p-1.5 text-white disabled:opacity-40"
+                aria-label="Pomeri nazad"
+                className="rounded-md bg-black/60 p-2.5 text-white focus-visible:opacity-100 disabled:opacity-40"
               >
                 <ArrowRight className="size-4" />
               </button>
@@ -157,7 +162,7 @@ export function GalleryManager({
             <Upload className="size-5" />
           </span>
           <p className="mt-3 text-lg font-bold tracking-tight">Pokaži najbolje radove</p>
-          <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+          <p className="mx-auto mt-1 max-w-md text-sm text-ink/70">
             Fotografije se prikazuju u galeriji na sajtu - dobre slike prodaju
             bolje od bilo kog teksta. Počni sa 4-6 najboljih.
           </p>

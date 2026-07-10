@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cancelBooking } from "@/lib/booking/actions";
+import { datumSr } from "@/lib/datum";
 import { DAY_NAMES_SR } from "@/lib/booking/slots";
 import type { BookingStatus } from "@/lib/types";
 
@@ -45,7 +46,7 @@ export function CancelCard({
           <p className="mt-2 text-muted-foreground">
             Link nije važeći ili je rezervacija u međuvremenu obrisana.
           </p>
-          <Button asChild className="mt-6">
+          <Button asChild className="mt-6 h-11">
             <Link href={`/${slug}`}>Nazad na sajt</Link>
           </Button>
         </CardContent>
@@ -53,7 +54,7 @@ export function CancelCard({
     );
   }
 
-  const dateLabel = `${DAY_NAMES_SR[new Date(`${booking.date}T12:00:00`).getDay()]}, ${new Date(`${booking.date}T12:00:00`).toLocaleDateString("sr-RS")}`;
+  const dateLabel = `${DAY_NAMES_SR[new Date(`${booking.date}T12:00:00`).getDay()]}, ${datumSr(booking.date)}`;
 
   const isCancelled = cancelled || booking.status === "cancelled";
   const canCancel =
@@ -132,12 +133,13 @@ export function CancelCard({
             <div className="flex justify-center gap-2">
               <Button
                 variant="ghost"
+                className="h-11"
                 onClick={() => setConfirming(false)}
                 disabled={pending}
               >
                 Odustani
               </Button>
-              <Button variant="destructive" onClick={confirmCancel} disabled={pending}>
+              <Button variant="destructive" className="h-11" onClick={confirmCancel} disabled={pending}>
                 <CalendarX2 className="size-4" />
                 {pending ? "Otkazivanje…" : "Da, otkaži"}
               </Button>
@@ -146,11 +148,11 @@ export function CancelCard({
         ) : (
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             {canCancel && (
-              <Button variant="destructive" onClick={() => setConfirming(true)}>
+              <Button variant="destructive" className="h-11" onClick={() => setConfirming(true)}>
                 <CalendarX2 className="size-4" /> Otkaži termin
               </Button>
             )}
-            <Button variant={canCancel ? "outline" : "default"} asChild>
+            <Button variant={canCancel ? "outline" : "default"} className="h-11" asChild>
               <Link href={isCancelled ? `/${slug}/zakazi` : `/${slug}`}>
                 {isCancelled ? "Zakaži novi termin" : "Nazad na sajt"}
               </Link>

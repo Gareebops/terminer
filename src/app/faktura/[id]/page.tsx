@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import QRCode from "qrcode";
+import { datumSr } from "@/lib/datum";
 import { assertSuperAdmin } from "@/app/superadmin/actions";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -66,11 +67,7 @@ export default async function InvoicePage({
   const issued = new Date(invoice.created_at);
   const due = new Date(issued.getTime() + 7 * 86400000);
   const fmt = (d: string | Date) =>
-    new Date(d).toLocaleDateString("sr-RS", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
+    datumSr(d, { day: "2-digit", month: "2-digit", year: "numeric" });
   const buyerLines = (invoice.buyer_info || invoice.tenants?.name || "")
     .split("\n")
     .filter(Boolean);
@@ -90,13 +87,13 @@ export default async function InvoicePage({
           <div className="flex items-start justify-between gap-6">
             <div>
               <p className="text-2xl font-extrabold tracking-tight">{ISSUER.name}</p>
-              <p className="mt-1 text-sm text-ink/60">
+              <p className="mt-1 text-sm text-ink/70">
                 {ISSUER.address}, {ISSUER.city}
               </p>
-              <p className="text-sm text-ink/60">
+              <p className="text-sm text-ink/70">
                 PIB: {ISSUER.pib} · MB: {ISSUER.mb}
               </p>
-              <p className="text-sm text-ink/60">
+              <p className="text-sm text-ink/70">
                 {ISSUER.bank} · {ISSUER.account}
               </p>
             </div>
@@ -104,7 +101,7 @@ export default async function InvoicePage({
               <p className="text-3xl font-extrabold tracking-tight">FAKTURA</p>
               <p className="mt-1 text-lg font-bold">br. {invoiceLabel(invoice)}</p>
               <div className="mt-3 inline-block text-center">
-                <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-ink/50">
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-ink/70">
                   NBS IPS QR
                 </p>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -116,7 +113,7 @@ export default async function InvoicePage({
           {/* Kupac i datumi */}
           <div className="mt-10 flex flex-wrap items-start justify-between gap-6">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-ink/50">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink/70">
                 Kupac
               </p>
               {buyerLines.map((line, i) => (
@@ -127,15 +124,15 @@ export default async function InvoicePage({
             </div>
             <div className="text-sm">
               <p>
-                <span className="text-ink/50">Datum izdavanja:</span>{" "}
+                <span className="text-ink/70">Datum izdavanja:</span>{" "}
                 <span className="font-semibold">{fmt(issued)}</span>
               </p>
               <p>
-                <span className="text-ink/50">Valuta plaćanja:</span>{" "}
+                <span className="text-ink/70">Valuta plaćanja:</span>{" "}
                 <span className="font-semibold">{fmt(due)}</span>
               </p>
               <p>
-                <span className="text-ink/50">Mesto izdavanja:</span>{" "}
+                <span className="text-ink/70">Mesto izdavanja:</span>{" "}
                 <span className="font-semibold">Niš</span>
               </p>
             </div>
@@ -157,7 +154,7 @@ export default async function InvoicePage({
                   <p className="font-semibold">
                     Terminer - {plan.label.toLowerCase()}
                   </p>
-                  <p className="text-xs text-ink/50">
+                  <p className="text-xs text-ink/70">
                     Salon: {invoice.tenants?.name} · period {fmt(invoice.period_from)} –{" "}
                     {fmt(invoice.period_to)}
                   </p>
@@ -192,7 +189,7 @@ export default async function InvoicePage({
             </p>
           </div>
 
-          <p className="mt-10 text-center text-xs text-ink/40">
+          <p className="mt-10 text-center text-xs text-ink/70">
             Faktura je izdata elektronski i važi bez pečata i potpisa.
           </p>
         </div>

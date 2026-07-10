@@ -20,7 +20,7 @@ export function SubscriptionBanner({
   const styles: Record<string, string> = {
     trial: "bg-lavender text-ink",
     grace: "bg-amber-400 text-amber-950",
-    expired: "bg-red-500 text-white",
+    expired: "bg-red-600 text-white",
   };
   const text: Record<string, string> = {
     trial: `Probni period - još ${daysLeft} ${plural(daysLeft, ["dan", "dana", "dana"])} besplatnog korišćenja.`,

@@ -15,7 +15,7 @@ export function FaqAccordion() {
         return (
           <div
             key={item.q}
-            className="rounded-3xl bg-white shadow-[0_4px_24px_rgba(20,25,20,0.06)]"
+            className="rounded-3xl bg-white shadow-card"
           >
             <button
               type="button"
@@ -39,7 +39,7 @@ export function FaqAccordion() {
               }`}
             >
               <div className="overflow-hidden">
-                <p className="px-6 pb-5 text-sm font-medium leading-relaxed text-ink/60">
+                <p className="px-6 pb-5 text-sm font-medium leading-relaxed text-ink/70">
                   {item.a}
                 </p>
               </div>

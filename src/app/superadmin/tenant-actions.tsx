@@ -21,7 +21,7 @@ export function TenantActions({
     startTransition(async () => {
       const res = await fn();
       if (res.ok) toast.success(okMsg);
-      else toast.error(res.error ?? "Greška.");
+      else toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
     });
   }
 

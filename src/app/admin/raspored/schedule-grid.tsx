@@ -82,14 +82,14 @@ function CellChip({ window, kind }: { window: WorkWindow; kind: CellKind }) {
     case "exceptionOff":
       return (
         <span
-          className={`${CHIP_BASE} border border-ink/10 text-ink/60`}
+          className={`${CHIP_BASE} border border-ink/10 text-ink/70`}
           style={{ backgroundImage: HATCH }}
         >
           Ne radi
         </span>
       );
     case "off":
-      return <span className={`${CHIP_BASE} text-ink/30`}>—</span>;
+      return <span className={`${CHIP_BASE} text-ink/50`}>—</span>;
   }
 }
 
@@ -173,7 +173,7 @@ export function ScheduleGrid({
       } else if ("conflicts" in res && res.conflicts) {
         setConflicts(res.conflicts);
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }

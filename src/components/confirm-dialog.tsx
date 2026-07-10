@@ -16,6 +16,9 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = "Obriši",
+  // Tekst dok akcija traje - podrazumevano "Brisanje...", ali akcije koje
+  // nisu brisanje (npr. uklanjanje blokade) prosleđuju svoj
+  pendingLabel = "Brisanje...",
   pending = false,
   onConfirm,
   onCancel,
@@ -24,6 +27,7 @@ export function ConfirmDialog({
   title: string;
   description?: string;
   confirmLabel?: string;
+  pendingLabel?: string;
   pending?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -40,7 +44,7 @@ export function ConfirmDialog({
             Odustani
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={pending}>
-            {pending ? "Brisanje..." : confirmLabel}
+            {pending ? pendingLabel : confirmLabel}
           </Button>
         </div>
       </DialogContent>

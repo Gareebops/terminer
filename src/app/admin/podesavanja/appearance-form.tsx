@@ -58,6 +58,22 @@ interface AppearanceTokens {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Tihi "Sačuvano" uz samu kontrolu - 8 kontrola sa globalnim toastovima je
+// pri isprobavanju izgleda pravilo lavinu preko pregleda; toast ostaje
+// samo za greške i za "Predloži izgled"
+function SavedBadge({ active }: { active: boolean }) {
+  return (
+    <span
+      aria-live="polite"
+      className={`ml-2 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 transition-opacity duration-300 ${
+        active ? "opacity-100" : "opacity-0"
+      }`}
+    >
+      <Check className="size-3" /> {active ? "Sačuvano" : ""}
+    </span>
+  );
+}
+
 const PRESETS: { name: string; value: string }[] = [
   { name: "Ugalj", value: "#18181b" },
   { name: "Zlatna", value: "#b45309" },
@@ -121,7 +137,7 @@ function ImageUploadRow({
         toast.success("Sačuvano.");
         onSaved?.();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -133,7 +149,7 @@ function ImageUploadRow({
         toast.success("Uklonjeno.");
         onSaved?.();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -178,7 +194,7 @@ function ImageUploadRow({
           onClick={() => fileRef.current?.click()}
         >
           <Upload className="size-4" />
-          {pending ? "..." : currentUrl ? "Zameni" : "Otpremi"}
+          {pending ? "Otpremanje..." : currentUrl ? "Zameni" : "Otpremi"}
         </Button>
         {currentUrl && (
           <Button variant="ghost" size="sm" disabled={pending} onClick={remove}>
@@ -224,6 +240,15 @@ export function AppearanceForm({
   );
   const [gradient, setGradient] = useState(theme?.gradient !== false);
   const [pending, startTransition] = useTransition();
+
+  // Koja je sekcija upravo sačuvana - badge se sam gasi posle 2s
+  const [savedKey, setSavedKey] = useState<string | null>(null);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function markSaved(key: string) {
+    setSavedKey(key);
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    savedTimer.current = setTimeout(() => setSavedKey(null), 2000);
+  }
 
   // --- Predlog izgleda ---
   // korak: tekst koji trenutno "radi"; procenat vodi progress bar;
@@ -280,7 +305,7 @@ export function AppearanceForm({
       setPredlogKorak("Gledamo tvoju ponudu usluga…");
       const res = await suggestAppearance({ excludeId });
       if (!res.ok) {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
         return;
       }
       await sleep(900 * skala);
@@ -295,7 +320,7 @@ export function AppearanceForm({
 
       const apply = await updateAppearance(res.tokens);
       if (!apply.ok) {
-        toast.error(apply.error ?? "Greška.");
+        toast.error(apply.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
         return;
       }
       await sleep(700 * skala);
@@ -323,7 +348,7 @@ export function AppearanceForm({
         toast.success("Vraćen prethodni izgled.");
         onSaved?.();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -334,10 +359,10 @@ export function AppearanceForm({
     startTransition(async () => {
       const res = await updateAppearance({ primaryColor: next });
       if (res.ok) {
-        toast.success("Boja je sačuvana.");
+        markSaved("color");
         onSaved?.();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -348,10 +373,10 @@ export function AppearanceForm({
     startTransition(async () => {
       const res = await updateAppearance({ fontPair: next });
       if (res.ok) {
-        toast.success("Fontovi su sačuvani.");
+        markSaved("font");
         onSaved?.();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -362,10 +387,10 @@ export function AppearanceForm({
     startTransition(async () => {
       const res = await updateAppearance({ buttonStyle: next });
       if (res.ok) {
-        toast.success("Dizajn dugmadi je sačuvan.");
+        markSaved("button");
         onSaved?.();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -376,17 +401,17 @@ export function AppearanceForm({
     startTransition(async () => {
       const res = await updateAppearance({ mode: dark ? "dark" : "light" });
       if (res.ok) {
-        toast.success(dark ? "Tamna varijanta." : "Svetla varijanta.");
+        markSaved("mode");
         onSaved?.();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
 
   // Zajednički obrazac za nove tokene: odmah lokalno, pa sačuvaj
   function saveToken(
-    poruka: string,
+    key: string,
     lokalno: () => void,
     payload: Parameters<typeof updateAppearance>[0]
   ) {
@@ -395,10 +420,10 @@ export function AppearanceForm({
     startTransition(async () => {
       const res = await updateAppearance(payload);
       if (res.ok) {
-        toast.success(poruka);
+        markSaved(key);
         onSaved?.();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -461,6 +486,7 @@ export function AppearanceForm({
 
         <div>
           <Label>Boja brenda</Label>
+          <SavedBadge active={savedKey === "color"} />
           <p className="mb-3 mt-1 text-xs text-muted-foreground">
             Koristi se za dugmad i akcente na tvom sajtu i pri zakazivanju.
           </p>
@@ -504,8 +530,9 @@ export function AppearanceForm({
 
         <div>
           <Label>Fontovi</Label>
+          <SavedBadge active={savedKey === "font"} />
           <p className="mb-3 mt-1 text-xs text-muted-foreground">
-            Karakter sajta - naslovi i tekst. Promena se vidi u pregledu desno.
+            Karakter sajta - naslovi i tekst. Promena je odmah vidljiva na sajtu.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             {FONT_PAIRS.map((p) => (
@@ -526,6 +553,7 @@ export function AppearanceForm({
 
         <div>
           <Label>Dizajn dugmadi</Label>
+          <SavedBadge active={savedKey === "button"} />
           <p className="mb-3 mt-1 text-xs text-muted-foreground">
             Oblik dugmadi na sajtu i pri zakazivanju.
           </p>
@@ -558,6 +586,7 @@ export function AppearanceForm({
 
         <div>
           <Label>Oblik površina</Label>
+          <SavedBadge active={savedKey === "radius"} />
           <p className="mb-3 mt-1 text-xs text-muted-foreground">
             Zaobljenost kartica, slika i polja na sajtu.
           </p>
@@ -568,7 +597,7 @@ export function AppearanceForm({
                 type="button"
                 disabled={zauzeto}
                 onClick={() =>
-                  saveToken("Oblik površina je sačuvan.", () => setRadiusScale(r.id), {
+                  saveToken("radius", () => setRadiusScale(r.id), {
                     radiusScale: r.id,
                   })
                 }
@@ -585,6 +614,7 @@ export function AppearanceForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label>Naslovi</Label>
+            <SavedBadge active={savedKey === "heading"} />
             <p className="mb-3 mt-1 text-xs text-muted-foreground">
               Velika slova daju sajtu izražen, modni ton.
             </p>
@@ -595,7 +625,7 @@ export function AppearanceForm({
                   type="button"
                   disabled={zauzeto}
                   onClick={() =>
-                    saveToken("Stil naslova je sačuvan.", () => setHeadingStyle(h.id), {
+                    saveToken("heading", () => setHeadingStyle(h.id), {
                       headingStyle: h.id,
                     })
                   }
@@ -609,6 +639,7 @@ export function AppearanceForm({
           </div>
           <div>
             <Label>Pozadina sajta</Label>
+            <SavedBadge active={savedKey === "background"} />
             <p className="mb-3 mt-1 text-xs text-muted-foreground">
               „U tonu brenda“ daje pozadini dah tvoje boje.
             </p>
@@ -619,7 +650,7 @@ export function AppearanceForm({
                   type="button"
                   disabled={zauzeto}
                   onClick={() =>
-                    saveToken("Pozadina je sačuvana.", () => setBackground(b.id), {
+                    saveToken("background", () => setBackground(b.id), {
                       background: b.id,
                     })
                   }
@@ -636,6 +667,7 @@ export function AppearanceForm({
         <div className="flex items-center justify-between rounded-lg border p-3">
           <div>
             <Label htmlFor="site-gradient">Gradijent brenda</Label>
+            <SavedBadge active={savedKey === "gradient"} />
             <p className="mt-0.5 text-xs text-muted-foreground">
               Blagi prelaz boje na dugmadima; isključeno = ravna boja.
             </p>
@@ -644,7 +676,7 @@ export function AppearanceForm({
             id="site-gradient"
             checked={gradient}
             onCheckedChange={(on) =>
-              saveToken(on ? "Gradijent uključen." : "Ravna boja.", () => setGradient(on), {
+              saveToken("gradient", () => setGradient(on), {
                 gradient: on,
               })
             }
@@ -655,6 +687,7 @@ export function AppearanceForm({
         <div className="flex items-center justify-between rounded-lg border p-3">
           <div>
             <Label htmlFor="site-dark">Tamna varijanta sajta</Label>
+            <SavedBadge active={savedKey === "mode"} />
             <p className="mt-0.5 text-xs text-muted-foreground">
               Tamna pozadina i svetao tekst - upečatljiva, večernja atmosfera.
             </p>

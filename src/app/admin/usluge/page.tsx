@@ -17,7 +17,7 @@ export default async function ServicesPage() {
   return (
     <div>
       <h1 className="text-3xl font-extrabold tracking-tight">Usluge</h1>
-      <p className="mt-1 text-sm font-medium text-ink/50">
+      <p className="mt-1 text-sm font-medium text-ink/70">
         Usluge koje klijenti mogu da zakažu online.
       </p>
       <div className="mt-6">

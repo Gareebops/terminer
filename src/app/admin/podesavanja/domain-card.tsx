@@ -18,7 +18,7 @@ const STATE_BADGE: Record<DomainStatus["state"], { label: string; cls: string }>
   active: { label: "Aktivan", cls: "bg-mint text-ink" },
   pending_dns: { label: "Čeka DNS podešavanje", cls: "bg-amber-200 text-amber-950" },
   needs_txt: { label: "Potrebna verifikacija", cls: "bg-amber-200 text-amber-950" },
-  unknown: { label: "Status nepoznat", cls: "bg-ink/10 text-ink/60" },
+  unknown: { label: "Status nepoznat", cls: "bg-ink/10 text-ink/70" },
 };
 
 // Kartica "Domen" u Podešavanjima: povezivanje sopstvenog domena salona.

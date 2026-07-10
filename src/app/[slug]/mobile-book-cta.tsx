@@ -22,7 +22,7 @@ export function MobileBookCta({ slug }: { slug: string }) {
         show ? "translate-y-0" : "translate-y-full"
       }`}
     >
-      <Button asChild size="lg" className="w-full shadow-xl">
+      <Button asChild size="lg" className="h-12 w-full text-base shadow-xl">
         <Link href={`/${slug}/zakazi`}>Zakaži termin</Link>
       </Button>
     </div>

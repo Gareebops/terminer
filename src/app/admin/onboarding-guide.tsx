@@ -152,7 +152,7 @@ export function OnboardingGuide({
         toast.success("Radno vreme je potvrđeno.");
         router.refresh();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -195,14 +195,14 @@ export function OnboardingGuide({
   return (
     <>
       {!published && (
-      <div className="mt-6 rounded-[2rem] bg-white p-6 shadow-[0_4px_24px_rgba(20,25,20,0.06)] sm:p-7">
+      <div className="mt-6 rounded-[2rem] bg-white p-6 shadow-card sm:p-7">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl font-extrabold tracking-tight">Pokreni svoj sajt</h2>
           <span className="rounded-full bg-mint px-3 py-1 text-xs font-bold text-ink">
             {doneCount} od {steps.length}
           </span>
         </div>
-        <p className="mt-1 text-sm font-medium text-ink/50">
+        <p className="mt-1 text-sm font-medium text-ink/70">
           {steps.length - doneCount === 1
             ? "Još samo objava i salon je na mreži."
             : `Još ${steps.length - doneCount} ${plural(steps.length - doneCount, ["korak", "koraka", "koraka"])} i salon je na mreži - treba oko 10 minuta.`}
@@ -228,7 +228,7 @@ export function OnboardingGuide({
                     className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                       isCurrent
                         ? "border-2 border-ink text-ink"
-                        : "border border-ink/20 text-ink/40"
+                        : "border border-ink/20 text-ink/70"
                     }`}
                   >
                     {i + 1}
@@ -239,21 +239,21 @@ export function OnboardingGuide({
                   <p
                     className={`text-sm ${
                       step.done
-                        ? "font-medium text-ink/40 line-through"
+                        ? "font-medium text-ink/70 line-through"
                         : isCurrent
                           ? "font-bold"
-                          : "font-medium text-ink/50"
+                          : "font-medium text-ink/70"
                     }`}
                   >
                     {step.title}
                   </p>
                   {isCurrent && step.desc && (
-                    <p className="mt-0.5 text-xs text-ink/50">{step.desc}</p>
+                    <p className="mt-0.5 text-xs text-ink/70">{step.desc}</p>
                   )}
                 </div>
 
                 {step.done && step.meta && (
-                  <span className="shrink-0 text-xs font-medium text-ink/40">
+                  <span className="shrink-0 text-xs font-medium text-ink/70">
                     {step.meta}
                   </span>
                 )}
@@ -285,12 +285,14 @@ export function OnboardingGuide({
                         <ExternalLink className="size-3.5" /> Pogledaj sajt
                       </a>
                     </Button>
-                    <button
+                    <Button
+                      size="sm"
+                      variant="brand-mint"
+                      className="max-sm:h-10"
                       onClick={() => setPublishOpen(true)}
-                      className="flex items-center gap-2 rounded-full bg-mint px-4 py-2 text-sm font-bold text-ink transition-opacity hover:opacity-90"
                     >
                       <Rocket className="size-4" /> Objavi sajt
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -301,7 +303,7 @@ export function OnboardingGuide({
         <div className="flex justify-end">
           <button
             onClick={hideGuide}
-            className="text-xs text-ink/40 underline-offset-2 hover:underline"
+            className="text-xs text-ink/70 underline-offset-2 hover:underline"
           >
             Sakrij vodič
           </button>
@@ -331,7 +333,8 @@ export function OnboardingGuide({
           </p>
           <Button
             size="lg"
-            className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85"
+            variant="brand-mint"
+            className="h-11 w-full"
             disabled={publishPending}
             onClick={publishNow}
           >
@@ -399,7 +402,7 @@ export function OnboardingGuide({
               Dobro došli u Terminer
             </DialogTitle>
             <DialogDescription className="text-center">
-              Ovako će klijenti zakazivati kod tebe - sami, sa telefona, i u 3
+              Ovako klijenti zakazuju termin - sami, sa telefona, i u 3
               ujutru:
             </DialogDescription>
           </DialogHeader>
@@ -419,7 +422,8 @@ export function OnboardingGuide({
 
           <Button
             size="lg"
-            className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85"
+            variant="brand-mint"
+            className="h-11 w-full"
             onClick={closeWelcome}
           >
             Krenimo <ArrowRight className="size-4" />

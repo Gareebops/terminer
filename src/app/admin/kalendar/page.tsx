@@ -5,6 +5,7 @@ import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { DAY_NAMES_SR, formatDateISO } from "@/lib/booking/slots";
 import { nowInZone } from "@/lib/booking/timezone";
+import { datumSr } from "@/lib/datum";
 import { resolveWindow, type WorkWindow } from "@/lib/booking/schedule";
 import type {
   BlockedSlot,
@@ -97,8 +98,7 @@ export default async function CalendarPage({
             </Link>
           </Button>
           <span className="min-w-44 text-center text-sm font-medium">
-            {DAY_NAMES_SR[dayDate.getDay()]},{" "}
-            {dayDate.toLocaleDateString("sr-RS")}
+            {DAY_NAMES_SR[dayDate.getDay()]}, {datumSr(day)}
           </span>
           <Button variant="outline" size="icon" asChild>
             <Link href={`/admin/kalendar?dan=${addDays(day, 1)}`}>

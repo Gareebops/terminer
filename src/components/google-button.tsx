@@ -58,7 +58,7 @@ export function GoogleButton({ label }: { label: string }) {
       type="button"
       onClick={signIn}
       disabled={loading}
-      className="flex w-full items-center justify-center gap-2.5 rounded-full border border-ink/15 bg-white px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ink/5 disabled:opacity-60"
+      className="flex w-full items-center justify-center gap-2.5 rounded-full border border-ink/15 bg-white px-4 py-3 text-sm font-semibold text-ink transition-colors hover:bg-ink/5 disabled:opacity-60"
     >
       <GoogleMark />
       {loading ? "Povezivanje..." : label}

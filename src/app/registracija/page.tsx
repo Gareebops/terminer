@@ -23,21 +23,29 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   // Kada je email potvrda uključena, umesto redirekcije prikazujemo uputstvo
   const [awaitingConfirm, setAwaitingConfirm] = useState(false);
+  // Inline greške umesto toastova: poruka stoji uz polje dok se ne ispravi
+  const [fieldErrors, setFieldErrors] = useState<{
+    fullName?: string;
+    phone?: string;
+    password?: string;
+  }>({});
+  const [formError, setFormError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setFormError(null);
+    const errs: typeof fieldErrors = {};
     if (fullName.trim().split(/\s+/).length < 2) {
-      toast.error("Unesi ime i prezime.");
-      return;
+      errs.fullName = "Unesi ime i prezime.";
     }
     if (!/^\+?[0-9 /-]{6,20}$/.test(phone.trim())) {
-      toast.error("Unesi ispravan broj telefona.");
-      return;
+      errs.phone = "Unesi ispravan broj telefona.";
     }
     if (password.length < 8) {
-      toast.error("Lozinka mora imati bar 8 karaktera.");
-      return;
+      errs.password = "Lozinka mora imati bar 8 karaktera.";
     }
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     setLoading(true);
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
@@ -50,7 +58,7 @@ export default function RegisterPage() {
     });
     setLoading(false);
     if (error) {
-      toast.error(
+      setFormError(
         error.message.includes("already registered")
           ? "Nalog sa ovim emailom već postoji."
           : "Registracija nije uspela. Pokušaj ponovo."
@@ -61,9 +69,7 @@ export default function RegisterPage() {
     // vraća grešku (anti-enumeration) nego "uspeh" sa praznim identities -
     // bez ove provere korisnik bi čekao mejl koji nikad ne stiže
     if (data.user && data.user.identities?.length === 0) {
-      toast.error("Nalog sa ovim emailom već postoji.", {
-        action: { label: "Prijavi se", onClick: () => router.push("/prijava") },
-      });
+      setFormError("Nalog sa ovim emailom već postoji.");
       return;
     }
     // Email potvrda uključena → session je null dok korisnik ne klikne link
@@ -90,7 +96,7 @@ export default function RegisterPage() {
     return (
       <main className="flex flex-1 flex-col items-center justify-center gap-6 bg-canvas px-4 py-16 font-display">
         <TerminerLogo href="/" />
-        <Card className="w-full max-w-sm rounded-3xl border-0 text-center shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
+        <Card className="w-full max-w-sm rounded-3xl border-0 text-center shadow-card">
           <CardContent className="pt-10 pb-8">
             <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-mint text-ink">
               <MailCheck className="size-8" />
@@ -123,7 +129,7 @@ export default function RegisterPage() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 bg-canvas px-4 py-16 font-display">
       <TerminerLogo href="/" />
-      <Card className="w-full max-w-sm rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
+      <Card className="w-full max-w-sm rounded-3xl border-0 shadow-card">
         <CardHeader>
           <CardTitle className="text-2xl font-extrabold tracking-tight">Registruj salon ili studio</CardTitle>
           {/* Najjači argument sa landinga ponovljen na koraku odluke */}
@@ -134,15 +140,39 @@ export default function RegisterPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
+            {formError && (
+              <p
+                role="alert"
+                className="rounded-lg bg-red-100 px-3 py-2 text-sm font-semibold text-red-950"
+              >
+                {formError}{" "}
+                {formError.includes("već postoji") && (
+                  <Link href="/prijava" className="underline">
+                    Prijavi se
+                  </Link>
+                )}
+              </p>
+            )}
             <div className="space-y-2">
               <Label htmlFor="full-name">Ime i prezime</Label>
               <Input
                 id="full-name"
                 autoComplete="name"
+                className="h-11"
                 required
+                aria-invalid={!!fieldErrors.fullName}
+                aria-describedby={fieldErrors.fullName ? "full-name-error" : undefined}
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                onChange={(e) => {
+                  setFullName(e.target.value);
+                  setFieldErrors((f) => ({ ...f, fullName: undefined }));
+                }}
               />
+              {fieldErrors.fullName && (
+                <p id="full-name-error" className="text-xs font-medium text-red-700">
+                  {fieldErrors.fullName}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Telefon</Label>
@@ -151,10 +181,21 @@ export default function RegisterPage() {
                 type="tel"
                 autoComplete="tel"
                 placeholder="06x xxx xxxx"
+                className="h-11"
                 required
+                aria-invalid={!!fieldErrors.phone}
+                aria-describedby={fieldErrors.phone ? "phone-error" : undefined}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  setFieldErrors((f) => ({ ...f, phone: undefined }));
+                }}
               />
+              {fieldErrors.phone && (
+                <p id="phone-error" className="text-xs font-medium text-red-700">
+                  {fieldErrors.phone}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -162,6 +203,7 @@ export default function RegisterPage() {
                 id="email"
                 type="email"
                 autoComplete="email"
+                className="h-11"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -172,13 +214,24 @@ export default function RegisterPage() {
               <PasswordInput
                 id="password"
                 autoComplete="new-password"
+                className="h-11"
                 required
                 minLength={8}
+                aria-invalid={!!fieldErrors.password}
+                aria-describedby={fieldErrors.password ? "password-error" : undefined}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setFieldErrors((f) => ({ ...f, password: undefined }));
+                }}
               />
+              {fieldErrors.password && (
+                <p id="password-error" className="text-xs font-medium text-red-700">
+                  {fieldErrors.password}
+                </p>
+              )}
             </div>
-            <Button type="submit" className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85" disabled={loading}>
+            <Button type="submit" variant="brand-mint" className="h-11 w-full" disabled={loading}>
               {loading ? "Kreiranje naloga..." : "Napravi nalog"}
             </Button>
             <AuthDivider />

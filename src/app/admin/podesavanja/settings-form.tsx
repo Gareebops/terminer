@@ -50,7 +50,7 @@ export function SettingsForm({
         toast.success("Sačuvano.");
         onSaved?.();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }

@@ -35,7 +35,7 @@ export default function ForgotPasswordPage() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 bg-canvas px-4 py-16 font-display">
       <TerminerLogo href="/" />
-      <Card className="w-full max-w-sm rounded-3xl border-0 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
+      <Card className="w-full max-w-sm rounded-3xl border-0 shadow-card">
         {sent ? (
           <CardContent className="pt-10 pb-8 text-center">
             <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-mint text-ink">
@@ -65,12 +65,13 @@ export default function ForgotPasswordPage() {
                     id="email"
                     type="email"
                     autoComplete="email"
+                    className="h-11"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
-                <Button type="submit" className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85" disabled={loading}>
+                <Button type="submit" variant="brand-mint" className="h-11 w-full" disabled={loading}>
                   {loading ? "Slanje..." : "Pošalji link za novu lozinku"}
                 </Button>
                 <p className="text-center text-sm text-muted-foreground">

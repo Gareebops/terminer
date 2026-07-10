@@ -47,7 +47,7 @@ export default function Error({
           </Link>
         </div>
         {error.digest ? (
-          <p className="mt-6 text-xs font-medium text-white/35">
+          <p className="mt-6 text-xs font-medium text-white/60">
             Šifra greške: {error.digest}
           </p>
         ) : null}

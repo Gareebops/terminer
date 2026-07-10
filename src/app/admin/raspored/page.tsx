@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { nowInZone } from "@/lib/booking/timezone";
+import { datumSr } from "@/lib/datum";
 import { addDaysISO, mondayOf } from "@/lib/booking/schedule";
 import type { OnboardingState, ScheduleException, Staff, WorkingHours } from "@/lib/types";
 import { ScheduleGrid } from "./schedule-grid";
@@ -54,7 +55,7 @@ export default async function SchedulePage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">Raspored</h1>
-          <p className="mt-1 text-sm font-medium text-ink/50">
+          <p className="mt-1 text-sm font-medium text-ink/70">
             Ko kad radi. Klik na dan menja samo taj datum; stalno radno vreme
             se menja kod zaposlenog.
           </p>
@@ -67,8 +68,7 @@ export default async function SchedulePage({
             </Link>
           </Button>
           <span className="min-w-40 text-center text-sm font-medium">
-            {new Date(`${weekDates[0]}T12:00:00`).toLocaleDateString("sr-RS")} –{" "}
-            {new Date(`${weekDates[6]}T12:00:00`).toLocaleDateString("sr-RS")}
+            {datumSr(weekDates[0])} – {datumSr(weekDates[6])}
           </span>
           <Button variant="outline" size="icon" asChild>
             <Link href={`/admin/raspored?od=${nextWeek}`}>
@@ -80,7 +80,7 @@ export default async function SchedulePage({
 
       {!onboarding.raspored_seen && <RasporedIntro />}
 
-      <div className="mt-6 rounded-[2rem] bg-white p-6 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
+      <div className="mt-6 rounded-[2rem] bg-white p-6 shadow-card">
         <ScheduleGrid
           weekDates={weekDates}
           today={today}

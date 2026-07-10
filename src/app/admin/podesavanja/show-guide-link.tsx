@@ -19,7 +19,7 @@ export function ShowGuideLink() {
         toast.success("Vodič je vraćen na Početnu.");
         router.push("/admin");
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -29,7 +29,7 @@ export function ShowGuideLink() {
       <button
         onClick={show}
         disabled={pending}
-        className="text-xs text-ink/40 underline-offset-2 hover:underline"
+        className="text-xs text-ink/70 underline-offset-2 hover:underline"
       >
         {pending ? "Vraćanje..." : "Prikaži vodič za pokretanje na Početnoj"}
       </button>

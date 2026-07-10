@@ -50,7 +50,7 @@ export function AccountControls({
         setOpen(null);
         setField("");
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -77,7 +77,7 @@ export function AccountControls({
     startTransition(async () => {
       // Uspeh = redirect na /admin, pa se rezultat i ne vraća
       const res = await impersonateOwner(tenantId);
-      if (res && !res.ok) toast.error(res.error ?? "Greška.");
+      if (res && !res.ok) toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
     });
   }
 

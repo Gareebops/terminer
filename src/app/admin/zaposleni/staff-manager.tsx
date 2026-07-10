@@ -46,7 +46,7 @@ function StaffForm({
           onDone();
         }
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -82,7 +82,7 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
   function onDelete(id: string) {
     startTransition(async () => {
       const res = await deleteStaff(id);
-      if (!res.ok) toast.error(res.error ?? "Greška.");
+      if (!res.ok) toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       setToDelete(null);
     });
   }
@@ -126,7 +126,7 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
         {staff.map((m) => (
           <div
             key={m.id}
-            className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-[0_4px_24px_rgba(20,25,20,0.06)]"
+            className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-card"
           >
             <Link
               href={`/admin/zaposleni/${m.id}`}
@@ -150,6 +150,9 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
               <Button
                 variant="ghost"
                 size="icon"
+                className="max-sm:size-10"
+                aria-label="Izmeni"
+                title="Izmeni"
                 onClick={() => {
                   setEditing(m);
                   setOpen(true);
@@ -157,7 +160,14 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
               >
                 <Pencil className="size-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => setToDelete(m)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="max-sm:size-10"
+                aria-label={`Obriši zaposlenog „${m.name}“`}
+                title="Obriši"
+                onClick={() => setToDelete(m)}
+              >
                 <Trash2 className="size-4 text-destructive" />
               </Button>
             </div>
@@ -169,7 +179,7 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
               <Plus className="size-5" />
             </span>
             <p className="mt-3 text-lg font-bold tracking-tight">Dodaj svoj tim</p>
-            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+            <p className="mx-auto mt-1 max-w-md text-sm text-ink/70">
               I ako radiš sam - ti si tim. Klijenti biraju kod koga zakazuju, a
               slobodni termini se prave od radnog vremena. Novi zaposleni odmah
               dobija pon-sub 09-20, lako se menja.

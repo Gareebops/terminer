@@ -74,7 +74,7 @@ function ServiceForm({
         toast.success("Sačuvano.");
         onDone();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -159,7 +159,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
           { action: { label: "Sledeći korak", onClick: () => router.push("/admin") } }
         );
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -167,7 +167,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
   function onDelete(id: string) {
     startTransition(async () => {
       const res = await deleteService(id);
-      if (!res.ok) toast.error(res.error ?? "Greška.");
+      if (!res.ok) toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       setToDelete(null);
     });
   }
@@ -175,7 +175,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
   function move(id: string, direction: "up" | "down") {
     startTransition(async () => {
       const res = await moveService(id, direction);
-      if (!res.ok) toast.error(res.error ?? "Greška.");
+      if (!res.ok) toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
     });
   }
 
@@ -212,7 +212,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
         {services.map((s, i) => (
           <div
             key={s.id}
-            className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-[0_4px_24px_rgba(20,25,20,0.06)]"
+            className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-card"
           >
             <div>
               <p className="font-medium">
@@ -228,6 +228,8 @@ export function ServicesManager({ services }: { services: Service[] }) {
               <Button
                 variant="ghost"
                 size="icon"
+                className="max-sm:size-10"
+                aria-label="Pomeri gore"
                 title="Pomeri gore"
                 disabled={pending || i === 0}
                 onClick={() => move(s.id, "up")}
@@ -237,6 +239,8 @@ export function ServicesManager({ services }: { services: Service[] }) {
               <Button
                 variant="ghost"
                 size="icon"
+                className="max-sm:size-10"
+                aria-label="Pomeri dole"
                 title="Pomeri dole"
                 disabled={pending || i === services.length - 1}
                 onClick={() => move(s.id, "down")}
@@ -246,6 +250,8 @@ export function ServicesManager({ services }: { services: Service[] }) {
               <Button
                 variant="ghost"
                 size="icon"
+                className="max-sm:size-10"
+                aria-label="Izmeni"
                 title="Izmeni"
                 onClick={() => {
                   setEditing(s);
@@ -254,7 +260,14 @@ export function ServicesManager({ services }: { services: Service[] }) {
               >
                 <Pencil className="size-4" />
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => setToDelete(s)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="max-sm:size-10"
+                aria-label={`Obriši uslugu „${s.name}“`}
+                title="Obriši"
+                onClick={() => setToDelete(s)}
+              >
                 <Trash2 className="size-4 text-destructive" />
               </Button>
             </div>
@@ -266,7 +279,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
               <Scissors className="size-5" />
             </span>
             <p className="mt-3 text-lg font-bold tracking-tight">Dodaj svoje usluge</p>
-            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+            <p className="mx-auto mt-1 max-w-md text-sm text-ink/70">
               Sve što radiš - od šišanja do masaže - sa cenom i trajanjem.
               Trajanje određuje koliko termin zauzima u kalendaru.
             </p>
@@ -300,7 +313,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="mt-3 text-xs text-ink/70">
               Izaberi svoju delatnost - primere posle izmeni ili obriši, tu su
               da ne krećeš od nule.
             </p>

@@ -28,7 +28,7 @@ export default async function AdminLayout({
         isPublished={tenant.is_published}
         suspended={!!tenant.suspended_at}
       />
-      <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-60 shrink-0 flex-col rounded-3xl bg-ink text-white lg:flex">
+      <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-60 shrink-0 flex-col rounded-[2rem] bg-ink text-white lg:flex">
         <div className="p-5 pb-2">
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">
             Terminer

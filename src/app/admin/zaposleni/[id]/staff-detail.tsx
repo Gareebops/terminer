@@ -94,7 +94,7 @@ function IdentityCard({ staff }: { staff: Staff }) {
         // Naslov stranice (H1) renderuje server - povuci sveže ime
         router.refresh();
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -177,7 +177,7 @@ function PhotoCard({
       const { data } = supabase.storage.from("tenant-media").getPublicUrl(path);
       const res = await updateStaffPhoto(staffId, data.publicUrl);
       if (res.ok) toast.success("Fotografija je sačuvana.");
-      else toast.error(res.error ?? "Greška.");
+      else toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
     });
   }
 
@@ -185,7 +185,7 @@ function PhotoCard({
     startTransition(async () => {
       const res = await updateStaffPhoto(staffId, null);
       if (res.ok) toast.success("Fotografija je uklonjena.");
-      else toast.error(res.error ?? "Greška.");
+      else toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
     });
   }
 
@@ -313,7 +313,7 @@ function HorizonCard({ staff }: { staff: Staff }) {
         toast.success("Sačuvano.");
       } else {
         setValue(prev);
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -412,7 +412,7 @@ function ScheduleCard({
       } else if ("conflicts" in res && res.conflicts) {
         setConflicts(res.conflicts);
       } else {
-        toast.error(res.error ?? "Greška.");
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
     });
   }
@@ -522,7 +522,7 @@ export function StaffDetail({
     startServices(async () => {
       const res = await updateStaffServices(staff.id, [...selected]);
       if (res.ok) toast.success("Usluge su sačuvane.");
-      else toast.error(res.error ?? "Greška.");
+      else toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
     });
   }
 

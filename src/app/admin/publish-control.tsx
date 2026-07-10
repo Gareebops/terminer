@@ -150,14 +150,14 @@ export function PublishControl({
       <button
         onClick={() => setOpen(true)}
         aria-label="Status sajta"
-        className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-semibold transition-colors hover:bg-white/20"
+        className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/10 px-3 py-2.5 text-xs font-semibold transition-colors hover:bg-white/20"
       >
         <span className="size-1.5 rounded-full bg-mint" /> Online
       </button>
     ) : (
       <button
         onClick={() => setOpen(true)}
-        className="shrink-0 rounded-full bg-mint px-3.5 py-1.5 text-xs font-bold text-ink transition-opacity hover:opacity-90"
+        className="shrink-0 rounded-full bg-mint px-4 py-2.5 text-xs font-bold text-ink transition-opacity hover:opacity-90"
       >
         Objavi sajt
       </button>
@@ -321,7 +321,8 @@ export function PublishControl({
               ) : (
                 <Button
                   size="lg"
-                  className="w-full rounded-full bg-mint font-bold text-ink hover:bg-mint/85"
+                  variant="brand-mint"
+                  className="h-11 w-full"
                   disabled={pending}
                   onClick={() => publish()}
                 >

@@ -29,7 +29,7 @@ const features = [
     icon: Globe,
     title: "Sajt bez muke",
     text: "Tvoj salon dobija moderan sajt i web aplikaciju sa cenovnikom, timom i galerijom - bez programera i bez komplikovanog održavanja.",
-    surface: "bg-white shadow-[0_4px_24px_rgba(20,25,20,0.06)]",
+    surface: "bg-white shadow-card",
   },
   {
     icon: CalendarCheck,
@@ -47,7 +47,7 @@ const features = [
     icon: Scissors,
     title: "Za salone svih vrsta",
     text: "Frizerski i beauty saloni, barberšopovi, kozmetički i masažni studiji.",
-    surface: "bg-white shadow-[0_4px_24px_rgba(20,25,20,0.06)]",
+    surface: "bg-white shadow-card",
   },
 ];
 
@@ -113,17 +113,23 @@ export default function HomePage() {
           <div className="hidden justify-center sm:flex">
             <HeroDemo />
           </div>
+          {/* Telefon: demo je najjači prodajni element - compact varijanta
+              (bez sjaja i plutajućih kartica) staje ispod hero teksta */}
+          <div className="flex justify-center sm:hidden">
+            <HeroDemo compact />
+          </div>
         </div>
       </section>
 
       <section className="mx-auto grid max-w-5xl gap-4 px-4 py-16 sm:grid-cols-2">
+        <h2 className="sr-only">Šta dobijaš</h2>
         {features.map((f) => (
           <div key={f.title} className={`rounded-[2rem] p-7 ${f.surface}`}>
             <span className="flex size-11 items-center justify-center rounded-full bg-ink/[0.06]">
               <f.icon className="size-5" />
             </span>
             <h3 className="mt-5 text-lg font-bold tracking-tight">{f.title}</h3>
-            <p className="mt-2 text-sm font-medium leading-relaxed text-ink/60">
+            <p className="mt-2 text-sm font-medium leading-relaxed text-ink/70">
               {f.text}
             </p>
           </div>
@@ -133,26 +139,26 @@ export default function HomePage() {
       {/* Cenovnik */}
       <section className="mx-auto max-w-5xl px-4 pb-16">
         <div className="text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink/40">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink/70">
             Cenovnik
           </p>
           <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
             Jedna cena, sve uključeno
           </h2>
-          <p className="mx-auto mt-3 max-w-xl font-medium text-ink/55">
+          <p className="mx-auto mt-3 max-w-xl font-medium text-ink/70">
             Košta koliko jedan termin mesečno - a pokrije se prvom
             rezervacijom.
           </p>
         </div>
         <div className="mx-auto mt-8 grid max-w-3xl gap-4 sm:grid-cols-2">
-          <div className="rounded-[2rem] bg-white p-7 shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
-            <p className="text-sm font-bold uppercase tracking-wider text-ink/40">
+          <div className="rounded-[2rem] bg-white p-7 shadow-card">
+            <p className="text-sm font-bold uppercase tracking-wider text-ink/70">
               Mesečno
             </p>
             <p className="mt-3 text-5xl font-extrabold tracking-tight">
-              1.990 <span className="text-lg font-bold text-ink/50">RSD/mes</span>
+              1.990 <span className="text-lg font-bold text-ink/70">RSD/mes</span>
             </p>
-            <ul className="mt-5 space-y-2 text-sm font-medium text-ink/60">
+            <ul className="mt-5 space-y-2 text-sm font-medium text-ink/70">
               <li>✓ Sajt salona + online zakazivanje</li>
               <li>✓ Neograničeno rezervacija i zaposlenih</li>
               <li>✓ Smene, kalendar, statistika</li>
@@ -162,20 +168,20 @@ export default function HomePage() {
             <span className="absolute right-5 top-5 rounded-full bg-ink px-3 py-1 text-xs font-bold text-white">
               2 meseca gratis
             </span>
-            <p className="text-sm font-bold uppercase tracking-wider text-ink/50">
+            <p className="text-sm font-bold uppercase tracking-wider text-ink/70">
               Godišnje
             </p>
             <p className="mt-3 text-5xl font-extrabold tracking-tight">
-              19.900 <span className="text-lg font-bold text-ink/50">RSD/god</span>
+              19.900 <span className="text-lg font-bold text-ink/70">RSD/god</span>
             </p>
-            <ul className="mt-5 space-y-2 text-sm font-medium text-ink/60">
+            <ul className="mt-5 space-y-2 text-sm font-medium text-ink/70">
               <li>✓ Sve iz mesečnog plana</li>
               <li>✓ Ispadne 1.658 RSD mesečno</li>
               <li>✓ Jedna faktura godišnje</li>
             </ul>
           </div>
         </div>
-        <p className="mt-6 text-center text-sm font-semibold text-ink/60">
+        <p className="mt-6 text-center text-sm font-semibold text-ink/70">
           Prvih <span className="text-ink">30 dana je besplatno</span> - bez
           kartice, bez obaveze.{" "}
           <Link href="/registracija" className="underline">
@@ -187,7 +193,7 @@ export default function HomePage() {
       {/* Česta pitanja */}
       <section className="mx-auto max-w-5xl px-4 pb-16">
         <div className="text-center">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink/40">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink/70">
             Česta pitanja
           </p>
           <h2 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
@@ -197,7 +203,7 @@ export default function HomePage() {
         <div className="mt-8">
           <FaqAccordion />
         </div>
-        <p className="mt-6 text-center text-sm font-semibold text-ink/60">
+        <p className="mt-6 text-center text-sm font-semibold text-ink/70">
           Imaš još pitanja?{" "}
           <Link href="/demo" className="underline">
             Pogledaj demo salon
@@ -214,7 +220,7 @@ export default function HomePage() {
         />
       </section>
 
-      <footer className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 pb-10 text-sm font-medium text-ink/50">
+      <footer className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 pb-10 text-sm font-medium text-ink/70">
         <span>© {new Date().getFullYear()} Terminer</span>
         <nav className="flex gap-4">
           <a

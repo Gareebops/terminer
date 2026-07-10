@@ -31,7 +31,7 @@ export default async function SubscriptionPage() {
   return (
     <div>
       <h1 className="text-3xl font-extrabold tracking-tight">Pretplata</h1>
-      <p className="mt-1 text-sm font-medium text-ink/50">
+      <p className="mt-1 text-sm font-medium text-ink/70">
         Status članarine, plaćanje i istorija uplata
       </p>
       <div className="mt-6 max-w-2xl">

@@ -16,6 +16,7 @@ import {
   type Invoice,
 } from "@/lib/invoice";
 import type { SubscriptionInfo } from "@/lib/billing";
+import { datumSr } from "@/lib/datum";
 import { plural } from "@/lib/plural";
 import { updateBillingInfo } from "../actions";
 import { PaymentModal } from "../payment-modal";
@@ -23,7 +24,7 @@ import { PaymentModal } from "../payment-modal";
 const statusText: Record<string, string> = {
   trial: "Probni period",
   active: "Aktivna pretplata",
-  grace: "Istekla - grace period",
+  grace: "Istekla — produženi rok",
   expired: "Istekla",
 };
 
@@ -48,11 +49,11 @@ export function PretplataClient({
     startTransition(async () => {
       const res = await updateBillingInfo(info);
       if (res.ok) toast.success("Podaci za fakturu su sačuvani.");
-      else toast.error(res.error ?? "Greška.");
+      else toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
     });
   }
 
-  const fmt = (d: string) => new Date(d).toLocaleDateString("sr-RS");
+  const fmt = (d: string) => datumSr(d);
 
   return (
     <div className="space-y-6">
@@ -72,7 +73,7 @@ export function PretplataClient({
               >
                 {statusText[sub.status]}
               </span>
-              <span className="text-sm font-medium text-ink/60">
+              <span className="text-sm font-medium text-ink/70">
                 {sub.status === "active" && paidUntil
                   ? `plaćeno do ${fmt(paidUntil)}`
                   : sub.status === "trial"
@@ -146,21 +147,20 @@ export function PretplataClient({
                   >
                     {invoiceLabel(inv)}
                   </Link>
-                  <span className="min-w-24 text-ink/60">{fmt(inv.created_at)}</span>
+                  <span className="min-w-24 text-ink/70">{fmt(inv.created_at)}</span>
                   <span className="min-w-28 font-semibold">
                     {formatAmount(Number(inv.amount))} RSD
                   </span>
-                  <span className="text-ink/60">
+                  <span className="text-ink/70">
                     {PLANS[inv.plan].label} ·{" "}
-                    {new Date(`${inv.period_from}T12:00:00`).toLocaleDateString("sr-RS")} -{" "}
-                    {new Date(`${inv.period_to}T12:00:00`).toLocaleDateString("sr-RS")}
+                    {datumSr(inv.period_from)} - {datumSr(inv.period_to)}
                   </span>
                   <span
                     className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-bold ${
                       inv.status === "paid"
                         ? "bg-mint text-ink"
                         : inv.status === "cancelled"
-                          ? "bg-ink/10 text-ink/50"
+                          ? "bg-ink/10 text-ink/70"
                           : "bg-amber-200 text-amber-950"
                     }`}
                   >

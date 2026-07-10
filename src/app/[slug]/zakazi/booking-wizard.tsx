@@ -25,6 +25,7 @@ import {
   DEFAULT_HORIZON_DAYS,
 } from "@/lib/booking/schedule";
 import { formatPriceRange, DAY_NAMES_SR } from "@/lib/booking/slots";
+import { datumSr } from "@/lib/datum";
 import type { Service, Staff } from "@/lib/types";
 
 interface Props {
@@ -57,14 +58,14 @@ function StepIndicator({
   onStepClick?: (step: Step) => void;
 }) {
   return (
-    <ol className="flex items-center gap-1 sm:gap-2">
+    <ol aria-label="Koraci zakazivanja" className="flex items-center gap-1 sm:gap-2">
       {STEP_LABELS.map((label, i) => {
         const isDone = done || i < step;
         const isCurrent = !done && i === step;
         const clickable = !done && i < step && !!onStepClick;
         const circle = (
           <span
-            className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+            className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
               isDone
                 ? "bg-primary text-primary-foreground"
                 : isCurrent
@@ -76,13 +77,17 @@ function StepIndicator({
           </span>
         );
         return (
-          <li key={label} className="flex flex-1 items-center gap-1 sm:gap-2">
+          <li
+            key={label}
+            aria-current={isCurrent ? "step" : undefined}
+            className="flex flex-1 items-center gap-1 sm:gap-2"
+          >
             {clickable ? (
               <button
                 type="button"
                 onClick={() => onStepClick(i as Step)}
                 title={`Nazad na korak: ${label}`}
-                className="cursor-pointer transition-opacity hover:opacity-75"
+                className="-m-1.5 cursor-pointer p-1.5 transition-opacity hover:opacity-75"
               >
                 {circle}
               </button>
@@ -205,6 +210,7 @@ function DayStrip({
             <button
               key={d.iso}
               data-date={d.iso}
+              aria-pressed={selected === d.iso}
               disabled={closed}
               title={closed ? "Ne radi" : undefined}
               onClick={() => onSelect(d.iso)}
@@ -325,6 +331,13 @@ export function BookingWizard({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
+  // Inline greške koraka "Podaci" - dugme je uvek aktivno, a poruka kaže
+  // ŠTA fali (sivo dugme bez objašnjenja ubija konverziju)
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string;
+    phone?: string;
+    email?: string;
+  }>({});
   // Honeypot: pravi korisnik ga ne vidi ni ne popunjava; bot koji ga
   // popuni biva odbijen na serveru
   const [website, setWebsite] = useState("");
@@ -338,10 +351,39 @@ export function BookingWizard({
   const [staffSkipped, setStaffSkipped] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  function go(target: Step) {
+  // Svaka promena koraka ide i u browser istoriju: sistemsko "nazad" na
+  // telefonu vraća na prethodni korak umesto da izbaci iz celog toka.
+  // Korak se čuva u history STATE OBJEKTU (bez promene URL-a): promena
+  // searchParams kroz pushState okida Next router re-render koji zamrzne
+  // izlaznu animaciju StepPane (AnimatePresence mode="wait" nikad ne
+  // montira novi korak). Nextov interni state se čuva kroz spread.
+  function go(target: Step, fromHistory = false) {
     setDirection(target > step ? 1 : -1);
     setStep(target);
+    if (!fromHistory && typeof window !== "undefined") {
+      window.history.pushState({ ...window.history.state, korak: target }, "");
+    }
   }
+
+  useEffect(() => {
+    // Ulazna stranica wizarda = korak 0, da "nazad" sa koraka 1 ima metu
+    window.history.replaceState({ ...window.history.state, korak: 0 }, "");
+  }, []);
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      // Posle uspešnog zakazivanja ulaznica ostaje - forma se ne vraća
+      if (done) return;
+      const k = (e.state as { korak?: number } | null)?.korak;
+      const target = Math.min(3, Math.max(0, Number(k ?? 0) || 0)) as Step;
+      if (target !== step) {
+        setDirection(target > step ? 1 : -1);
+        setStep(target);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [step, done]);
 
   const availableStaff = useMemo(() => {
     if (!service) return [];
@@ -417,6 +459,13 @@ export function BookingWizard({
     [days]
   );
 
+  // Prvi sledeći radni dan posle izabranog - prečica kad je dan pun/prazan,
+  // umesto da klijent ručno preklikava dane
+  const nextOpenDay = useMemo(() => {
+    if (!days || !date) return null;
+    return days.find((d) => d.date > date && d.open) ?? null;
+  }, [days, date]);
+
   function pickService(s: Service) {
     setService(s);
     const ids = new Set(
@@ -457,6 +506,14 @@ export function BookingWizard({
 
   function submit() {
     if (!service || (!member && !anyStaff) || !date || !time) return;
+    const errs: typeof fieldErrors = {};
+    if (name.trim().length < 2) errs.name = "Upiši ime i prezime.";
+    if (phone.trim().length < 6) errs.phone = "Upiši broj telefona.";
+    if (email.trim() && !/^\S+@\S+\.\S+$/.test(email.trim())) {
+      errs.email = "Email adresa ne izgleda ispravno.";
+    }
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
     startTransition(async () => {
       const res = await createBooking({
         slug,
@@ -499,7 +556,7 @@ export function BookingWizard({
   }
 
   const dateLabel = date
-    ? `${DAY_NAMES_SR[new Date(`${date}T12:00:00`).getDay()]}, ${new Date(`${date}T12:00:00`).toLocaleDateString("sr-RS")}`
+    ? `${DAY_NAMES_SR[new Date(`${date}T12:00:00`).getDay()]}, ${datumSr(date)}`
     : "";
 
   const horizonCount = days
@@ -623,6 +680,7 @@ export function BookingWizard({
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 <Button
                   variant="outline"
+                  className="h-10"
                   onClick={() =>
                     downloadICS(
                       `termin-${date}.ics`,
@@ -639,7 +697,7 @@ export function BookingWizard({
                 >
                   <CalendarPlus className="size-4" /> Dodaj u kalendar
                 </Button>
-                <Button asChild>
+                <Button asChild className="h-10">
                   <Link href={`/${slug}`}>Nazad na sajt</Link>
                 </Button>
               </div>
@@ -768,7 +826,7 @@ export function BookingWizard({
                   Trenutno niko ne radi ovu uslugu. Probaj drugu ili pozovi salon.
                 </p>
               )}
-              <Button variant="ghost" onClick={() => go(0)}>
+              <Button variant="ghost" className="h-11 sm:h-9" onClick={() => go(0)}>
                 Nazad
               </Button>
             </div>
@@ -800,9 +858,24 @@ export function BookingWizard({
                   </p>
                 )}
                 {date && !slotsError && slots !== null && slots.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Nema slobodnih termina za ovaj dan. Probaj drugi.
-                  </p>
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Nema slobodnih termina za ovaj dan.
+                    </p>
+                    {nextOpenDay ? (
+                      <Button
+                        variant="outline"
+                        className="h-11"
+                        onClick={() => setDate(nextOpenDay.date)}
+                      >
+                        Pogledaj {DAY_NAMES_SR[new Date(`${nextOpenDay.date}T12:00:00`).getDay()].toLowerCase()}{" "}
+                        {new Date(`${nextOpenDay.date}T12:00:00`).getDate()}.
+                        {new Date(`${nextOpenDay.date}T12:00:00`).getMonth() + 1}. →
+                      </Button>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Probaj drugi dan.</p>
+                    )}
+                  </div>
                 )}
                 {date && slots !== null && slots.length > 0 && (
                   // key={date}: promena dana ponovi stagger ulazak slotova
@@ -829,7 +902,7 @@ export function BookingWizard({
                         }}
                       >
                         <Button
-                          className="w-full"
+                          className="h-11 w-full"
                           variant={time === s ? "default" : "outline"}
                           onClick={() => {
                             // Izbor vremena odmah vodi na podatke - jedan klik manje
@@ -847,6 +920,7 @@ export function BookingWizard({
               <div className="mt-6 flex gap-2">
                 <Button
                   variant="ghost"
+                  className="h-11 sm:h-9"
                   onClick={() => go(staffSkipped ? 0 : 1)}
                 >
                   Nazad
@@ -859,26 +933,63 @@ export function BookingWizard({
             <div className="max-w-md space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Ime i prezime *</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
+                <Input
+                  id="name"
+                  className="h-11"
+                  aria-invalid={!!fieldErrors.name}
+                  aria-describedby={fieldErrors.name ? "name-error" : undefined}
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setFieldErrors((f) => ({ ...f, name: undefined }));
+                  }}
+                />
+                {fieldErrors.name && (
+                  <p id="name-error" className="text-xs font-medium text-destructive">
+                    {fieldErrors.name}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefon *</Label>
                 <Input
                   id="phone"
                   type="tel"
+                  className="h-11"
                   placeholder="+381 6x xxx xxxx"
+                  aria-invalid={!!fieldErrors.phone}
+                  aria-describedby={fieldErrors.phone ? "phone-error" : undefined}
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    setFieldErrors((f) => ({ ...f, phone: undefined }));
+                  }}
                 />
+                {fieldErrors.phone && (
+                  <p id="phone-error" className="text-xs font-medium text-destructive">
+                    {fieldErrors.phone}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email (za potvrdu)</Label>
                 <Input
                   id="email"
                   type="email"
+                  className="h-11"
+                  aria-invalid={!!fieldErrors.email}
+                  aria-describedby={fieldErrors.email ? "email-error" : undefined}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setFieldErrors((f) => ({ ...f, email: undefined }));
+                  }}
                 />
+                {fieldErrors.email && (
+                  <p id="email-error" className="text-xs font-medium text-destructive">
+                    {fieldErrors.email}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="note">Napomena</Label>
@@ -902,12 +1013,12 @@ export function BookingWizard({
                   na desktopu ostaje običan red dugmadi. Cena je već u
                   čipovima rezimea - na dugmetu bi bila ponavljanje. */}
               <div className="sticky bottom-0 z-10 -mx-4 flex items-center gap-2 border-t bg-background/85 px-4 py-3 backdrop-blur sm:static sm:z-auto sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
-                <Button variant="ghost" onClick={() => go(2)}>
+                <Button variant="ghost" className="h-11 sm:h-9" onClick={() => go(2)}>
                   Nazad
                 </Button>
                 <Button
                   className="h-12 flex-1 text-base sm:h-9 sm:flex-none sm:text-sm"
-                  disabled={pending || name.trim().length < 2 || phone.trim().length < 6}
+                  disabled={pending}
                   onClick={submit}
                 >
                   {pending ? "Zakazujem..." : "Potvrdi termin"}

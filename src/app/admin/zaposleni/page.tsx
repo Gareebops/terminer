@@ -17,7 +17,7 @@ export default async function StaffPage() {
   return (
     <div>
       <h1 className="text-3xl font-extrabold tracking-tight">Zaposleni</h1>
-      <p className="mt-1 text-sm font-medium text-ink/50">
+      <p className="mt-1 text-sm font-medium text-ink/70">
         Klik na zaposlenog otvara usluge, radno vreme i fotografiju.
       </p>
       <div className="mt-6">

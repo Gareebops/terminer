@@ -75,7 +75,7 @@ function PhoneScreen({ phase, tapped }: { phase: number; tapped: boolean }) {
               animate="show"
               exit={{ opacity: 0, x: -16, transition: { duration: 0.18 } }}
             >
-              <p className="text-[10px] font-bold uppercase tracking-wider text-ink/40">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink/70">
                 Izaberi uslugu
               </p>
               {SERVICES.map((s, i) => (
@@ -111,7 +111,7 @@ function PhoneScreen({ phase, tapped }: { phase: number; tapped: boolean }) {
               animate="show"
               exit={{ opacity: 0, x: -16, transition: { duration: 0.18 } }}
             >
-              <p className="text-[10px] font-bold uppercase tracking-wider text-ink/40">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink/70">
                 Kod koga
               </p>
               {STAFF.map((m, i) => (
@@ -156,7 +156,7 @@ function PhoneScreen({ phase, tapped }: { phase: number; tapped: boolean }) {
                   mogu razići za dan - nebitno za fiktivni demo */}
               <p
                 suppressHydrationWarning
-                className="text-[10px] font-bold uppercase tracking-wider text-ink/40"
+                className="text-[10px] font-bold uppercase tracking-wider text-ink/70"
               >
                 {nextFridayLabel()}
               </p>
@@ -165,7 +165,7 @@ function PhoneScreen({ phase, tapped }: { phase: number; tapped: boolean }) {
                   <span
                     key={d}
                     className={`rounded-lg px-2.5 py-1 text-[10px] font-bold ${
-                      i === 2 ? "bg-ink text-white" : "bg-ink/5 text-ink/60"
+                      i === 2 ? "bg-ink text-white" : "bg-ink/5 text-ink/70"
                     }`}
                   >
                     {d}
@@ -228,7 +228,7 @@ function PhoneScreen({ phase, tapped }: { phase: number; tapped: boolean }) {
                 Termin zakazan!
               </motion.p>
               <motion.p
-                className="mt-0.5 text-[11px] text-ink/50"
+                className="mt-0.5 text-[11px] text-ink/70"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.45 }}
@@ -264,7 +264,7 @@ function FloatingCards() {
         animate={{ opacity: [0, 1, 1, 0], y: [12, 0, 0, -8] }}
         transition={{ duration: 5, times: [0, 0.12, 0.85, 1], repeat: Infinity, repeatDelay: 3 }}
       >
-        <p className="text-[10px] font-bold uppercase tracking-wider text-ink/40">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-ink/70">
           Nova rezervacija
         </p>
         <p className="mt-0.5 text-sm font-bold text-ink">Ana M. · sutra 14:30</p>
@@ -282,7 +282,7 @@ function FloatingCards() {
         }}
       >
         <span className="text-sm font-extrabold text-ink">+38%</span>
-        <span className="text-xs font-semibold text-ink/60">više termina</span>
+        <span className="text-xs font-semibold text-ink/70">više termina</span>
       </motion.div>
 
       <motion.div

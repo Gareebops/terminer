@@ -19,6 +19,10 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
+        // Terminer brend (admin/landing/auth): ink i mint pilule - umesto
+        // ručnih <Link className="rounded-full bg-ink..."> kopija po ekranima
+        brand: "rounded-full bg-ink font-semibold text-white hover:opacity-85",
+        "brand-mint": "rounded-full bg-mint font-bold text-ink hover:bg-mint/85",
       },
       size: {
         default:
@@ -32,6 +36,8 @@ const buttonVariants = cva(
         "icon-sm":
           "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
+        // Visina Terminer pilula (ide uz variant brand/brand-mint)
+        pill: "h-10 gap-2 px-5",
       },
     },
     defaultVariants: {

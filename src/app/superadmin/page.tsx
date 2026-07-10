@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { datumSr, datumVremeSr } from "@/lib/datum";
 import { subscriptionInfo } from "@/lib/billing";
 import {
   formatAmount,
@@ -19,13 +20,13 @@ const statusLabels: Record<string, { label: string; cls: string }> = {
   trial: { label: "Proba", cls: "bg-lavender text-ink" },
   active: { label: "Aktivan", cls: "bg-mint text-ink" },
   grace: { label: "Grace", cls: "bg-amber-300 text-amber-950" },
-  expired: { label: "Istekao", cls: "bg-red-500 text-white" },
+  expired: { label: "Istekao", cls: "bg-red-600 text-white" },
 };
 
 const invoiceStatusCls: Record<string, string> = {
   issued: "bg-amber-200 text-amber-950",
   paid: "bg-mint text-ink",
-  cancelled: "bg-ink/10 text-ink/50",
+  cancelled: "bg-ink/10 text-ink/70",
 };
 
 export default async function SuperAdminPage() {
@@ -90,17 +91,17 @@ export default async function SuperAdminPage() {
     {
       label: "Fakture na čekanju",
       value: invoices.filter((i) => i.status === "issued").length,
-      cls: "bg-white shadow-[0_4px_24px_rgba(20,25,20,0.06)]",
+      cls: "bg-white shadow-card",
     },
   ];
 
-  const fmt = (d: string) => new Date(d).toLocaleDateString("sr-RS");
+  const fmt = (d: string) => datumSr(d);
 
   return (
     <main className="min-h-screen flex-1 bg-canvas p-6 font-display text-ink">
       <div className="mx-auto max-w-5xl">
         <h1 className="text-3xl font-extrabold tracking-tight">Superadmin</h1>
-        <p className="mt-1 text-sm font-medium text-ink/50">
+        <p className="mt-1 text-sm font-medium text-ink/70">
           Saloni, pretplate i naplata. Prijavljen: {me.email}
         </p>
 
@@ -122,12 +123,12 @@ export default async function SuperAdminPage() {
             return (
               <div
                 key={tenant.id}
-                className="rounded-2xl bg-white p-4 shadow-[0_4px_24px_rgba(20,25,20,0.06)]"
+                className="rounded-2xl bg-white p-4 shadow-card"
               >
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="min-w-44">
                     <p className="font-bold">{tenant.name}</p>
-                    <p className="text-xs text-ink/50">
+                    <p className="text-xs text-ink/70">
                       <Link href={`/${tenant.slug}`} target="_blank" className="hover:underline">
                         /{tenant.slug}
                       </Link>
@@ -154,7 +155,7 @@ export default async function SuperAdminPage() {
                     {s.label}
                     {sub.status !== "expired" && ` · ${sub.daysLeft}d`}
                   </span>
-                  <span className="text-xs font-medium text-ink/50">
+                  <span className="text-xs font-medium text-ink/70">
                     {tenant.paid_until
                       ? `Plaćeno do ${fmt(tenant.paid_until)}`
                       : `Proba do ${fmt(tenant.trial_ends_at)}`}
@@ -170,7 +171,7 @@ export default async function SuperAdminPage() {
                   />
                 </div>
                 <div className="mt-2 border-t border-ink/5 pt-2">
-                  <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-ink/40">
+                  <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-ink/70">
                     Nalog
                   </p>
                   <AccountControls
@@ -184,7 +185,7 @@ export default async function SuperAdminPage() {
             );
           })}
           {rows.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-ink/20 p-8 text-center text-ink/50">
+            <p className="rounded-2xl border border-dashed border-ink/20 p-8 text-center text-ink/70">
               Još nema salona.
             </p>
           )}
@@ -196,7 +197,7 @@ export default async function SuperAdminPage() {
           {invoices.map((inv) => (
             <div
               key={inv.id}
-              className="flex flex-wrap items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-[0_4px_24px_rgba(20,25,20,0.06)]"
+              className="flex flex-wrap items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-card"
             >
               <Link
                 href={`/faktura/${inv.id}`}
@@ -208,7 +209,7 @@ export default async function SuperAdminPage() {
               <span className="min-w-32 text-sm font-semibold">
                 {inv.tenants?.name ?? "-"}
               </span>
-              <span className="text-sm text-ink/60">
+              <span className="text-sm text-ink/70">
                 {PLANS[inv.plan].label} · {formatAmount(Number(inv.amount))} RSD ·{" "}
                 {fmt(inv.created_at)}
               </span>
@@ -224,7 +225,7 @@ export default async function SuperAdminPage() {
             </div>
           ))}
           {invoices.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-ink/20 p-8 text-center text-ink/50">
+            <p className="rounded-2xl border border-dashed border-ink/20 p-8 text-center text-ink/70">
               Još nema izdatih faktura.
             </p>
           )}
@@ -234,28 +235,28 @@ export default async function SuperAdminPage() {
         <h2 className="mt-10 text-xl font-extrabold tracking-tight">
           Dnevnik akcija
         </h2>
-        <div className="mt-4 overflow-hidden rounded-2xl bg-white shadow-[0_4px_24px_rgba(20,25,20,0.06)]">
+        <div className="mt-4 overflow-hidden rounded-2xl bg-white shadow-card">
           {(auditLog ?? []).map((entry) => (
             <div
               key={entry.id}
               className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink/5 px-4 py-2.5 text-sm last:border-0"
             >
-              <span className="text-xs tabular-nums text-ink/40">
-                {new Date(entry.created_at).toLocaleString("sr-RS")}
+              <span className="text-xs tabular-nums text-ink/70">
+                {datumVremeSr(entry.created_at)}
               </span>
               <span className="font-bold">{entry.action}</span>
               {entry.tenant_label && (
-                <span className="text-ink/60">{entry.tenant_label}</span>
+                <span className="text-ink/70">{entry.tenant_label}</span>
               )}
               {entry.details && (
-                <span className="truncate text-xs text-ink/40">
+                <span className="truncate text-xs text-ink/70">
                   {JSON.stringify(entry.details)}
                 </span>
               )}
             </div>
           ))}
           {(auditLog ?? []).length === 0 && (
-            <p className="p-8 text-center text-ink/50">
+            <p className="p-8 text-center text-ink/70">
               Još nema zabeleženih akcija.
             </p>
           )}
