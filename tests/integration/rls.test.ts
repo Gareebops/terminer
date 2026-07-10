@@ -6,9 +6,12 @@ import {
   serviceKlijent,
 } from "./okruzenje";
 
-// RLS je jedina brana između salona i između javnosti i ličnih podataka.
-// Ovi testovi pretvaraju "verujem da je RLS dobar" u proveru pri svakom
-// pushu - pogrešna migracija politika ovde pada odmah.
+// RLS + eksplicitni GRANT-ovi (migracija 20260709000001) su brana između
+// salona i između javnosti i ličnih podataka. Ovi testovi pretvaraju
+// "verujem da su privilegije dobre" u proveru pri svakom pushu - pogrešna
+// migracija politika ILI grantova ovde pada odmah. Od 9.7: lične tabele za
+// anon nemaju ni SELECT grant, pa upit pada sa 42501 (permission denied)
+// umesto da vrati prazan rezultat.
 
 describe.skipIf(!imaLokalniStack)("RLS: šta anonimni posetilac sme da vidi", () => {
   const anon = anonKlijent();
@@ -19,16 +22,23 @@ describe.skipIf(!imaLokalniStack)("RLS: šta anonimni posetilac sme da vidi", ()
     await service.from("tenants").delete().eq("slug", RLS_SLUG);
   });
 
-  it("rezervacije su nevidljive (lični podaci klijenata)", async () => {
+  it("rezervacije su nedostupne i na nivou granta (lični podaci klijenata)", async () => {
     const { data, error } = await anon.from("bookings").select("*").limit(10);
-    expect(error).toBeNull();
-    expect(data ?? []).toHaveLength(0);
+    expect(error?.code).toBe("42501");
+    expect(data).toBeNull();
   });
 
-  it("evidencija klijenata je nevidljiva", async () => {
+  it("evidencija klijenata je nedostupna i na nivou granta", async () => {
     const { data, error } = await anon.from("customers").select("*").limit(10);
-    expect(error).toBeNull();
-    expect(data ?? []).toHaveLength(0);
+    expect(error?.code).toBe("42501");
+    expect(data).toBeNull();
+  });
+
+  it("blokade i raspored radnika nisu javno upitljivi", async () => {
+    for (const tabela of ["blocked_slots", "working_hours", "shift_assignments"]) {
+      const { error } = await anon.from(tabela).select("*").limit(1);
+      expect(error?.code, tabela).toBe("42501");
+    }
   });
 
   it("anonimac ne može da upiše rezervaciju direktno u bazu", async () => {
@@ -73,5 +83,22 @@ describe.skipIf(!imaLokalniStack)("RLS: šta anonimni posetilac sme da vidi", ()
       .maybeSingle();
     expect(error).toBeNull();
     expect(data?.slug).toBe("demo");
+  });
+
+  it("javne tabele sajta ostaju čitljive anonimcu (kontrolna provera)", async () => {
+    // Tačno ono što loadTenantSite (lib/tenant.ts) čita anon klijentom -
+    // ako grant migracija previše skrati, javni sajt salona pada ovde.
+    // Seed ne puni gallery, pa se tamo proverava samo da upit prolazi.
+    for (const tabela of ["site_settings", "services", "staff", "staff_services", "gallery"]) {
+      const { data, error } = await anon
+        .from(tabela)
+        .select("*")
+        .eq("tenant_id", DEMO_TENANT_ID)
+        .limit(1);
+      expect(error, tabela).toBeNull();
+      if (tabela !== "gallery") {
+        expect((data ?? []).length, tabela).toBeGreaterThan(0);
+      }
+    }
   });
 });

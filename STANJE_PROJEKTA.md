@@ -1,22 +1,44 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 8. jul 2026. Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 9. jul 2026. Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
-**⚠️ ROK 30.10.2026 — EKSPLICITNI GRANT-OVI (produkcija inače STAJE):**
-Supabase tog datuma trajno ukida auto-expose ponašanje (tabele bez
-eksplicitnog GRANT-a nedostupne kroz Data API, ČAK I ZA service_role).
-Produkcija se danas oslanja na auto-expose (jedino tenants ima eksplicitne
-kolonske grantove iz migracije javno_citanje); lokalni CI stack koristi
-privremeni flag `auto_expose_new_tables = true` u supabase/config.toml
-koji CLI istog datuma uklanja. PRE ROKA: migracija sa eksplicitnim
-GRANT-ovima za anon/authenticated/service_role (matrica: service_role sve;
-authenticated tenant tabele kroz RLS; anon samo select na javnim tabelama
-- pazi da ne pregazi kolonske grantove tenants-a), `supabase db push` na
-produkciju, ukloniti flag iz config.toml - integracioni testovi u
-tests/integration tačno pokrivaju ovu matricu pa čuvaju ispravnost.
-Otkriveno 9.7. pri podizanju CI-ja (novi CLI već primenjuje novi default).
+**Novo od 9.7 (3) — EKSPLICITNI GRANT-ovi ZA API ROLE (⚠️ ČEKA `supabase db
+push` OD MIHAJLA):** Zatvara upozorenje "ROK 30.10.2026" otkriveno pri
+podizanju CI-ja. Supabase tog datuma trajno gasi auto-expose — tabela u
+public šemi bez eksplicitnog GRANT-a postaje nedostupna kroz Data API i za
+service_role. Migracija
+[20260709000001_eksplicitni_grantovi.sql](supabase/migrations/20260709000001_eksplicitni_grantovi.sql)
+fiksira kompletnu matricu (izvedena iz stvarnog koda): **service_role** ALL
+na svim tabelama + default privilegije za BUDUĆE objekte (`alter default
+privileges for role postgres`); **authenticated** CRUD na tenant tabelama
+(tenant_members, site_settings, services, staff, staff_services,
+working_hours, shift_assignments, customers, bookings, blocked_slots,
+gallery — RLS i dalje sužava redove na članstvo), invoices samo select,
+tenants isključivo KOLONSKI (identično stanju iz migracija 000001/2/5 od
+4-5.7: select javnih kolona + custom_domain, update name/is_published/
+billing_note, insert name/slug); **anon** samo select na javnim tabelama
+koje čita `loadTenantSite` (site_settings, services, staff, staff_services,
+gallery) + kolonski select na tenants — bookings/customers/blocked_slots/
+working_hours/shift_assignments/invoices/tenant_members NEMAJU ni select
+(upit pada sa 42501, ne prazan odgovor). Migracija prvo radi `revoke all` za
+anon/authenticated pa dodeljuje sve iznova u istoj transakciji — kolonski
+grantovi na tenants su svesno PONOVLJENI, ne pregaženi. Uz to `grant execute`
+na is_member/has_tenant_role (RLS politike ih zovu i u anon kontekstu).
+PRATEĆE: (1) privremeni flag `auto_expose_new_tables=true` UKLONJEN iz
+supabase/config.toml — lokalni CI stack sada radi u always-revoked režimu,
+pa zeleni integracioni + E2E testovi DOKAZUJU da je matrica potpuna;
+(2) tests/integration/rls.test.ts ažuriran na novu matricu: anon na
+bookings/customers/blocked_slots/working_hours/shift_assignments očekuje
+42501 (ranije prazan rezultat), dodata kontrolna provera da javne tabele
+sajta ostaju čitljive (gallery bez provere redova — seed je ne puni).
+VAŽNO ZA BUDUĆE MIGRACIJE: nova tabela u public šemi mora u SOPSTVENOJ
+migraciji da dobije grantove za anon/authenticated po potrebi (service_role
+dobija automatski); bez toga je nedostupna kroz REST — to je namerno.
+ZA MIHAJLA: pokreni `supabase db push` (produkcija do tada radi po starom
+auto-expose ponašanju, bez žurbe pre 30.10.2026); posle pusha proveriti
+/demo i admin uživo.
 
 **Novo od 10.7 — RASPON CENE USLUGE (od-do):** Usluga može imati raspon
 umesto fiksne cene. Migracija [20260710000001_cena_raspon.sql](supabase/migrations/20260710000001_cena_raspon.sql):
@@ -716,7 +738,7 @@ Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
    `starts_at/ends_at` (UTC, za constraint). Konverzija u
    [src/lib/booking/timezone.ts](src/lib/booking/timezone.ts), zona `Europe/Belgrade`.
 
-## 4. Šema baze (3 migracije u `supabase/migrations/`)
+## 4. Šema baze (migracije u `supabase/migrations/`)
 
 - `20260701000001_init.sql` — sve tabele + RLS + storage bucket `tenant-media`
   (putanja fajla mora počinjati tenant_id-jem; javno čitanje, upis samo članovi):
@@ -766,6 +788,13 @@ Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
   postaje staff_id+dow+parity); shift_assignments.start_time/end_time +
   check (izuzetak nosi svoje vreme), drop shift_template_id; DROP TABLE
   shift_templates (podaci prepisani u izuzetke).
+- `20260709000001_eksplicitni_grantovi.sql` — **NIJE još primenjena (čeka
+  `supabase db push`)**. Kompletna matrica GRANT-ova za API role umesto
+  auto-expose ponašanja koje Supabase gasi 30.10.2026 (service_role ALL +
+  default privilegije za buduće objekte; authenticated CRUD tenant tabele,
+  invoices select, tenants kolonski; anon select samo javne tabele) +
+  execute na is_member/has_tenant_role. Detalji u odeljku "Novo od 9.7 (2)".
+  Nova tabela ubuduće MORA dobiti eksplicitan grant u svojoj migraciji.
 
 **Logika slobodnih termina** (server): okno = izuzetak za datum ILI pravilo
 (working_hours uz A/B parnost — [src/lib/booking/schedule.ts](src/lib/booking/schedule.ts))
