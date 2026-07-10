@@ -10,16 +10,53 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { createClient } from "@/lib/supabase/client";
 import { prepareImageForUpload } from "@/lib/image";
-import { brandGradient, gradientForeground } from "@/lib/color";
+import { brandGradient, gradientForeground, readableForeground } from "@/lib/color";
 import { FONT_PAIRS, type FontPairId } from "@/lib/fonts";
-import type { ButtonStyle, SiteTheme } from "@/lib/types";
-import { updateAppearance, updateSiteImage } from "../actions";
+import type {
+  BackgroundStyle,
+  ButtonStyle,
+  HeadingStyle,
+  RadiusScale,
+  SiteTheme,
+} from "@/lib/types";
+import { suggestAppearance, updateAppearance, updateSiteImage } from "../actions";
 
 const BUTTON_STYLES: { id: ButtonStyle; label: string; radius: string }[] = [
   { id: "rounded", label: "Zaobljena", radius: "0.5rem" },
   { id: "pill", label: "Pilula", radius: "999px" },
   { id: "square", label: "Uglasta", radius: "0.25rem" },
 ];
+
+const RADIUS_SCALES: { id: RadiusScale; label: string; hint: string }[] = [
+  { id: "soft", label: "Mekano", hint: "blago zaobljeno (podrazumevano)" },
+  { id: "round", label: "Oblo", hint: "izražene obline, prijateljski ton" },
+  { id: "sharp", label: "Oštro", hint: "ravne ivice, strog i moderan ton" },
+];
+
+const HEADING_STYLES: { id: HeadingStyle; label: string }[] = [
+  { id: "normal", label: "Normalno" },
+  { id: "caps", label: "Velika slova" },
+];
+
+const BACKGROUNDS: { id: BackgroundStyle; label: string }[] = [
+  { id: "plain", label: "Čista" },
+  { id: "tinted", label: "U tonu brenda" },
+];
+
+// Skup tokena koji predlog primenjuje odjednom - isti oblik prima
+// updateAppearance, pa je i undo samo primena snimljenog skupa
+interface AppearanceTokens {
+  primaryColor: string;
+  fontPair: FontPairId;
+  mode: "light" | "dark";
+  buttonStyle: ButtonStyle;
+  radiusScale: RadiusScale;
+  background: BackgroundStyle;
+  headingStyle: HeadingStyle;
+  gradient: boolean;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const PRESETS: { name: string; value: string }[] = [
   { name: "Ugalj", value: "#18181b" },
@@ -176,9 +213,123 @@ export function AppearanceForm({
   const [buttonStyle, setButtonStyle] = useState<ButtonStyle>(
     theme?.button_style ?? "rounded"
   );
+  const [radiusScale, setRadiusScale] = useState<RadiusScale>(
+    theme?.radius_scale ?? "soft"
+  );
+  const [background, setBackground] = useState<BackgroundStyle>(
+    theme?.background ?? "plain"
+  );
+  const [headingStyle, setHeadingStyle] = useState<HeadingStyle>(
+    theme?.heading_style ?? "normal"
+  );
+  const [gradient, setGradient] = useState(theme?.gradient !== false);
   const [pending, startTransition] = useTransition();
 
+  // --- Predlog izgleda ---
+  // korak: tekst koji trenutno "radi"; procenat vodi progress bar;
+  // primenjeno čuva undo snapshot i temu za "Probaj drugi"
+  const [predlogKorak, setPredlogKorak] = useState<string | null>(null);
+  const [predlogProcenat, setPredlogProcenat] = useState(0);
+  const [primenjeno, setPrimenjeno] = useState<{
+    prethodno: AppearanceTokens;
+    temaId: string;
+    temaLabel: string;
+  } | null>(null);
+
+  // Predlog u toku zaključava i ručne kontrole - paralelni updateAppearance
+  // pozivi bi se trkali nad theme jsonb-om (read-merge-write)
+  const zauzeto = pending || predlogKorak !== null;
+
+  function trenutniTokeni(): AppearanceTokens {
+    return {
+      primaryColor: color,
+      fontPair,
+      mode: darkMode ? "dark" : "light",
+      buttonStyle,
+      radiusScale,
+      background,
+      headingStyle,
+      gradient,
+    };
+  }
+
+  function primeniLokalno(t: AppearanceTokens) {
+    setColor(t.primaryColor);
+    setFontPair(t.fontPair);
+    setDarkMode(t.mode === "dark");
+    setButtonStyle(t.buttonStyle);
+    setRadiusScale(t.radiusScale);
+    setBackground(t.background);
+    setHeadingStyle(t.headingStyle);
+    setGradient(t.gradient);
+  }
+
+  async function pokreniPredlog(excludeId?: string) {
+    const prethodno = primenjeno?.prethodno ?? trenutniTokeni();
+    // Ponovni klik je kraći - iteracija mora biti bezbolna; reduced-motion
+    // preskače teatar u potpunosti
+    const smanjeno =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const skala = smanjeno ? 0 : excludeId ? 0.4 : 1;
+
+    // try/finally: pad mreže ili prekinuta sesija ne sme da ostavi
+    // zaključan UI bez dugmeta i bez poruke
+    try {
+      setPredlogProcenat(8);
+      setPredlogKorak("Gledamo tvoju ponudu usluga…");
+      const res = await suggestAppearance({ excludeId });
+      if (!res.ok) {
+        toast.error(res.error ?? "Greška.");
+        return;
+      }
+      await sleep(900 * skala);
+      setPredlogProcenat(38);
+      setPredlogKorak(`Prepoznata delatnost: ${res.delatnostLabel}`);
+      await sleep(900 * skala);
+      setPredlogProcenat(66);
+      setPredlogKorak("Slažemo boje, font i oblike…");
+      await sleep(800 * skala);
+      setPredlogProcenat(88);
+      setPredlogKorak("Proveravamo kontrast i čitljivost…");
+
+      const apply = await updateAppearance(res.tokens);
+      if (!apply.ok) {
+        toast.error(apply.error ?? "Greška.");
+        return;
+      }
+      await sleep(700 * skala);
+      setPredlogProcenat(100);
+      primeniLokalno(res.tokens as AppearanceTokens);
+      setPrimenjeno({ prethodno, temaId: res.temaId, temaLabel: res.temaLabel });
+      toast.success(`Primenjena tema „${res.temaLabel}“.`);
+      onSaved?.();
+    } catch {
+      toast.error("Veza je pukla. Pokušaj ponovo.");
+    } finally {
+      setPredlogKorak(null);
+      setPredlogProcenat(0);
+    }
+  }
+
+  function vratiPrethodno() {
+    if (!primenjeno) return;
+    const staro = primenjeno.prethodno;
+    startTransition(async () => {
+      const res = await updateAppearance(staro);
+      if (res.ok) {
+        primeniLokalno(staro);
+        setPrimenjeno(null);
+        toast.success("Vraćen prethodni izgled.");
+        onSaved?.();
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
+    });
+  }
+
   function saveColor(next: string) {
+    setPrimenjeno(null);
     setColor(next);
     startTransition(async () => {
       const res = await updateAppearance({ primaryColor: next });
@@ -192,6 +343,7 @@ export function AppearanceForm({
   }
 
   function saveFontPair(next: FontPairId) {
+    setPrimenjeno(null);
     setFontPair(next);
     startTransition(async () => {
       const res = await updateAppearance({ fontPair: next });
@@ -205,6 +357,7 @@ export function AppearanceForm({
   }
 
   function saveButtonStyle(next: ButtonStyle) {
+    setPrimenjeno(null);
     setButtonStyle(next);
     startTransition(async () => {
       const res = await updateAppearance({ buttonStyle: next });
@@ -218,11 +371,31 @@ export function AppearanceForm({
   }
 
   function saveMode(dark: boolean) {
+    setPrimenjeno(null);
     setDarkMode(dark);
     startTransition(async () => {
       const res = await updateAppearance({ mode: dark ? "dark" : "light" });
       if (res.ok) {
         toast.success(dark ? "Tamna varijanta." : "Svetla varijanta.");
+        onSaved?.();
+      } else {
+        toast.error(res.error ?? "Greška.");
+      }
+    });
+  }
+
+  // Zajednički obrazac za nove tokene: odmah lokalno, pa sačuvaj
+  function saveToken(
+    poruka: string,
+    lokalno: () => void,
+    payload: Parameters<typeof updateAppearance>[0]
+  ) {
+    setPrimenjeno(null);
+    lokalno();
+    startTransition(async () => {
+      const res = await updateAppearance(payload);
+      if (res.ok) {
+        toast.success(poruka);
         onSaved?.();
       } else {
         toast.error(res.error ?? "Greška.");
@@ -236,6 +409,56 @@ export function AppearanceForm({
         <CardTitle className="text-base">Izgled sajta</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        <div className="rounded-lg border p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Label>Predlog izgleda</Label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Na osnovu tvoje ponude slažemo temu: boju, fontove, oblike i
+                pozadinu. Ne sviđa ti se? Probaj drugi ili vrati staro.
+              </p>
+            </div>
+            {!predlogKorak && (
+              <Button
+                size="sm"
+                disabled={zauzeto}
+                onClick={() => pokreniPredlog(primenjeno?.temaId)}
+              >
+                Predloži izgled
+              </Button>
+            )}
+          </div>
+          {predlogKorak && (
+            <div className="mt-4">
+              <p className="text-sm font-medium">{predlogKorak}</p>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all duration-700 ease-out"
+                  style={{ width: `${predlogProcenat}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {primenjeno && !predlogKorak && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                Tema: <span className="font-semibold text-foreground">{primenjeno.temaLabel}</span>
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={zauzeto}
+                onClick={() => pokreniPredlog(primenjeno.temaId)}
+              >
+                Probaj drugi
+              </Button>
+              <Button variant="ghost" size="sm" disabled={zauzeto} onClick={vratiPrethodno}>
+                Vrati prethodni izgled
+              </Button>
+            </div>
+          )}
+        </div>
+
         <div>
           <Label>Boja brenda</Label>
           <p className="mb-3 mt-1 text-xs text-muted-foreground">
@@ -247,7 +470,7 @@ export function AppearanceForm({
                 key={p.value}
                 type="button"
                 title={p.name}
-                disabled={pending}
+                disabled={zauzeto}
                 onClick={() => saveColor(p.value)}
                 className="flex size-9 items-center justify-center rounded-full ring-2 ring-transparent transition hover:scale-105 data-[active=true]:ring-ring"
                 data-active={color.toLowerCase() === p.value}
@@ -265,7 +488,7 @@ export function AppearanceForm({
               <input
                 type="color"
                 value={color}
-                disabled={pending}
+                disabled={zauzeto}
                 onChange={(e) => setColor(e.target.value)}
                 onBlur={(e) => {
                   if (e.target.value.toLowerCase() !== primaryColor.toLowerCase()) {
@@ -289,7 +512,7 @@ export function AppearanceForm({
               <button
                 key={p.id}
                 type="button"
-                disabled={pending}
+                disabled={zauzeto}
                 onClick={() => saveFontPair(p.id)}
                 data-active={fontPair === p.id}
                 className="rounded-lg border p-3 text-left transition hover:bg-accent data-[active=true]:border-ring data-[active=true]:ring-1 data-[active=true]:ring-ring"
@@ -311,7 +534,7 @@ export function AppearanceForm({
               <button
                 key={s.id}
                 type="button"
-                disabled={pending}
+                disabled={zauzeto}
                 onClick={() => saveButtonStyle(s.id)}
                 data-active={buttonStyle === s.id}
                 className="flex flex-col items-center gap-2 rounded-lg border p-3 transition hover:bg-accent data-[active=true]:border-ring data-[active=true]:ring-1 data-[active=true]:ring-ring"
@@ -320,8 +543,8 @@ export function AppearanceForm({
                   className="flex h-7 w-full max-w-24 items-center justify-center text-xs font-medium"
                   style={{
                     backgroundColor: color,
-                    backgroundImage: brandGradient(color),
-                    color: gradientForeground(color),
+                    backgroundImage: gradient ? brandGradient(color) : "none",
+                    color: gradient ? gradientForeground(color) : readableForeground(color),
                     borderRadius: s.radius,
                   }}
                 >
@@ -331,6 +554,102 @@ export function AppearanceForm({
               </button>
             ))}
           </div>
+        </div>
+
+        <div>
+          <Label>Oblik površina</Label>
+          <p className="mb-3 mt-1 text-xs text-muted-foreground">
+            Zaobljenost kartica, slika i polja na sajtu.
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {RADIUS_SCALES.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                disabled={zauzeto}
+                onClick={() =>
+                  saveToken("Oblik površina je sačuvan.", () => setRadiusScale(r.id), {
+                    radiusScale: r.id,
+                  })
+                }
+                data-active={radiusScale === r.id}
+                className="rounded-lg border p-3 text-left transition hover:bg-accent data-[active=true]:border-ring data-[active=true]:ring-1 data-[active=true]:ring-ring"
+              >
+                <p className="text-sm font-semibold">{r.label}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{r.hint}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label>Naslovi</Label>
+            <p className="mb-3 mt-1 text-xs text-muted-foreground">
+              Velika slova daju sajtu izražen, modni ton.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {HEADING_STYLES.map((h) => (
+                <button
+                  key={h.id}
+                  type="button"
+                  disabled={zauzeto}
+                  onClick={() =>
+                    saveToken("Stil naslova je sačuvan.", () => setHeadingStyle(h.id), {
+                      headingStyle: h.id,
+                    })
+                  }
+                  data-active={headingStyle === h.id}
+                  className="rounded-lg border p-3 text-center text-sm font-semibold transition hover:bg-accent data-[active=true]:border-ring data-[active=true]:ring-1 data-[active=true]:ring-ring"
+                >
+                  {h.id === "caps" ? h.label.toUpperCase() : h.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label>Pozadina sajta</Label>
+            <p className="mb-3 mt-1 text-xs text-muted-foreground">
+              „U tonu brenda“ daje pozadini dah tvoje boje.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {BACKGROUNDS.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  disabled={zauzeto}
+                  onClick={() =>
+                    saveToken("Pozadina je sačuvana.", () => setBackground(b.id), {
+                      background: b.id,
+                    })
+                  }
+                  data-active={background === b.id}
+                  className="rounded-lg border p-3 text-center text-sm font-semibold transition hover:bg-accent data-[active=true]:border-ring data-[active=true]:ring-1 data-[active=true]:ring-ring"
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div>
+            <Label htmlFor="site-gradient">Gradijent brenda</Label>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Blagi prelaz boje na dugmadima; isključeno = ravna boja.
+            </p>
+          </div>
+          <Switch
+            id="site-gradient"
+            checked={gradient}
+            onCheckedChange={(on) =>
+              saveToken(on ? "Gradijent uključen." : "Ravna boja.", () => setGradient(on), {
+                gradient: on,
+              })
+            }
+            disabled={zauzeto}
+          />
         </div>
 
         <div className="flex items-center justify-between rounded-lg border p-3">
@@ -344,7 +663,7 @@ export function AppearanceForm({
             id="site-dark"
             checked={darkMode}
             onCheckedChange={saveMode}
-            disabled={pending}
+            disabled={zauzeto}
           />
         </div>
 

@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { brandGradient, displayColor, gradientForeground } from "@/lib/color";
+import {
+  brandGradient,
+  displayColor,
+  gradientForeground,
+  mix,
+  readableForeground,
+} from "@/lib/color";
 import { getFontPair } from "@/lib/fonts";
 import { getTenantSite } from "@/lib/tenant";
 
@@ -58,17 +64,43 @@ export default async function SalonLayout({
   const brand = site.settings?.primary_color ?? "#18181b";
   const accent = displayColor(brand, mode);
 
+  // Skala zaobljenosti: --surface-radius nose ključne javne površine
+  // (redovi usluga, galerija, izbori u wizardu), kartice idu kroz
+  // globals pravila po data-radius atributu
+  const radiusScale = theme.radius_scale ?? "soft";
+  const surfaceRadius =
+    radiusScale === "sharp" ? "0.125rem" : radiusScale === "round" ? "1rem" : "0.5rem";
+
+  // Tonirana pozadina: jedva primetan dah brenda umesto čiste podloge -
+  // dovoljno suptilno da auto-kontrast teksta ostane važeći
+  const tintedBackground =
+    theme.background === "tinted"
+      ? mode === "dark"
+        ? mix("#0a0a0a", accent, 0.12)
+        : mix("#ffffff", accent, 0.055)
+      : null;
+
   return (
     <div
       data-button-style={theme.button_style ?? "rounded"}
+      data-radius={radiusScale}
+      data-heading={theme.heading_style ?? "normal"}
       className={`flex min-h-screen flex-1 flex-col bg-background text-foreground ${fontPair.className} ${mode === "dark" ? "dark" : ""}`}
       style={{
         ["--primary" as string]: accent,
         // Suptilan gradijent brenda za pozadinske površine (globals.css);
-        // kontrast teksta se računa prema najsvetlijem stopu gradijenta
-        ["--primary-gradient" as string]: brandGradient(accent),
-        ["--primary-foreground" as string]: gradientForeground(accent),
+        // kontrast teksta se računa prema najsvetlijem stopu gradijenta.
+        // gradient: false → flat boja (background-image: none)
+        ["--primary-gradient" as string]:
+          theme.gradient === false ? "none" : brandGradient(accent),
+        // Flat: kontrast prema samoj boji; gradijent: prema najsvetlijem stopu
+        ["--primary-foreground" as string]:
+          theme.gradient === false
+            ? readableForeground(accent)
+            : gradientForeground(accent),
         ["--ring" as string]: accent,
+        ["--surface-radius" as string]: surfaceRadius,
+        ...(tintedBackground ? { ["--background" as string]: tintedBackground } : {}),
         ["--app-font-heading" as string]: fontPair.headingVar,
         ["--app-font-sans" as string]: fontPair.sansVar,
       }}

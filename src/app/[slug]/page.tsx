@@ -126,10 +126,10 @@ export default async function SalonPage({
                 alt=""
                 width={36}
                 height={36}
-                className="size-9 rounded-lg object-cover"
+                className="size-9 rounded-[var(--surface-radius)] object-cover"
               />
             ) : (
-              <span className="flex size-9 items-center justify-center rounded-lg bg-primary font-bold text-primary-foreground">
+              <span className="flex size-9 items-center justify-center rounded-[var(--surface-radius)] bg-primary font-bold text-primary-foreground">
                 {tenant.name.charAt(0)}
               </span>
             )}

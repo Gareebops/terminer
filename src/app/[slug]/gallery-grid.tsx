@@ -44,7 +44,7 @@ export function GalleryGrid({ images }: { images: Gallery[] }) {
       <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {images.map((g, i) => (
           <FadeUp key={g.id} delay={i * 0.05}>
-            <ZoomOnHover className="overflow-hidden rounded-xl">
+            <ZoomOnHover className="overflow-hidden rounded-[calc(var(--surface-radius)*1.5)]">
               <button
                 type="button"
                 onClick={() => setIdx(i)}
@@ -83,7 +83,7 @@ export function GalleryGrid({ images }: { images: Gallery[] }) {
           <img
             src={images[idx].image_url}
             alt=""
-            className="max-h-[85vh] max-w-full rounded-xl object-contain"
+            className="max-h-[85vh] max-w-full rounded-[calc(var(--surface-radius)*1.5)] object-contain"
             onClick={(e) => e.stopPropagation()}
           />
           <button

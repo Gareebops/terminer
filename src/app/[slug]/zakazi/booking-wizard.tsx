@@ -130,7 +130,7 @@ function JumpToDate({
           if ("showPicker" in el) el.showPicker();
           else (el as HTMLInputElement).focus();
         }}
-        className="flex h-full min-h-16 w-12 flex-col items-center justify-center rounded-lg border transition-colors hover:bg-accent"
+        className="flex h-full min-h-16 w-12 flex-col items-center justify-center rounded-[var(--surface-radius)] border transition-colors hover:bg-accent"
       >
         <CalendarDays className="size-5" />
       </button>
@@ -208,7 +208,7 @@ function DayStrip({
               disabled={closed}
               title={closed ? "Ne radi" : undefined}
               onClick={() => onSelect(d.iso)}
-              className={`flex min-w-16 shrink-0 flex-col items-center rounded-lg border px-3 py-2 text-sm transition-colors ${
+              className={`flex min-w-16 shrink-0 flex-col items-center rounded-[var(--surface-radius)] border px-3 py-2 text-sm transition-colors ${
                 selected === d.iso
                   ? "border-primary bg-primary text-primary-foreground"
                   : closed
@@ -691,7 +691,7 @@ export function BookingWizard({
               {services.map((s) => (
                 <button
                   key={s.id}
-                  className="flex w-full items-center justify-between rounded-lg border p-4 text-left transition-colors hover:bg-accent"
+                  className="flex w-full items-center justify-between rounded-[var(--surface-radius)] border p-4 text-left transition-colors hover:bg-accent"
                   onClick={() => pickService(s)}
                 >
                   <div className="min-w-0">
@@ -724,7 +724,7 @@ export function BookingWizard({
                   mora da proverava dostupnost osobu po osobu */}
               {availableStaff.length > 1 && (
                 <button
-                  className="flex w-full items-center gap-3 rounded-lg border border-dashed p-4 text-left transition-colors hover:bg-accent"
+                  className="flex w-full items-center gap-3 rounded-[var(--surface-radius)] border border-dashed p-4 text-left transition-colors hover:bg-accent"
                   onClick={() => pickMember(null)}
                 >
                   <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -741,7 +741,7 @@ export function BookingWizard({
               {availableStaff.map((m) => (
                 <button
                   key={m.id}
-                  className="flex w-full items-center gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent"
+                  className="flex w-full items-center gap-3 rounded-[var(--surface-radius)] border p-4 text-left transition-colors hover:bg-accent"
                   onClick={() => pickMember(m)}
                 >
                   {m.photo_url ? (
@@ -795,7 +795,7 @@ export function BookingWizard({
                   </div>
                 )}
                 {date && slotsError && (
-                  <p className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-950">
+                  <p className="rounded-[var(--surface-radius)] bg-amber-100 px-3 py-2 text-sm font-medium text-amber-950">
                     {slotsError}
                   </p>
                 )}

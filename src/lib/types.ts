@@ -36,10 +36,19 @@ export type PublicTenant = Pick<
 
 export type ButtonStyle = "rounded" | "pill" | "square";
 
+export type RadiusScale = "soft" | "sharp" | "round";
+export type BackgroundStyle = "plain" | "tinted";
+export type HeadingStyle = "normal" | "caps";
+
 export interface SiteTheme {
   font_pair?: string; // FontPairId
   mode?: "light" | "dark";
   button_style?: ButtonStyle;
+  // Novi tokeni (10.7) - svi opcioni, izostanak = današnje ponašanje
+  radius_scale?: RadiusScale;
+  background?: BackgroundStyle;
+  heading_style?: HeadingStyle;
+  gradient?: boolean; // false = flat boja umesto brand gradijenta
 }
 
 // Stanje vodiča za pokretanje - koraci se izvode iz podataka, čuvaju se

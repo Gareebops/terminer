@@ -34,11 +34,15 @@ export default async function Image({
 
   const { data: settings } = await supabase
     .from("site_settings")
-    .select("primary_color")
+    .select("primary_color, theme")
     .eq("tenant_id", tenant.id)
     .maybeSingle();
 
   const brand = settings?.primary_color ?? "#18181b";
+  // Tema bez gradijenta → i OG kartica ide u ravnu boju (defanzivno:
+  // theme može biti null/parcijalan)
+  const flat =
+    (settings?.theme as { gradient?: boolean } | null)?.gradient === false;
   const fg = gradientForeground(brand);
   const isLightText = fg === "#ffffff";
   const muted = isLightText ? "rgba(255,255,255,0.7)" : "rgba(24,24,27,0.65)";
@@ -59,7 +63,8 @@ export default async function Image({
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          backgroundImage: brandGradient(brand),
+          backgroundColor: brand,
+          backgroundImage: flat ? undefined : brandGradient(brand),
           padding: 72,
           fontFamily: "Jakarta",
           color: fg,

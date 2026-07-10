@@ -242,3 +242,19 @@ body:has(.admin-scope) [data-sonner-toast] [data-button] {
 [data-button-style] a.bg-primary:hover {
   filter: brightness(1.06);
 }
+/* Sajt salona — stil naslova (theme.heading_style). Samo naslovi koji
+   nose font-heading; body tekst ostaje netaknut radi čitljivosti. */
+[data-heading="caps"] .font-heading {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Sajt salona — skala zaobljenosti (theme.radius_scale). Kartice (wizard,
+   potvrda) prate skalu kroz data atribut; ključne javne površine nose
+   var(--surface-radius) direktno u klasama. "soft" = današnji izgled. */
+[data-radius="sharp"] [data-slot="card"] {
+  border-radius: 0.375rem;
+}
+[data-radius="round"] [data-slot="card"] {
+  border-radius: 1.25rem;
+}

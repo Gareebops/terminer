@@ -20,6 +20,8 @@ import {
 } from "@/lib/booking/schedule";
 import QRCode from "qrcode";
 import { buildIpsQr, PLANS, type PlanId } from "@/lib/invoice";
+import { FONT_PAIR_IDS } from "@/lib/font-ids";
+import { DELATNOST_LABELS, predloziTemu } from "@/lib/themes";
 import type {
   BookingStatus,
   OnboardingState,
@@ -1103,9 +1105,14 @@ const appearanceSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Neispravna boja.")
     .optional(),
-  fontPair: z.enum(["geist", "elegant", "modern", "warm", "classic"]).optional(),
+  fontPair: z.enum(FONT_PAIR_IDS).optional(),
   mode: z.enum(["light", "dark"]).optional(),
   buttonStyle: z.enum(["rounded", "pill", "square"]).optional(),
+  // Novi tokeni (10.7) - vidi SiteTheme u lib/types.ts
+  radiusScale: z.enum(["soft", "sharp", "round"]).optional(),
+  background: z.enum(["plain", "tinted"]).optional(),
+  headingStyle: z.enum(["normal", "caps"]).optional(),
+  gradient: z.boolean().optional(),
 });
 
 export async function updateAppearance(
@@ -1121,7 +1128,18 @@ export async function updateAppearance(
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (parsed.data.primaryColor) patch.primary_color = parsed.data.primaryColor;
 
-  if (parsed.data.fontPair || parsed.data.mode || parsed.data.buttonStyle) {
+  // gradient je boolean pa false ne sme da ispadne kroz truthy proveru
+  const d = parsed.data;
+  const themeTouched =
+    d.fontPair !== undefined ||
+    d.mode !== undefined ||
+    d.buttonStyle !== undefined ||
+    d.radiusScale !== undefined ||
+    d.background !== undefined ||
+    d.headingStyle !== undefined ||
+    d.gradient !== undefined;
+
+  if (themeTouched) {
     const { data: current } = await supabase
       .from("site_settings")
       .select("theme")
@@ -1129,9 +1147,13 @@ export async function updateAppearance(
       .maybeSingle();
     patch.theme = {
       ...((current?.theme as object) ?? {}),
-      ...(parsed.data.fontPair ? { font_pair: parsed.data.fontPair } : {}),
-      ...(parsed.data.mode ? { mode: parsed.data.mode } : {}),
-      ...(parsed.data.buttonStyle ? { button_style: parsed.data.buttonStyle } : {}),
+      ...(d.fontPair !== undefined ? { font_pair: d.fontPair } : {}),
+      ...(d.mode !== undefined ? { mode: d.mode } : {}),
+      ...(d.buttonStyle !== undefined ? { button_style: d.buttonStyle } : {}),
+      ...(d.radiusScale !== undefined ? { radius_scale: d.radiusScale } : {}),
+      ...(d.background !== undefined ? { background: d.background } : {}),
+      ...(d.headingStyle !== undefined ? { heading_style: d.headingStyle } : {}),
+      ...(d.gradient !== undefined ? { gradient: d.gradient } : {}),
     };
   }
 
@@ -1144,6 +1166,55 @@ export async function updateAppearance(
   revalidatePath("/admin/podesavanja");
   revalidatePath(`/${tenant.slug}`);
   return { ok: true };
+}
+
+// Predlog izgleda: heuristika nad STVARNIM uslugama salona bira temu iz
+// kuriranog pula (lib/themes.ts). Samo računa i vraća - primena ide kroz
+// updateAppearance sa klijenta, pa undo ("Vrati prethodni izgled") ostaje
+// običan updateAppearance sa snimljenim starim tokenima.
+export type SuggestAppearanceResult =
+  | {
+      ok: true;
+      temaId: string;
+      temaLabel: string;
+      delatnostLabel: string;
+      tokens: z.infer<typeof appearanceSchema>;
+    }
+  | { ok: false; error: string };
+
+export async function suggestAppearance(input?: {
+  excludeId?: string;
+}): Promise<SuggestAppearanceResult> {
+  const { tenant } = await getAdminContext();
+  const supabase = await createClient();
+
+  const { data: services } = await supabase
+    .from("services")
+    .select("name")
+    .eq("tenant_id", tenant.id)
+    .eq("is_active", true);
+
+  const { tema, delatnost } = predloziTemu(
+    (services ?? []).map((s) => s.name),
+    input?.excludeId
+  );
+
+  return {
+    ok: true,
+    temaId: tema.id,
+    temaLabel: tema.label,
+    delatnostLabel: DELATNOST_LABELS[delatnost],
+    tokens: {
+      primaryColor: tema.primaryColor,
+      fontPair: tema.fontPair,
+      mode: tema.mode,
+      buttonStyle: tema.buttonStyle,
+      radiusScale: tema.radiusScale,
+      background: tema.background,
+      headingStyle: tema.headingStyle,
+      gradient: tema.gradient,
+    },
+  };
 }
 
 export async function updateSiteImage(

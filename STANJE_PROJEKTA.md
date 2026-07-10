@@ -40,6 +40,36 @@ ZA MIHAJLA: pokreni `supabase db push` (produkcija do tada radi po starom
 auto-expose ponašanju, bez žurbe pre 30.10.2026); posle pusha proveriti
 /demo i admin uživo.
 
+**Novo od 10.7 (2) — KUSTOMIZACIJA: 10 FONTOVA, NOVI TOKENI, "PREDLOŽI
+IZGLED":** (1) FONTOVI 5→10 parova ([fonts.ts](src/lib/fonts.ts):
+Luksuzno/Cormorant+Manrope, Geometrijsko/Outfit+Karla, Odvažno/Bricolage,
+Književno/Libre Baskerville+Karla, Nežno/Josefin+Nunito; svi latin-ext,
+preload:false). ID-jevi izdvojeni u [font-ids.ts](src/lib/font-ids.ts)
+BEZ next/font importa - trebaju Zod šemi, temama i unit testovima
+(next/font ne radi u vitest-u!). (2) NOVI THEME TOKENI (jsonb, bez
+migracije; izostanak = staro): radius_scale (soft/sharp/round →
+--surface-radius + data-radius, kartice kroz globals pravila),
+background plain/tinted (mix boje brenda sa podlogom, poseban za dark),
+heading_style normal/caps (data-heading + .font-heading pravilo),
+gradient bool (false → --primary-gradient:none + readableForeground
+umesto gradientForeground). Primena SAMO u [slug]/layout.tsx. (3)
+"PREDLOŽI IZGLED" (bez AI etikete i bez zvezdica - Mihajlova odluka):
+[themes.ts](src/lib/themes.ts) 24 kurirane teme sa delatnostima;
+prepoznajDelatnost boduje ključne reči iz naziva usluga; suggestAppearance
+akcija vraća tokene, klijent animira ~3.4s (ponovo ~1.4s; reduced-motion
+preskače) sa STVARNIM koracima, primena kroz updateAppearance, "Probaj
+drugi" (excludeId) i "Vrati prethodni izgled" (undo snapshot u state-u).
+REVIZIJA (3 sočiva × 15 agenata) našla i ISPRAVLJENO: try/finally u
+pokreniPredlog (pad mreže ne sme da zaključa UI), `zauzeto` lock na svim
+kontrolama tokom predloga (paralelni updateAppearance se trkaju nad
+theme jsonb read-merge-write), glavno dugme prosleđuje excludeId, ručne
+izmene čiste kontekst predloga, swatch dugmadi poštuje gradient token,
+OG slika poštuje gradient:false, E2E snapshot/restore site_settings
+preko service klijenta + asercija KONKRETNE teme (ne tautologija).
+PRIHVAĆEN trade-off: undo upisuje razrešene tokene (pinuje defaulte) -
+render identičan, svesno bez server-side snapshota. Testovi: 88 unit
+(+8 teme validnost/heuristika/exclude) + izgled.spec.ts 3 E2E.
+
 **Novo od 10.7 — RASPON CENE USLUGE (od-do):** Usluga može imati raspon
 umesto fiksne cene. Migracija [20260710000001_cena_raspon.sql](supabase/migrations/20260710000001_cena_raspon.sql):
 `services.price_max numeric(10,2) null` + CHECK `services_price_range`
