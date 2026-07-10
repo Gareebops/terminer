@@ -40,11 +40,20 @@ export function PaymentModal({
   const [billingInfo, setBillingInfo] = useState("");
   const [pending, startTransition] = useTransition();
 
+  // Reset izabranog plana pri otvaranju - obrazac "podešavanje state-a tokom
+  // rendera" (React docs) umesto setState u effect-u, da se izbegne kaskadni
+  // render. Effect ispod ostaje samo za učitavanje fakture/QR-a.
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevDefaultPlan, setPrevDefaultPlan] = useState(defaultPlan);
+  if (open !== prevOpen || defaultPlan !== prevDefaultPlan) {
+    setPrevOpen(open);
+    setPrevDefaultPlan(defaultPlan);
+    if (open) setPlan(defaultPlan);
+  }
+
   useEffect(() => {
     if (!open) return;
-    setPlan(defaultPlan);
     load(defaultPlan);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, defaultPlan]);
 
   function load(p: PlanId) {

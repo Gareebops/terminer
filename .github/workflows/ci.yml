@@ -22,6 +22,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run lint
       - run: npm test
       # Dummy env: build ne sme da zavisi od tajni; upiti pri prerenderu
       # (sitemap) uredno vrate prazno na nepostojećem hostu
@@ -35,6 +36,10 @@ jobs:
     name: Integracioni + E2E (lokalni Supabase)
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      # Superadmin E2E: panel pušta ovaj nalog (global-setup ga kreira u
+      # lokalnoj bazi); mora biti postavljen PRE `npm run build`
+      SUPER_ADMIN_EMAIL: e2e-superadmin@terminer.test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

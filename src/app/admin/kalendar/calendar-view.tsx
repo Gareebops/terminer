@@ -85,11 +85,18 @@ function NewBookingDialog({
   const [busy, setBusy] = useState<StaffDayBusy | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // Bez kompletnog konteksta (zatvoren dijalog / obrisan datum) stara
+  // zauzetost ne važi - reset ide tokom rendera ("adjusting state during
+  // render" obrazac), a ne sinhrono u effect-u
+  const busyKey = open && staffId && date ? `${staffId}|${date}` : null;
+  const [prevBusyKey, setPrevBusyKey] = useState(busyKey);
+  if (prevBusyKey !== busyKey) {
+    setPrevBusyKey(busyKey);
+    if (busyKey === null) setBusy(null);
+  }
+
   useEffect(() => {
-    if (!open || !staffId || !date) {
-      setBusy(null);
-      return;
-    }
+    if (!open || !staffId || !date) return;
     let active = true;
     getStaffDayBusy(staffId, date).then((res) => {
       if (active) setBusy(res.ok ? res.busy : null);
@@ -561,8 +568,15 @@ export function CalendarView({
   // računara interval uopšte ne kuca, pa se propušteni minuti nikad ne
   // nadoknade. Elapsed pristup + tick na fokus se sam ispravi pri povratku.
   const [nowMin, setNowMin] = useState(nowMinutes);
-  useEffect(() => {
+  // Svež serverski snapshot (promena dana / refresh) odmah pregazi lokalno
+  // izvedeno vreme - tokom rendera ("adjusting state during render" obrazac),
+  // a ne sinhrono u effect-u
+  const [prevNowMinutes, setPrevNowMinutes] = useState(nowMinutes);
+  if (prevNowMinutes !== nowMinutes) {
+    setPrevNowMinutes(nowMinutes);
     setNowMin(nowMinutes);
+  }
+  useEffect(() => {
     if (nowMinutes === null) return;
     const anchoredAt = Date.now();
     const tick = () =>

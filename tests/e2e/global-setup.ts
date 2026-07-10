@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { DEMO_TENANT_ID, E2E_ADMIN } from "./fixtures";
+import { DEMO_TENANT_ID, E2E_ADMIN, E2E_SUPERADMIN } from "./fixtures";
 
 // Pravi admin korisnika i vezuje ga za seed demo salon - u LOKALNOJ bazi.
 // Guard ispod je namerno prvi red posla: E2E piše prave rezervacije, pa ne
@@ -40,5 +40,18 @@ export default async function globalSetup(): Promise<void> {
     .upsert({ tenant_id: DEMO_TENANT_ID, user_id: userId, role: "owner" });
   if (memberError) {
     throw new Error(`E2E setup: članstvo nije upisano: ${memberError.message}`);
+  }
+
+  // Superadmin: nalog bez salona; panel ga pušta preko SUPER_ADMIN_EMAIL
+  // env-a (CI je postavlja pre buildovanja aplikacije)
+  const { data: superCreated } = await db.auth.admin.createUser({
+    email: E2E_SUPERADMIN.email,
+    password: E2E_SUPERADMIN.password,
+    email_confirm: true,
+  });
+  if (!superCreated?.user?.id) {
+    const { data } = await db.auth.admin.listUsers();
+    const postoji = data?.users.some((u) => u.email === E2E_SUPERADMIN.email);
+    if (!postoji) throw new Error("E2E setup: superadmin nalog nije kreiran");
   }
 }

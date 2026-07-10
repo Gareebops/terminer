@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Claude worktree-ovi (paralelne sesije) - tuđi radni prostor sa
+    // sopstvenim .next buildom, ne lintuje se odavde
+    ".claude/**",
+    // Mobile app ima svoj lint setup (expo); ovaj config je za web
+    "mobile/**",
   ]),
 ]);
 

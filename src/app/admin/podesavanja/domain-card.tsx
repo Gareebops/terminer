@@ -173,7 +173,7 @@ export function DomainCard({
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Promena se primeni za nekoliko minuta do nekoliko sati - klikni
-                  „Proveri" kad podesiš.
+                  „Proveri“ kad podesiš.
                 </p>
               </div>
             )}
