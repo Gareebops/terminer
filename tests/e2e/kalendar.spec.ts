@@ -33,7 +33,8 @@ test("admin ručno upisuje termin, duplikat istog termina je odbijen", async ({ 
 
   // Termin je u Rezervacijama sa tačnim vremenom i statusom
   await page.goto("/admin/rezervacije");
-  const red = page.getByRole("row").filter({ hasText: "Telefonski Klijent" });
+  // Mobilni viewport prikazuje kartice umesto tabele (UI audit 10.7)
+  const red = page.locator("div.rounded-2xl").filter({ hasText: "Telefonski Klijent" });
   await expect(red).toBeVisible();
   await expect(red.getByText("18:30–19:00")).toBeVisible();
   await expect(red.getByText("Potvrđeno")).toBeVisible();
@@ -77,7 +78,8 @@ test("salon otkazuje termin kroz tabelu rezervacija", async ({ page }) => {
   await loginAsAdmin(page);
   await page.goto("/admin/rezervacije");
 
-  const red = page.getByRole("row").filter({ hasText: "Telefonski Klijent" });
+  // Mobilni viewport prikazuje kartice umesto tabele (UI audit 10.7)
+  const red = page.locator("div.rounded-2xl").filter({ hasText: "Telefonski Klijent" });
   await expect(red).toBeVisible();
   await red.getByRole("button", { name: "Izmeni" }).click();
   await page.getByRole("menuitem", { name: "Otkazano" }).click();

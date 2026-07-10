@@ -41,14 +41,14 @@ test("velika slova naslova se odmah vide na javnom sajtu", async ({ page }) => {
   await page.goto("/admin/podesavanja");
 
   await page.getByRole("button", { name: "Velika slova" }).click();
-  await expect(page.getByText("Stil naslova je sačuvan.")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Sačuvano", { exact: true })).toBeVisible({ timeout: 15_000 });
   await page.goto("/demo");
   await expect(page.locator('[data-heading="caps"]')).toHaveCount(1);
 
   // Vrati na podrazumevano
   await page.goto("/admin/podesavanja");
   await page.getByRole("button", { name: "Normalno", exact: true }).click();
-  await expect(page.getByText("Stil naslova je sačuvan.")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Sačuvano", { exact: true })).toBeVisible({ timeout: 15_000 });
   await page.goto("/demo");
   await expect(page.locator('[data-heading="normal"]')).toHaveCount(1);
 });
