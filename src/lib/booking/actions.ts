@@ -630,7 +630,7 @@ export async function cancelBooking(input: {
   // UI to već brani, ali server mora imati sopstvenu proveru
   const { data: existing, error: guardError } = await db
     .from("bookings")
-    .select("date, start_time, created_at, tenants(timezone)")
+    .select("date, start_time, created_at, starts_at, tenants(timezone)")
     .eq("id", ids.data.bookingId)
     .eq("cancel_token", ids.data.cancelToken)
     .maybeSingle();
@@ -650,14 +650,15 @@ export async function cancelBooking(input: {
     if (started) {
       return { ok: false, error: "Termin je već prošao, pa otkazivanje više nije moguće." };
     }
-    // Link za otkazivanje važi sat vremena od zakazivanja (lib/booking/cancel);
-    // code omogućava kartici da pređe u "istekao prozor" prikaz bez refresha
-    if (linkCancelExpired(existing.created_at, Date.now())) {
+    // Linkom se otkazuje do 48h pre termina, a bliži termin samo u prvom
+    // satu od zakazivanja (lib/booking/cancel); code omogućava kartici da
+    // pređe u "istekao prozor" prikaz bez refresha
+    if (linkCancelExpired(existing.created_at, existing.starts_at, Date.now())) {
       return {
         ok: false,
         code: "window_expired",
         error:
-          "Prošlo je više od sat vremena od zakazivanja, pa otkazivanje preko linka više nije moguće. Za izmenu se javi salonu.",
+          "Termin je za manje od 48 sati, a prošlo je više od sat vremena od zakazivanja - otkazivanje preko linka više nije moguće. Za izmenu se javi salonu.",
       };
     }
   }

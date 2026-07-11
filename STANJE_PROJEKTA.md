@@ -4,39 +4,38 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
-**Novo od 11.7 (3) — PROZOR ZA OTKAZIVANJE LINKOM: SAT VREMENA OD
-ZAKAZIVANJA (Mihajlova odluka):** klijent može linkom iz mejla da otkaže
-SAMO u roku od sat vremena od trenutka zakazivanja (i nikad posle početka
-termina - postojeća provera ostaje). Posle isteka stranica
-/{slug}/otkazivanje/{token} nudi telefon salona (tel: dugme) umesto
-dugmeta za otkazivanje; bez telefona u podešavanjima poruka upućuje na
-kontakt na sajtu. Implementacija: [cancel.ts](src/lib/booking/cancel.ts)
-(CANCEL_WINDOW_MINUTES=60, linkCancelExpired čista funkcija + 4 unit
-testa; linkCancelExpiredNow wrapper za server komponente -
-react-hooks/purity brani Date.now() u renderu, isti obrazac kao
-nowInZone); provera u cancelBooking (fail-closed: greška guard SELECT-a
-sada PREKIDA otkazivanje - ranije je pad čitanja preskakao i "started"
-proveru) sa `code: "window_expired"` u odgovoru pa kartica pređe u
-"istekao" prikaz i kad prozor istekne dok je stranica otvorena. Tekstovi
-usklađeni: mejl potvrde i ekran uspeha wizarda kažu "u roku od sat
-vremena od zakazivanja (najkasnije do početka termina)"; landing FAQ
-ažuriran; mejl "salon je otkazao" neutralizovan ("je otkazan u salonu" +
-"Ako otkazivanje nisi tražio/la, javi se salonu" umesto izvinjenja - sa
-novim pravilom najčešći admin otkaz je na MOLBU klijenta telefonom).
-Novi E2E [otkazivanje-prozor.spec.ts](tests/e2e/otkazivanje-prozor.spec.ts)
-(created_at unazađen service klijentom → stranica nudi telefon, bez
-dugmeta, booking ostaje confirmed). Adversarialna revizija (3 sočiva)
-našla i ISPRAVLJENO: fail-open guard, salon bez telefona, netačno
-obećanje za termin zakazan <1h pre početka, zamrznuto dugme posle isteka,
-zbunjujući mejl, FAQ, E2E rupa. SVESNO NEREŠENO (Mihajlo da odluči):
-(1) retroaktivnost - linkovi iz VEĆ poslatih mejlova (stari tekst bez
-roka) prestaju da rade sat posle zakazivanja; pre launcha nema pravih
-klijenata pa je prihvaćeno bez grandfatheringa; (2) interakcija sa
-anti-spam limitom 3 aktivne rezervacije po telefonu - klijent koji
-propusti prozor drži slot do termina i može da se zaključa za
-samoposluživanje (jedini izlaz telefon). VERIFIKOVANO: sveža rezervacija
-nudi otkazivanje, unazađena (2h) nudi telefon, 94 unit, lint, tsc,
-build zeleni; probni podaci obrisani.
+**Novo od 11.7 (3) — PROZOR ZA OTKAZIVANJE LINKOM (Mihajlova odluka, u
+dva koraka istog dana):** KONAČNO PRAVILO: linkom iz mejla klijent
+otkazuje **najkasnije 48h pre početka termina**; termin zakazan unutar
+poslednjih 48h otkazuje **samo u prvom satu od zakazivanja**
+(predomišljanje); nikad posle početka termina (postojeća provera).
+Evolucija: prvo uveden čist jednosatni prozor, pa je adversarialna
+revizija ukazala na ukrštanje sa anti-spam limitom (3 aktivne po
+telefonu: klijent koji propusti sat drži slot do termina / može da se
+zaključa za samoposluživanje) - Mihajlo izabrao kombinovano pravilo sa
+48h granicom (AI predlagao 24h kao default, on pooštrio). Posle isteka
+stranica /{slug}/otkazivanje/{token} nudi telefon salona (tel: dugme);
+bez telefona poruka upućuje na kontakt na sajtu. Implementacija:
+[cancel.ts](src/lib/booking/cancel.ts) (CANCEL_WINDOW_MINUTES=60,
+CANCEL_CUTOFF_HOURS=48; linkCancelExpired(created, startsAt, now) čista
+funkcija + 6 unit testova; linkCancelExpiredNow wrapper za server
+komponente - react-hooks/purity brani Date.now() u renderu, isti obrazac
+kao nowInZone); provera u cancelBooking (fail-closed: greška guard
+SELECT-a PREKIDA otkazivanje - ranije je pad čitanja preskakao i
+"started" proveru) sa `code: "window_expired"` pa kartica pređe u
+"istekao" prikaz i kad prozor istekne dok je stranica otvorena. Tekstovi:
+mejl potvrde, ekran uspeha wizarda i landing FAQ kažu "najkasnije 48
+sati pre termina (bliži termin: sat vremena od zakazivanja)"; mejl
+"salon je otkazao" neutralizovan ("je otkazan u salonu" + "Ako
+otkazivanje nisi tražio/la, javi se salonu" - najčešći admin otkaz je
+sada na MOLBU klijenta telefonom). E2E
+[otkazivanje-prozor.spec.ts](tests/e2e/otkazivanje-prozor.spec.ts): obe
+grane (blizak termin posle sata → telefon + booking ostaje confirmed;
+dalek termin posle sata → otkazivanje prolazi). SVESNO: bez
+grandfatheringa za linkove iz ranije poslatih mejlova (pre launcha nema
+pravih klijenata). VERIFIKOVANO uživo kroz preview (obe grane + stvarno
+otkazivanje dalekog termina), 96 unit, lint, tsc, build zeleni; probni
+podaci obrisani.
 
 **Novo od 11.7 (2) — PREDLOG IZGLEDA: 39 TEMA + PAMĆENJE PRIKAZANIH + MAGIC
 DUGME (Mihajlo: "vrti 4-5 istih, obogati i oboji dugme"):** (1) KATALOG

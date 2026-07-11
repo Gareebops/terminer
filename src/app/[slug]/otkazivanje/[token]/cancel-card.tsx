@@ -131,8 +131,8 @@ export function CancelCard({
           </p>
         ) : expired ? (
           <p className="mt-4 text-sm text-muted-foreground">
-            Prošlo je više od sat vremena od zakazivanja, pa otkazivanje preko
-            linka više nije moguće.
+            Termin je za manje od 48 sati, a prošlo je više od sat vremena od
+            zakazivanja - otkazivanje preko linka više nije moguće.
             {salonPhone
               ? " Za izmenu ili otkazivanje pozovi salon."
               : " Za izmenu ili otkazivanje javi se salonu - kontakt je na sajtu salona."}

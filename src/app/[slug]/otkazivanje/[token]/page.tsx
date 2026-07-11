@@ -28,7 +28,7 @@ export default async function CancelPage({
   const { data: booking } = await db
     .from("bookings")
     .select(
-      "id, cancel_token, date, start_time, end_time, status, customer_name, created_at, services(name), staff(name)"
+      "id, cancel_token, date, start_time, end_time, status, customer_name, created_at, starts_at, services(name), staff(name)"
     )
     .eq("tenant_id", site.tenant.id)
     .eq("cancel_token", token)
@@ -40,9 +40,12 @@ export default async function CancelPage({
     (booking.date < now.date ||
       (booking.date === now.date &&
         toMinutes(booking.start_time.slice(0, 5)) <= now.minutes));
-  // Link važi sat vremena od zakazivanja - posle toga se nudi telefon salona
+  // Linkom se otkazuje do 48h pre termina (bliži termin: sat od
+  // zakazivanja) - posle toga se nudi telefon salona
   const windowExpired =
-    !!booking && !isPast && linkCancelExpiredNow(booking.created_at);
+    !!booking &&
+    !isPast &&
+    linkCancelExpiredNow(booking.created_at, booking.starts_at);
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">

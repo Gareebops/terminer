@@ -72,9 +72,10 @@ function confirmationHtml(input: BookingEmailInput): string {
       <p style="margin:0 0 20px;font-size:14px;color:#52525b;">Ovo je potvrda tvoje rezervacije.</p>
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-top:1px solid #e4e4e7;padding-top:8px;">${rowsHtml}</table>
       <p style="margin:24px 0 0;font-size:13px;color:#71717a;line-height:1.6;">
-        Ne odgovara ti termin? U roku od sat vremena od zakazivanja (najkasnije
-        do početka termina) možeš da ga
-        <a href="${input.cancelUrl}" style="color:#18181b;font-weight:600;">otkažeš ovde</a>${phoneNote}.
+        Ne odgovara ti termin? Možeš da ga
+        <a href="${input.cancelUrl}" style="color:#18181b;font-weight:600;">otkažeš ovde</a>
+        najkasnije 48 sati pre početka (termin zakazan za manje od 48h - u roku
+        od sat vremena od zakazivanja)${phoneNote}.
       </p>
     </div>
     <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#a1a1aa;">

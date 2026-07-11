@@ -648,8 +648,8 @@ export function BookingWizard({
               <div className="mx-auto mt-5 max-w-md rounded-xl bg-muted/60 px-4 py-3 text-left">
                 <p className="text-xs font-medium text-muted-foreground">
                   {emailSent
-                    ? `Potvrda sa linkom za otkazivanje je poslata na ${email}. Link važi sat vremena od zakazivanja (najkasnije do početka termina):`
-                    : "Predomislio/la si se? Ovaj link otkazuje termin u roku od sat vremena od zakazivanja (najkasnije do početka termina) - sačuvaj ga:"}
+                    ? `Potvrda sa linkom za otkazivanje je poslata na ${email}. Linkom otkazuješ najkasnije 48 sati pre termina (bliži termin: sat vremena od zakazivanja):`
+                    : "Predomislio/la si se? Linkom otkazuješ najkasnije 48 sati pre termina (bliži termin: sat vremena od zakazivanja) - sačuvaj ga:"}
                 </p>
                 <div className="mt-2 flex items-center gap-2">
                   <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
