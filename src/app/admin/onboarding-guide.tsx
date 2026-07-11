@@ -30,9 +30,14 @@ interface GuideStep {
   meta?: string;
   desc?: string;
   cta?: { href: string; label: string };
-  // Korak radnog vremena: pored CTA nudi i "Već je tačno" (default 09-20
-  // može stvarno biti tačan, pa automatska provera ne postoji)
-  confirm?: boolean;
+  // Koraci čiji default može stvarno biti dobar (radno vreme, izgled)
+  // nude i potvrdu pored CTA - automatska provera defaulta ne postoji,
+  // a bez potvrde bi korak blokirao objavu kroz vodič
+  confirm?: {
+    label: string;
+    patch: { scheduleConfirmed?: boolean; appearanceConfirmed?: boolean };
+    toast: string;
+  };
 }
 
 export function OnboardingGuide({
@@ -45,6 +50,7 @@ export function OnboardingGuide({
   scheduleConfirmed,
   singleStaffId,
   appearanceTouched,
+  appearanceConfirmed,
 }: {
   slug: string;
   salonName: string;
@@ -55,6 +61,7 @@ export function OnboardingGuide({
   scheduleConfirmed: boolean;
   singleStaffId: string | null;
   appearanceTouched: boolean;
+  appearanceConfirmed: boolean;
 }) {
   const router = useRouter();
   const [welcomeOpen, setWelcomeOpen] = useState(showWelcome);
@@ -109,13 +116,22 @@ export function OnboardingGuide({
         href: singleStaffId ? `/admin/zaposleni/${singleStaffId}` : "/admin/zaposleni",
         label: "Proveri radno vreme",
       },
-      confirm: true,
+      confirm: {
+        label: "Već je tačno",
+        patch: { scheduleConfirmed: true },
+        toast: "Radno vreme je potvrđeno.",
+      },
     },
     {
       title: "Doteraj izgled sajta",
-      done: appearanceTouched,
+      done: appearanceTouched || appearanceConfirmed,
       desc: "Boja brenda, slike i kontakt podaci - da sajt liči baš na tvoj salon.",
       cta: { href: "/admin/podesavanja", label: "Otvori izgled" },
+      confirm: {
+        label: "Sviđa mi se ovako",
+        patch: { appearanceConfirmed: true },
+        toast: "Izgled je potvrđen.",
+      },
     },
     {
       title: "Pogledaj sajt i objavi ga",
@@ -129,7 +145,9 @@ export function OnboardingGuide({
   function closeWelcome() {
     setWelcomeOpen(false);
     startTransition(async () => {
-      await updateOnboarding({ welcomeSeen: true });
+      // Pad upisa ne sme da obori stranicu - u najgorem slučaju se welcome
+      // dijalog vrati pri sledećoj poseti
+      await updateOnboarding({ welcomeSeen: true }).catch(() => {});
     });
   }
 
@@ -144,12 +162,13 @@ export function OnboardingGuide({
     });
   }
 
-  // "Već je tačno" - radno vreme je stvarno pon-sub 09-20, samo potvrdi
-  function confirmSchedule() {
+  // "Već je tačno" / "Sviđa mi se ovako" - default je stvarno dobar, samo
+  // upiši flag potvrde i osveži štikliranje
+  function confirmStep(confirm: NonNullable<GuideStep["confirm"]>) {
     startConfirm(async () => {
-      const res = await updateOnboarding({ scheduleConfirmed: true });
+      const res = await updateOnboarding(confirm.patch);
       if (res.ok) {
-        toast.success("Radno vreme je potvrđeno.");
+        toast.success(confirm.toast);
         router.refresh();
       } else {
         toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
@@ -207,7 +226,15 @@ export function OnboardingGuide({
             ? "Još samo objava i salon je na mreži."
             : `Još ${steps.length - doneCount} ${plural(steps.length - doneCount, ["korak", "koraka", "koraka"])} i salon je na mreži - treba oko 10 minuta.`}
         </p>
-        <div className="mt-4 h-2.5 rounded-full bg-ink/5">
+        <div
+          className="mt-4 h-2.5 rounded-full bg-ink/5"
+          role="progressbar"
+          aria-label="Napredak vodiča"
+          aria-valuemin={0}
+          aria-valuemax={steps.length}
+          aria-valuenow={doneCount}
+          aria-valuetext={`${doneCount} od ${steps.length} koraka`}
+        >
           <div
             className="h-2.5 rounded-full bg-mint-strong transition-all"
             style={{ width: `${(doneCount / steps.length) * 100}%` }}
@@ -218,10 +245,15 @@ export function OnboardingGuide({
           {steps.map((step, i) => {
             const isCurrent = i === currentIndex;
             return (
-              <div key={step.title} className="flex flex-wrap items-center gap-3 py-3">
+              <div
+                key={step.title}
+                className="flex flex-wrap items-center gap-3 py-3"
+                aria-current={isCurrent ? "step" : undefined}
+              >
                 {step.done ? (
                   <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-mint text-ink">
                     <Check className="size-3.5" />
+                    <span className="sr-only">Završeno:</span>
                   </span>
                 ) : (
                   <span
@@ -265,10 +297,10 @@ export function OnboardingGuide({
                         variant="outline"
                         className="rounded-full"
                         disabled={confirmPending}
-                        onClick={confirmSchedule}
+                        onClick={() => confirmStep(step.confirm!)}
                       >
                         <Check className="size-3.5" />
-                        {confirmPending ? "Čuvanje..." : "Već je tačno"}
+                        {confirmPending ? "Čuvanje..." : step.confirm.label}
                       </Button>
                     )}
                     <Button asChild size="sm" className="shrink-0 rounded-full">
@@ -384,10 +416,21 @@ export function OnboardingGuide({
               Podeli na WhatsApp
             </a>
           </div>
-          <div className="flex justify-center">
+          {/* Objava nije cilj nego prva rezervacija - probni termin kroz
+              wizard pokazuje šta klijenti vide i puni kalendar prvim upisom */}
+          <p className="text-center text-xs text-muted-foreground">
+            Sledeći korak: prođi kroz zakazivanje kao klijent - vidiš tačno
+            šta klijenti vide, a probni termin ti stigne u kalendar.
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
             <Button asChild variant="outline" className="rounded-full">
               <a href={siteUrl} target="_blank" rel="noreferrer">
                 <ExternalLink className="size-4" /> Otvori sajt
+              </a>
+            </Button>
+            <Button asChild variant="brand-mint" size="pill">
+              <a href={`${siteUrl}/zakazi`} target="_blank" rel="noreferrer">
+                Zakaži probni termin <ArrowRight className="size-4" />
               </a>
             </Button>
           </div>

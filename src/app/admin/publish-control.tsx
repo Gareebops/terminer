@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, ExternalLink, Globe, Rocket } from "lucide-react";
+import { ArrowRight, Check, Copy, ExternalLink, Globe, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -225,6 +225,25 @@ export function PublishControl({
                     Podeli na WhatsApp
                   </a>
                 </div>
+              )}
+
+              {/* Isti "šta dalje" kao u proslavi vodiča: cilj nije objava
+                  nego prva rezervacija */}
+              {justPublished && (
+                <>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Sledeći korak: prođi kroz zakazivanje kao klijent - vidiš
+                    tačno šta klijenti vide, a probni termin ti stigne u
+                    kalendar.
+                  </p>
+                  <div className="flex justify-center">
+                    <Button asChild variant="brand-mint" size="pill">
+                      <a href={`${siteUrl}/zakazi`} target="_blank" rel="noreferrer">
+                        Zakaži probni termin <ArrowRight className="size-4" />
+                      </a>
+                    </Button>
+                  </div>
+                </>
               )}
 
               <div className="mt-2 border-t pt-3 text-center">

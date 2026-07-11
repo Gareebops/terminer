@@ -5,14 +5,22 @@ import { Check, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 // Brza akcija na Početnoj: kopira javni link sajta za slanje klijentima.
-export function ShareSiteButton({ slug }: { slug: string }) {
+export function ShareSiteButton({ slug, published }: { slug: string; published: boolean }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/${slug}`);
       setCopied(true);
-      toast.success("Link sajta je kopiran - nalepi ga u poruku ili na profil.");
+      // Neobjavljen sajt posetiocima prikazuje 404 - kopiranje radi (link se
+      // sme poslati unapred), ali bez upozorenja je ovo zamka u onboardingu
+      if (published) {
+        toast.success("Link sajta je kopiran - nalepi ga u poruku ili na profil.");
+      } else {
+        toast.warning(
+          "Link je kopiran, ali sajt još nije objavljen - posetiocima neće raditi dok ga ne objaviš."
+        );
+      }
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Kopiranje nije uspelo.");

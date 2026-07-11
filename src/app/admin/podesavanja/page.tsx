@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { OnboardingState, SiteSettings } from "@/lib/types";
@@ -34,6 +35,18 @@ export default async function SettingsPage() {
         />
       </div>
       {onboarding.guide_hidden && !tenant.is_published && <ShowGuideLink />}
+      {/* Korak "Doteraj izgled" vodi ovamo; izmene se čuvaju tiho (bez
+          toasta), pa je ovo jedini put nazad u vodič sa ove stranice */}
+      {!onboarding.guide_hidden && !tenant.is_published && (
+        <div className="mt-8 text-center">
+          <Link
+            href="/admin"
+            className="text-xs text-ink/70 underline-offset-2 hover:underline"
+          >
+            Nastavi vodič na Početnoj →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

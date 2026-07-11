@@ -60,6 +60,10 @@ export interface OnboardingState {
   // ili je u vodiču kliknuo "Već je tačno" (default 09-20 se ne može
   // razlikovati od "nije ni pogledao", pa se traži eksplicitan signal)
   schedule_confirmed?: boolean;
+  // Izgled potvrđen: vlasniku se default sviđa pa je u vodiču kliknuo
+  // "Sviđa mi se ovako" (pandan schedule_confirmed - bez ovoga korak
+  // izgleda blokira objavu kroz vodič)
+  appearance_confirmed?: boolean;
   // Jednokratno objašnjenje modela "pravilo + izuzeci" na stranici Raspored
   raspored_seen?: boolean;
 }

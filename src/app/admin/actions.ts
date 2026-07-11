@@ -349,6 +349,7 @@ const onboardingSchema = z.object({
   welcomeSeen: z.boolean().optional(),
   guideHidden: z.boolean().optional(),
   scheduleConfirmed: z.boolean().optional(),
+  appearanceConfirmed: z.boolean().optional(),
   rasporedSeen: z.boolean().optional(),
 });
 
@@ -388,6 +389,8 @@ export async function updateOnboarding(
   if (parsed.data.guideHidden !== undefined) patch.guide_hidden = parsed.data.guideHidden;
   if (parsed.data.scheduleConfirmed !== undefined)
     patch.schedule_confirmed = parsed.data.scheduleConfirmed;
+  if (parsed.data.appearanceConfirmed !== undefined)
+    patch.appearance_confirmed = parsed.data.appearanceConfirmed;
   if (parsed.data.rasporedSeen !== undefined) patch.raspored_seen = parsed.data.rasporedSeen;
 
   const ok = await mergeOnboarding(supabase, tenant.id, patch);

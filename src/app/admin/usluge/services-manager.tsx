@@ -44,11 +44,14 @@ const SAMPLE_KINDS: { id: SampleServiceKind; label: string }[] = [
 
 function ServiceForm({
   service,
+  guideActive,
   onDone,
 }: {
   service?: Service;
+  guideActive: boolean;
   onDone: () => void;
 }) {
+  const router = useRouter();
   const [name, setName] = useState(service?.name ?? "");
   const [description, setDescription] = useState(service?.description ?? "");
   const [duration, setDuration] = useState(String(service?.duration_minutes ?? 30));
@@ -71,7 +74,14 @@ function ServiceForm({
         isActive,
       });
       if (res.ok) {
-        toast.success("Sačuvano.");
+        // Dok je vodič aktivan i ručno čuvanje nudi povratak na Početnu -
+        // isti obrazac kao primeri usluga i radno vreme kod zaposlenog
+        toast.success(
+          "Sačuvano.",
+          guideActive
+            ? { action: { label: "Nastavi vodič", onClick: () => router.push("/admin") } }
+            : undefined
+        );
         onDone();
       } else {
         toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
@@ -140,7 +150,13 @@ function ServiceForm({
   );
 }
 
-export function ServicesManager({ services }: { services: Service[] }) {
+export function ServicesManager({
+  services,
+  guideActive,
+}: {
+  services: Service[];
+  guideActive: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Service | undefined>();
@@ -200,6 +216,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
           <ServiceForm
             key={editing?.id ?? "new"}
             service={editing}
+            guideActive={guideActive}
             onDone={() => {
               setOpen(false);
               setEditing(undefined);

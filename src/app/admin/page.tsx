@@ -188,6 +188,25 @@ export default async function AdminDashboardPage() {
         </Button>
       </div>
 
+      {/* Vodič stoji PRE brzih akcija: za svež salon je on primarni sadržaj
+          (brze akcije su preuranjene bez usluga i objave), a pozicija je
+          fiksna bez obzira na published da komponenta ne bi remountovala
+          usred proslave objave */}
+      {showGuide && (
+        <OnboardingGuide
+          slug={tenant.slug}
+          salonName={tenant.name}
+          published={tenant.is_published}
+          showWelcome={!onboarding.welcome_seen && !tenant.is_published}
+          servicesCount={servicesRes.count ?? 0}
+          staffCount={staffIds.length}
+          scheduleConfirmed={!!onboarding.schedule_confirmed}
+          singleStaffId={staffIds.length === 1 ? staffIds[0] : null}
+          appearanceTouched={appearanceTouched}
+          appearanceConfirmed={!!onboarding.appearance_confirmed}
+        />
+      )}
+
       {/* Brze akcije - najčešći poslovi na jedan klik. Mobil: uredna mreža
           2+1 (Podeli sajt puna širina), od sm naviše originalni red */}
       <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -203,22 +222,8 @@ export default async function AdminDashboardPage() {
         >
           <Ban className="size-4" /> Blokiraj vreme
         </Link>
-        <ShareSiteButton slug={tenant.slug} />
+        <ShareSiteButton slug={tenant.slug} published={tenant.is_published} />
       </div>
-
-      {showGuide && (
-        <OnboardingGuide
-          slug={tenant.slug}
-          salonName={tenant.name}
-          published={tenant.is_published}
-          showWelcome={!onboarding.welcome_seen && !tenant.is_published}
-          servicesCount={servicesRes.count ?? 0}
-          staffCount={staffIds.length}
-          scheduleConfirmed={!!onboarding.schedule_confirmed}
-          singleStaffId={staffIds.length === 1 ? staffIds[0] : null}
-          appearanceTouched={appearanceTouched}
-        />
-      )}
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         {/* Tamna hero kartica - današnji dan */}
