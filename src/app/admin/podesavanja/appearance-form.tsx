@@ -590,7 +590,9 @@ export function AppearanceForm({
           <p className="mb-3 mt-1 text-xs text-muted-foreground">
             Zaobljenost kartica, slika i polja na sajtu.
           </p>
-          <div className="grid grid-cols-3 gap-2">
+          {/* Ispod sm jedna kolona - "(podrazumevano)" je neprelomiva reč
+              šira od trećine mobilnog ekrana pa curi van kartice */}
+          <div className="grid gap-2 sm:grid-cols-3">
             {RADIUS_SCALES.map((r) => (
               <button
                 key={r.id}

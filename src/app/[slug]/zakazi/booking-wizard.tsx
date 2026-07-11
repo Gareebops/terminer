@@ -282,9 +282,11 @@ function SummaryChip({
   accent?: boolean;
 }) {
   const reduce = useReducedMotion();
+  // max-w-full + truncate: predugačak naziv usluge se seče elipsom umesto
+  // da pilula iscuri van ekrana (pun naziv je vidljiv na koraku izbora)
   const cls = accent
-    ? "rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary"
-    : "rounded-full border px-3 py-1 text-sm text-muted-foreground";
+    ? "max-w-full truncate rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary"
+    : "max-w-full truncate rounded-full border px-3 py-1 text-sm text-muted-foreground";
   if (reduce) return <span className={cls}>{children}</span>;
   return (
     <motion.span
@@ -749,7 +751,7 @@ export function BookingWizard({
               {services.map((s) => (
                 <button
                   key={s.id}
-                  className="flex w-full items-center justify-between rounded-[var(--surface-radius)] border p-4 text-left transition-colors hover:bg-accent"
+                  className="flex w-full items-center justify-between gap-4 rounded-[var(--surface-radius)] border p-4 text-left transition-colors hover:bg-accent"
                   onClick={() => pickService(s)}
                 >
                   <div className="min-w-0">

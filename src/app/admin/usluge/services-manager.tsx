@@ -212,10 +212,10 @@ export function ServicesManager({ services }: { services: Service[] }) {
         {services.map((s, i) => (
           <div
             key={s.id}
-            className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-card"
+            className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-card"
           >
-            <div>
-              <p className="font-medium">
+            <div className="min-w-0">
+              <p className="break-words font-medium">
                 {s.name}{" "}
                 {!s.is_active && <Badge variant="outline">Neaktivna</Badge>}
               </p>

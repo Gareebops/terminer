@@ -112,12 +112,14 @@ export function PaymentModal({
               data-active={plan === p}
               className="rounded-2xl border-2 border-ink/10 p-3.5 text-left transition-colors data-[active=true]:border-ink data-[active=true]:bg-ink data-[active=true]:text-white"
             >
-              <div className="flex items-center justify-between gap-1">
+              {/* flex-wrap + nowrap: na uskom ekranu pilula pada cela u novi
+                  red - bez toga se tekst prelama unutar pilule */}
+              <div className="flex flex-wrap items-center justify-between gap-1">
                 <p className="text-sm font-bold">
                   {p === "monthly" ? "Mesečna" : "Godišnja"}
                 </p>
                 {p === "yearly" && (
-                  <span className="rounded-full bg-mint px-2 py-0.5 text-[10px] font-bold text-ink">
+                  <span className="whitespace-nowrap rounded-full bg-mint px-2 py-0.5 text-[10px] font-bold text-ink">
                     2 mes. gratis
                   </span>
                 )}

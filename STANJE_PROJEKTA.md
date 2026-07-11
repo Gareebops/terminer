@@ -1,8 +1,44 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 10. jul 2026. Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 11. jul 2026. Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
+
+**Novo od 11.7 — KALENDAR: MOBILNI REDIZAJN + LOV NA OVERFLOW TEKSTA (Mihajlo
+prijavio 2 problema sa telefona; sweep 4 agenta našao još 8, sve ispravljeno):**
+(1) KALENDAR ([calendar-view.tsx](src/app/admin/kalendar/calendar-view.tsx)):
+čipovi termina/blokada se VIŠE NIKAD ne prelamaju - nizak čip (< 38px) je
+jedan red sa truncate, viši dobija i drugi red "usluga · status" (truncate);
+prelomljen tekst se na fiksnoj visini sekao/curio van čipa (Mihajlov
+screenshot). PX_PER_MIN 1.1→1.4 (30-min termin = 42px = 2 čitljiva reda);
+PAD_Y=12 iznad prvog/ispod poslednjeg sata (labela "08:00" je centrirana na
+liniju pa se bez toga sekla na ivici skrola); vremenska osa 48px i **sticky
+left** (horizontalni skrol kolona na telefonu više ne odnosi sate; ugaono
+polje sticky po obe ose, z-30); zaglavlja kolona bela (ne muted) sa
+avatarom + imenom + "N termina/bez termina/ne radi" (plural helper); linije
+sati pune ink/6% umesto isprekidanih (isprekidano = jezik nedostupnosti,
+šrafura); linija "sada" ujednačena na red-600; visoki čip drži sadržaj uz
+vrh (vreme se čita na početku slota), kratki centrira. U dijalogu Blokiranje
+polje Datum na mobilnom dobija ceo red (grid-cols-2 sm:grid-cols-3 +
+col-span-2 - u trećini dijaloga se godina sr formata sekla UNUTAR inputa).
+(2) KUSTOMIZACIJA: "Oblik površina" grid-cols-3 → `sm:grid-cols-3` (ispod sm
+jedna kolona - "(podrazumevano)" je neprelomiva reč šira od trećine ekrana
+pa je curila van kartice - Mihajlov screenshot #1). (3) SWEEP NALAZI
+(workflow: 4 findera × adversarialna verifikacija, 10 potvrđeno):
+payment-modal bedž "2 mes. gratis" whitespace-nowrap + flex-wrap (lomio se
+u 2 reda unutar pilule); [slug]/page.tsx header ime salona truncate +
+shrink-0 logo, cenovnik red flex-wrap + min-w-0 + break-words (dugačak
+naziv usluge); services-manager i staff-manager kartice min-w-0 +
+break-words (+ line-clamp-1 bio, shrink-0 avatar); booking-wizard
+SummaryChip max-w-full truncate (pilula rezimea), red usluge gap-4.
+OBRAZAC ZA BUDUĆI KOD: korisnički string u flex/grid redu UVEK dobija
+min-w-0 na roditelju + truncate/break-words; fiksna visina + tekst =
+truncate, nikad prelom; grid-cols-3 sa tekstom tek od sm. VERIFIKOVANO
+kroz preview (mobil 375px + desktop, klik na čip otvara detalje, blokada
+dijalog): 88 unit, lint, build zeleni; probni termini demo salona obrisani
+service-role skriptom. POUKA: skriveni preview tab ume da "pojede" pointer
+evente (Radix select/dijalozi) - JS klik + native setter za kontrolisane
+inpute radi pouzdano.
 
 **Novo od 10.7 (3) — UI/UX AUDIT IMPLEMENTIRAN U CELOSTI (31 nalaz, Mihajlo
 odobrio "sve"):** Kompletan dizajn audit (inventar → 7 dimenzija → nalazi →

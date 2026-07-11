@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { fromMinutes, toMinutes } from "@/lib/booking/slots";
+import { plural } from "@/lib/plural";
 import {
   BOOKING_STATUS_LABELS,
   BOOKING_STATUS_STYLES,
@@ -46,7 +47,11 @@ import {
 } from "../actions";
 import { ScheduleConflictDialog } from "../schedule-conflict-dialog";
 
-const PX_PER_MIN = 1.1;
+const PX_PER_MIN = 1.4;
+
+// Prostor iznad prvog i ispod poslednjeg sata - labela sata je centrirana
+// na liniju (translate -50%) pa bi se bez ovoga "08:00" seklo na ivici skrola
+const PAD_Y = 12;
 
 // Šrafura = nedostupno (van radnog vremena, isti jezik kao blokade)
 const HATCH =
@@ -319,8 +324,10 @@ function BlockDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
+            {/* Datum na mobilnom dobija ceo red - u trećini dijaloga se
+                godina srpskog formata seče unutar polja */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="col-span-2 space-y-2 sm:col-span-1">
                 <Label htmlFor="bl-date">Datum</Label>
                 <Input
                   id="bl-date"
@@ -651,12 +658,12 @@ export function CalendarView({
   bookings.forEach((b) => widen(b.start_time, b.end_time));
   blockedSlots.forEach((b) => widen(b.start_time, b.end_time));
 
-  const top = (minutes: number) => (minutes - dayStart) * PX_PER_MIN;
+  const top = (minutes: number) => (minutes - dayStart) * PX_PER_MIN + PAD_Y;
   const showNow = nowMin !== null && nowMin >= dayStart && nowMin <= dayEnd;
 
   const hours: number[] = [];
   for (let m = dayStart; m < dayEnd; m += 60) hours.push(m);
-  const gridHeight = (dayEnd - dayStart) * PX_PER_MIN;
+  const gridHeight = (dayEnd - dayStart) * PX_PER_MIN + PAD_Y * 2;
 
   const staffNameById = new Map(staff.map((m) => [m.id, m.name]));
 
@@ -687,41 +694,57 @@ export function CalendarView({
         <div
           className="grid"
           style={{
-            gridTemplateColumns: `56px repeat(${staff.length}, minmax(160px, 1fr))`,
+            gridTemplateColumns: `48px repeat(${staff.length}, minmax(160px, 1fr))`,
           }}
         >
-          {/* Zaglavlje - sticky da imena ostanu vidljiva dok se grid skroluje */}
-          <div className="sticky top-0 z-20 border-b bg-muted p-2" />
-          {staff.map((m) => (
-            <div
-              key={m.id}
-              className="sticky top-0 z-20 border-b border-l bg-muted p-2 text-center text-sm font-medium"
-            >
-              <span className="inline-flex max-w-full items-center justify-center gap-2">
-                {m.photo_url ? (
-                  <Image
-                    src={m.photo_url}
-                    alt=""
-                    width={24}
-                    height={24}
-                    className="size-6 shrink-0 rounded-full object-cover"
-                  />
-                ) : (
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-ink/10 text-[10px] font-bold">
-                    {m.name.charAt(0)}
-                  </span>
-                )}
-                <span className="truncate">{m.name}</span>
-              </span>
-            </div>
-          ))}
+          {/* Zaglavlje - sticky da imena ostanu vidljiva dok se grid skroluje;
+              ugaono polje je i left-sticky da pokrije vremensku osu */}
+          <div className="sticky left-0 top-0 z-30 border-b bg-white" />
+          {staff.map((m) => {
+            const count = bookings.filter((b) => b.staff_id === m.id).length;
+            const radi = (windows[m.id] ?? null) !== null;
+            return (
+              <div
+                key={m.id}
+                className="sticky top-0 z-20 border-b border-l bg-white px-2 py-1.5 text-center text-sm font-semibold"
+              >
+                <span className="inline-flex max-w-full items-center justify-center gap-1.5">
+                  {m.photo_url ? (
+                    <Image
+                      src={m.photo_url}
+                      alt=""
+                      width={24}
+                      height={24}
+                      className="size-6 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-ink/10 text-[10px] font-bold">
+                      {m.name.charAt(0)}
+                    </span>
+                  )}
+                  <span className="truncate">{m.name}</span>
+                </span>
+                <span className="block truncate text-[11px] font-normal text-ink/60">
+                  {count > 0
+                    ? `${count} ${plural(count, ["termin", "termina", "termina"])}`
+                    : radi
+                      ? "bez termina"
+                      : "ne radi"}
+                </span>
+              </div>
+            );
+          })}
 
-          {/* Vremenska osa */}
-          <div className="relative" style={{ height: gridHeight }}>
+          {/* Vremenska osa - left-sticky da sati ostanu vidljivi dok se
+              kolone zaposlenih skroluju horizontalno (telefon) */}
+          <div
+            className="sticky left-0 z-10 bg-white"
+            style={{ height: gridHeight }}
+          >
             {hours.map((m) => (
               <span
                 key={m}
-                className="absolute right-2 -translate-y-1/2 text-xs text-muted-foreground"
+                className="absolute right-2 -translate-y-1/2 text-xs tabular-nums text-muted-foreground"
                 style={{ top: top(m) }}
               >
                 {String(m / 60).padStart(2, "0")}:00
@@ -775,14 +798,14 @@ export function CalendarView({
                 {hours.map((h) => (
                   <div
                     key={h}
-                    className="absolute inset-x-0 border-t border-dashed border-muted"
+                    className="absolute inset-x-0 border-t border-ink/[0.06]"
                     style={{ top: top(h) }}
                   />
                 ))}
                 {/* Linija trenutnog vremena (samo za današnji dan) */}
                 {showNow && (
                   <div
-                    className="pointer-events-none absolute inset-x-0 z-10 h-px bg-red-500"
+                    className="pointer-events-none absolute inset-x-0 z-10 h-px bg-red-600"
                     style={{ top: top(nowMin!) }}
                   />
                 )}
@@ -816,44 +839,66 @@ export function CalendarView({
                       key={b.id}
                       onClick={() => setBlockToRemove(b.id)}
                       title={`Blokirano${b.reason ? `: ${b.reason}` : ""} - klik za uklanjanje`}
-                      className="absolute inset-x-1 rounded-xl bg-ink/[0.04] px-2 py-1 text-left text-xs text-ink/70 ring-1 ring-ink/10 hover:ring-red-400"
+                      className="absolute inset-x-1 flex flex-col justify-center overflow-hidden rounded-lg bg-ink/[0.04] px-2 text-left text-xs text-ink/70 ring-1 ring-ink/10 hover:ring-red-400"
                       style={{
                         top: top(s),
-                        height: (e - s) * PX_PER_MIN,
+                        height: Math.max((e - s) * PX_PER_MIN, 22),
                         backgroundImage: HATCH,
                       }}
                     >
-                      <span className="font-medium">Blokirano</span>
-                      {b.reason && <span> · {b.reason}</span>}
+                      <span className="w-full truncate">
+                        <span className="font-medium">Blokirano</span>
+                        {b.reason && ` · ${b.reason}`}
+                      </span>
                     </button>
                   );
                 })}
                 {myBookings.map((b) => {
                   const s = toMinutes(b.start_time.slice(0, 5));
                   const e = toMinutes(b.end_time.slice(0, 5));
+                  const h = Math.max((e - s) * PX_PER_MIN, 22);
+                  // Sadržaj se NIKAD ne prelama: nizak čip = jedan red sa
+                  // truncate, viši čip dobija i red sa uslugom - prelomljen
+                  // tekst se na fiksnoj visini sekao/curio van čipa
+                  const twoLines = h >= 38;
                   const dimmed =
                     b.status === "completed" || b.status === "no_show";
+                  const statusNote =
+                    b.status === "completed"
+                      ? "završeno"
+                      : b.status === "no_show"
+                        ? "nije došao"
+                        : null;
                   return (
                     <button
                       key={b.id}
                       onClick={() => setSelected(b)}
                       title={`${b.customer_name} · ${b.customer_phone} - klik za detalje`}
-                      className={`absolute inset-x-1 overflow-hidden rounded-xl px-2 py-1 text-left text-xs transition-shadow hover:ring-2 hover:ring-ink/30 ${
+                      className={`absolute inset-x-1 flex flex-col overflow-hidden rounded-lg px-2 text-left text-xs leading-tight transition-shadow hover:ring-2 hover:ring-ink/30 ${
+                        twoLines ? "justify-start py-1" : "justify-center"
+                      } ${
                         dimmed
                           ? "bg-ink/10 text-ink/70 ring-1 ring-ink/10"
                           : "bg-ink text-white"
-                      } ${b.status === "no_show" ? "line-through" : ""}`}
-                      style={{ top: top(s), height: Math.max((e - s) * PX_PER_MIN, 22) }}
+                      }`}
+                      style={{ top: top(s), height: h }}
                     >
-                      <span className="font-medium">
-                        {b.start_time.slice(0, 5)} {b.customer_name}
+                      <span
+                        className={`w-full truncate font-semibold ${
+                          b.status === "no_show" ? "line-through" : ""
+                        }`}
+                      >
+                        <span className="tabular-nums">
+                          {b.start_time.slice(0, 5)}
+                        </span>{" "}
+                        {b.customer_name}
                       </span>
-                      <span className={dimmed ? "opacity-70" : "opacity-80"}>
-                        {" "}
-                        · {b.services?.name}
-                        {b.status === "completed" && " · završeno"}
-                        {b.status === "no_show" && " · nije došao"}
-                      </span>
+                      {twoLines && (
+                        <span className="w-full truncate text-[11px] opacity-75">
+                          {b.services?.name ?? "Usluga"}
+                          {statusNote && ` · ${statusNote}`}
+                        </span>
+                      )}
                     </button>
                   );
                 })}

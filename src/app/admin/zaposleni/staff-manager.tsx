@@ -130,17 +130,17 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
           >
             <Link
               href={`/admin/zaposleni/${m.id}`}
-              className="flex flex-1 items-center gap-3"
+              className="flex min-w-0 flex-1 items-center gap-3"
             >
-              <div className="flex size-10 items-center justify-center rounded-full bg-muted font-semibold">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted font-semibold">
                 {m.name.charAt(0)}
               </div>
-              <div>
-                <p className="font-medium">
+              <div className="min-w-0">
+                <p className="break-words font-medium">
                   {m.name}{" "}
                   {!m.is_active && <Badge variant="outline">Neaktivan</Badge>}
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="line-clamp-1 text-sm text-muted-foreground">
                   {m.bio ?? "Usluge i radno vreme"}
                 </p>
               </div>

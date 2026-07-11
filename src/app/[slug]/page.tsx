@@ -119,21 +119,21 @@ export default async function SalonPage({
       {/* Sticky zaglavlje */}
       <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
-          <Link href={`/${tenant.slug}`} className="flex items-center gap-2.5">
+          <Link href={`/${tenant.slug}`} className="flex min-w-0 items-center gap-2.5">
             {settings?.logo_url ? (
               <Image
                 src={settings.logo_url}
                 alt=""
                 width={36}
                 height={36}
-                className="size-9 rounded-[var(--surface-radius)] object-cover"
+                className="size-9 shrink-0 rounded-[var(--surface-radius)] object-cover"
               />
             ) : (
-              <span className="flex size-9 items-center justify-center rounded-[var(--surface-radius)] bg-primary font-bold text-primary-foreground">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-[var(--surface-radius)] bg-primary font-bold text-primary-foreground">
                 {tenant.name.charAt(0)}
               </span>
             )}
-            <span className="font-semibold tracking-tight">{tenant.name}</span>
+            <span className="truncate font-semibold tracking-tight">{tenant.name}</span>
           </Link>
           <div className="flex items-center gap-2">
             {settings?.phone && (
@@ -237,11 +237,16 @@ export default async function SalonPage({
         <h2 className="mt-2 font-heading text-3xl font-bold tracking-tight">Usluge i cenovnik</h2>
         <div className="mt-8 divide-y">
           {services.map((s) => (
-            <div key={s.id} className="flex items-center justify-between gap-4 py-4">
-              <div>
-                <p className="font-medium">{s.name}</p>
+            <div
+              key={s.id}
+              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-4"
+            >
+              <div className="min-w-0">
+                <p className="break-words font-medium">{s.name}</p>
                 {s.description && (
-                  <p className="mt-0.5 text-sm text-muted-foreground">{s.description}</p>
+                  <p className="mt-0.5 break-words text-sm text-muted-foreground">
+                    {s.description}
+                  </p>
                 )}
               </div>
               <div className="flex shrink-0 items-center gap-4">
