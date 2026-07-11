@@ -1184,6 +1184,9 @@ export type SuggestAppearanceResult =
 
 export async function suggestAppearance(input?: {
   excludeId?: string;
+  // Sve teme koje je korisnik već video u ovoj sesiji - predlog se ne
+  // ponavlja dok se pul delatnosti ne potroši (prvi id = trenutno primenjena)
+  excludeIds?: string[];
 }): Promise<SuggestAppearanceResult> {
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
@@ -1194,9 +1197,14 @@ export async function suggestAppearance(input?: {
     .eq("tenant_id", tenant.id)
     .eq("is_active", true);
 
+  const iskljucene = [
+    ...(input?.excludeId ? [input.excludeId] : []),
+    ...(input?.excludeIds ?? []).filter((id) => typeof id === "string"),
+  ].slice(0, 100);
+
   const { tema, delatnost } = predloziTemu(
     (services ?? []).map((s) => s.name),
-    input?.excludeId
+    iskljucene
   );
 
   return {

@@ -60,6 +60,23 @@ export const SITE_THEMES: SiteThemePreset[] = [
   { id: "sumska", label: "Šumska", primaryColor: "#14532d", fontPair: "warm", mode: "dark", buttonStyle: "rounded", radiusScale: "round", background: "tinted", headingStyle: "normal", gradient: false, delatnosti: ["masaza"] },
   { id: "koral", label: "Koral", primaryColor: "#be123c", fontPair: "soft", mode: "light", buttonStyle: "pill", radiusScale: "round", background: "tinted", headingStyle: "normal", gradient: true, delatnosti: ["kozmetika"] },
   { id: "celik", label: "Čelik", primaryColor: "#0f172a", fontPair: "modern", mode: "light", buttonStyle: "square", radiusScale: "sharp", background: "plain", headingStyle: "caps", gradient: false, delatnosti: ["barbershop", "univerzalno"] },
+  // Drugi talas (11.7): 15 tema iz dizajn revizije (5 dizajnera × delatnost
+  // + art direktor za dedup/ukus/distribuciju) - nove familije boja i sklopovi
+  { id: "elektrik", label: "Elektrik", primaryColor: "#2563eb", fontPair: "geometric", mode: "dark", buttonStyle: "square", radiusScale: "sharp", background: "plain", headingStyle: "caps", gradient: false, delatnosti: ["frizerski", "barbershop"] },
+  { id: "sljiva", label: "Šljiva", primaryColor: "#7d2a5b", fontPair: "elegant", mode: "light", buttonStyle: "pill", radiusScale: "round", background: "tinted", headingStyle: "caps", gradient: true, delatnosti: ["frizerski", "kozmetika"] },
+  { id: "orhideja", label: "Orhideja", primaryColor: "#86198f", fontPair: "elegant", mode: "dark", buttonStyle: "pill", radiusScale: "round", background: "tinted", headingStyle: "normal", gradient: true, delatnosti: ["kozmetika", "frizerski"] },
+  { id: "kesten", label: "Kesten", primaryColor: "#7b382c", fontPair: "warm", mode: "light", buttonStyle: "rounded", radiusScale: "soft", background: "tinted", headingStyle: "normal", gradient: false, delatnosti: ["frizerski"] },
+  { id: "stara-skola", label: "Stara škola", primaryColor: "#7a2e22", fontPair: "literary", mode: "light", buttonStyle: "square", radiusScale: "sharp", background: "tinted", headingStyle: "normal", gradient: false, delatnosti: ["barbershop", "frizerski"] },
+  { id: "klub", label: "Klub", primaryColor: "#1f4a3d", fontPair: "luxury", mode: "dark", buttonStyle: "rounded", radiusScale: "soft", background: "plain", headingStyle: "normal", gradient: false, delatnosti: ["barbershop"] },
+  { id: "zilet", label: "Žilet", primaryColor: "#b01e28", fontPair: "bold", mode: "light", buttonStyle: "square", radiusScale: "sharp", background: "plain", headingStyle: "caps", gradient: false, delatnosti: ["barbershop", "frizerski"] },
+  { id: "denim", label: "Denim", primaryColor: "#345a7c", fontPair: "geist", mode: "light", buttonStyle: "rounded", radiusScale: "soft", background: "plain", headingStyle: "normal", gradient: false, delatnosti: ["barbershop", "univerzalno"] },
+  { id: "zalfija", label: "Žalfija", primaryColor: "#52796f", fontPair: "geist", mode: "light", buttonStyle: "rounded", radiusScale: "soft", background: "tinted", headingStyle: "normal", gradient: false, delatnosti: ["kozmetika", "masaza", "univerzalno"] },
+  { id: "nebo", label: "Nebo", primaryColor: "#0284c7", fontPair: "soft", mode: "light", buttonStyle: "pill", radiusScale: "round", background: "tinted", headingStyle: "normal", gradient: true, delatnosti: ["kozmetika"] },
+  { id: "laguna", label: "Laguna", primaryColor: "#2f5f6e", fontPair: "soft", mode: "light", buttonStyle: "pill", radiusScale: "round", background: "tinted", headingStyle: "normal", gradient: false, delatnosti: ["masaza", "kozmetika"] },
+  { id: "ruzmarin", label: "Ruzmarin", primaryColor: "#5f7052", fontPair: "warm", mode: "light", buttonStyle: "rounded", radiusScale: "soft", background: "tinted", headingStyle: "normal", gradient: false, delatnosti: ["masaza"] },
+  { id: "suton", label: "Suton", primaryColor: "#7e4a63", fontPair: "luxury", mode: "dark", buttonStyle: "pill", radiusScale: "round", background: "tinted", headingStyle: "normal", gradient: true, delatnosti: ["masaza", "kozmetika"] },
+  { id: "glina", label: "Glina", primaryColor: "#96604a", fontPair: "geist", mode: "light", buttonStyle: "rounded", radiusScale: "soft", background: "plain", headingStyle: "normal", gradient: false, delatnosti: ["masaza"] },
+  { id: "petrolej", label: "Petrolej", primaryColor: "#0f4c5c", fontPair: "classic", mode: "dark", buttonStyle: "rounded", radiusScale: "soft", background: "tinted", headingStyle: "normal", gradient: false, delatnosti: ["univerzalno", "barbershop"] },
 ];
 
 // Ključne reči po delatnosti - bodovanje preko naziva usluga salona.
@@ -86,20 +103,26 @@ export function prepoznajDelatnost(nazivUsluga: string[]): Delatnost {
   return najbolja;
 }
 
-// Predlog teme: pul = teme delatnosti + univerzalne; excludeId omogućava
-// "Probaj drugi" bez ponavljanja upravo prikazane teme.
+// Predlog teme: pul = teme delatnosti + univerzalne. exclude prima id
+// trenutno primenjene teme ILI celu listu već prikazanih (prvi element =
+// trenutno primenjena) - klijent pamti šta je korisnik video pa se predlozi
+// ne vrte u krug; tek kad se pul potroši, krug kreće iznova.
 export function predloziTemu(
   nazivUsluga: string[],
-  excludeId?: string
+  exclude?: string | string[]
 ): { tema: SiteThemePreset; delatnost: Delatnost } {
   const delatnost = prepoznajDelatnost(nazivUsluga);
-  let pul = SITE_THEMES.filter(
+  const pul = SITE_THEMES.filter(
     (t) => t.delatnosti.includes(delatnost) || t.delatnosti.includes("univerzalno")
   );
-  if (excludeId && pul.length > 1) {
-    pul = pul.filter((t) => t.id !== excludeId);
+  const iskljucene = [exclude ?? []].flat().filter(Boolean) as string[];
+  let kandidati = pul.filter((t) => !iskljucene.includes(t.id));
+  if (kandidati.length === 0) {
+    // Sve viđeno - novi krug, ali trenutno primenjena tema se ne nudi
+    kandidati = pul.filter((t) => t.id !== iskljucene[0]);
   }
-  const tema = pul[Math.floor(Math.random() * pul.length)];
+  if (kandidati.length === 0) kandidati = pul;
+  const tema = kandidati[Math.floor(Math.random() * kandidati.length)];
   return { tema, delatnost };
 }
 

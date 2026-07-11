@@ -4,6 +4,33 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 11.7 (2) — PREDLOG IZGLEDA: 39 TEMA + PAMĆENJE PRIKAZANIH + MAGIC
+DUGME (Mihajlo: "vrti 4-5 istih, obogati i oboji dugme"):** (1) KATALOG
+24→39 tema ([themes.ts](src/lib/themes.ts)): 15 novih iz dizajn revizije
+(workflow: 5 dizajnera po delatnosti × art direktor za dedup/ukus/
+distribuciju - 20 predloga, 5 odbačeno kao redundantno). Nove familije:
+Elektrik, Šljiva, Orhideja, Kesten, Stara škola, Klub, Žilet, Denim,
+Žalfija, Nebo, Laguna, Ruzmarin, Suton, Glina, Petrolej. Svaka delatnost
++5-6 tema u pulu, ~⅓ dark, nijedan font >3× u novom talasu. (2) PAMĆENJE:
+klijent drži `prikazaneTeme` (useRef listu id-jeva viđenih u sesiji) i
+šalje je kroz `suggestAppearance({excludeIds})`; `predloziTemu` prima
+string | string[] (prvi id = trenutno primenjena) i ne ponavlja viđene
+dok se pul delatnosti ne potroši - tek tada krug kreće iznova (bez
+trenutno primenjene). Glavni uzrok "vrti istih 4-5" je bio exclude SAMO
+poslednje teme + mali pul. +2 unit testa (potrošen pul, lista viđenih);
+E2E izgled.spec robustan (temu traži po labelu iz kataloga). (3) MAGIC
+DUGME: "Predloži izgled" i "Probaj drugi" su lavanda→mint gradijent pill
+(`MAGIC_BTN` const u appearance-form: bg-linear-to-r from-lavender
+to-mint + glow senka + hover scale) - i dalje BEZ zvezdica/AI etikete
+(ranija Mihajlova odluka poštovana; on tražio samo akcentnu boju).
+VERIFIKOVANO kroz preview: 5 predloga zaredom bez ponavljanja (Čelik →
+Neonska noć → Denim → Bordo → Zlatni rez), gradijent dugmad, uživo
+pregled prati; demo salon snapshot/restore service skriptom (kao E2E);
+90 unit, tsc, build zeleni. NAPOMENA: otkazivanje termina od strane
+klijenta (link iz mejla) NEMA minimalni prozor pre termina - brani se
+samo termin koji je već počeo (cancelBooking u booking/actions.ts);
+Mihajlo pitao, odluka o cutoff-u (npr. 2h pre) čeka njega.
+
 **Novo od 11.7 — KALENDAR: MOBILNI REDIZAJN + LOV NA OVERFLOW TEKSTA (Mihajlo
 prijavio 2 problema sa telefona; sweep 4 agenta našao još 8, sve ispravljeno):**
 (1) KALENDAR ([calendar-view.tsx](src/app/admin/kalendar/calendar-view.tsx)):

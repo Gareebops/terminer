@@ -58,6 +58,13 @@ interface AppearanceTokens {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// "Magic" izgled dugmadi predloga - lavanda→mint gradijent preko pill
+// osnove (Mihajlova želja: akcentno dugme; i dalje bez zvezdica/AI etikete)
+const MAGIC_BTN =
+  "border-0 bg-linear-to-r from-lavender to-mint font-bold text-ink " +
+  "shadow-[0_2px_12px_rgba(156,136,237,0.45)] transition-[transform,box-shadow] " +
+  "hover:scale-[1.03] hover:shadow-[0_4px_18px_rgba(156,136,237,0.6)]";
+
 // Tihi "Sačuvano" uz samu kontrolu - 8 kontrola sa globalnim toastovima je
 // pri isprobavanju izgleda pravilo lavinu preko pregleda; toast ostaje
 // samo za greške i za "Predloži izgled"
@@ -260,6 +267,9 @@ export function AppearanceForm({
     temaId: string;
     temaLabel: string;
   } | null>(null);
+  // Teme koje je korisnik već video u ovoj sesiji - šalju se serveru da se
+  // predlozi ne vrte u krug od par istih (ref: ne treba re-render)
+  const prikazaneTeme = useRef<string[]>([]);
 
   // Predlog u toku zaključava i ručne kontrole - paralelni updateAppearance
   // pozivi bi se trkali nad theme jsonb-om (read-merge-write)
@@ -303,7 +313,10 @@ export function AppearanceForm({
     try {
       setPredlogProcenat(8);
       setPredlogKorak("Gledamo tvoju ponudu usluga…");
-      const res = await suggestAppearance({ excludeId });
+      const res = await suggestAppearance({
+        excludeId,
+        excludeIds: prikazaneTeme.current,
+      });
       if (!res.ok) {
         toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
         return;
@@ -326,6 +339,10 @@ export function AppearanceForm({
       await sleep(700 * skala);
       setPredlogProcenat(100);
       primeniLokalno(res.tokens as AppearanceTokens);
+      prikazaneTeme.current = [
+        ...prikazaneTeme.current.filter((id) => id !== res.temaId),
+        res.temaId,
+      ].slice(-40);
       setPrimenjeno({ prethodno, temaId: res.temaId, temaLabel: res.temaLabel });
       toast.success(`Primenjena tema „${res.temaLabel}“.`);
       onSaved?.();
@@ -447,6 +464,7 @@ export function AppearanceForm({
               <Button
                 size="sm"
                 disabled={zauzeto}
+                className={MAGIC_BTN}
                 onClick={() => pokreniPredlog(primenjeno?.temaId)}
               >
                 Predloži izgled
@@ -470,9 +488,9 @@ export function AppearanceForm({
                 Tema: <span className="font-semibold text-foreground">{primenjeno.temaLabel}</span>
               </span>
               <Button
-                variant="outline"
                 size="sm"
                 disabled={zauzeto}
+                className={MAGIC_BTN}
                 onClick={() => pokreniPredlog(primenjeno.temaId)}
               >
                 Probaj drugi

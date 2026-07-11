@@ -80,4 +80,29 @@ describe("predloziTemu", () => {
       expect(predloziTemu(["Relax masaža"], prva.id).tema.id).not.toBe(prva.id);
     }
   });
+
+  it("lista prikazanih se ne ponavlja dok se pul ne potroši", () => {
+    const usluge = ["Relax masaža"];
+    const pul = SITE_THEMES.filter(
+      (t) => t.delatnosti.includes("masaza") || t.delatnosti.includes("univerzalno")
+    );
+    // Sve sem jedne viđeno → jedina neviđena mora biti sledeći predlog
+    const [poslednja, ...videne] = pul.map((t) => t.id);
+    for (let i = 0; i < 10; i++) {
+      expect(predloziTemu(usluge, videne).tema.id).toBe(poslednja);
+    }
+  });
+
+  it("potrošen pul kreće iznova, ali ne nudi trenutno primenjenu (prvi id)", () => {
+    const usluge = ["Relax masaža"];
+    const pul = SITE_THEMES.filter(
+      (t) => t.delatnosti.includes("masaza") || t.delatnosti.includes("univerzalno")
+    );
+    const sve = pul.map((t) => t.id);
+    for (let i = 0; i < 30; i++) {
+      const { tema } = predloziTemu(usluge, sve);
+      expect(sve).toContain(tema.id);
+      expect(tema.id).not.toBe(sve[0]);
+    }
+  });
 });
