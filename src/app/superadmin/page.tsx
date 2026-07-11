@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { MessageCircle } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { datumSr, datumVremeSr } from "@/lib/datum";
 import { subscriptionInfo } from "@/lib/billing";
@@ -34,17 +35,30 @@ export default async function SuperAdminPage() {
   if (!me) notFound();
 
   const db = createAdminClient();
-  const [{ data: tenants }, { data: allInvoices }, { data: owners }, { data: auditLog }] =
-    await Promise.all([
-      db.from("tenants").select("*").order("created_at"),
-      db.from("invoices").select("*, tenants(name, slug)").order("created_at", { ascending: false }),
-      db.from("tenant_members").select("tenant_id, user_id").eq("role", "owner"),
-      db
-        .from("superadmin_audit_log")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(30),
-    ]);
+  const [
+    { data: tenants },
+    { data: allInvoices },
+    { data: owners },
+    { data: auditLog },
+    { data: chats },
+  ] = await Promise.all([
+    db.from("tenants").select("*").order("created_at"),
+    db.from("invoices").select("*, tenants(name, slug)").order("created_at", { ascending: false }),
+    db.from("tenant_members").select("tenant_id, user_id").eq("role", "owner"),
+    db
+      .from("superadmin_audit_log")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(30),
+    // Pre migracije chata upit vrati grešku (data null) - badge je tada 0
+    db.from("support_conversations").select("last_message_at, support_read_at"),
+  ]);
+
+  // Aktivnost posle read markera = razgovor čeka odgovor (poruka vlasnika
+  // pomera last_message_at; odgovor podrške pomera i support_read_at)
+  const unreadChats = (chats ?? []).filter(
+    (c) => new Date(c.last_message_at).getTime() > new Date(c.support_read_at).getTime()
+  ).length;
 
   // Vlasnik po salonu (kontakt + status potvrde naloga)
   const ownerInfo = new Map<string, { email: string; confirmed: boolean }>();
@@ -104,6 +118,18 @@ export default async function SuperAdminPage() {
         <p className="mt-1 text-sm font-medium text-ink/70">
           Saloni, pretplate i naplata. Prijavljen: {me.email}
         </p>
+
+        <Link
+          href="/superadmin/poruke"
+          className="mt-4 inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:opacity-85"
+        >
+          <MessageCircle className="size-4" /> Poruke podrške
+          {unreadChats > 0 && (
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-mint px-1.5 text-xs font-bold text-ink">
+              {unreadChats}
+            </span>
+          )}
+        </Link>
 
         {/* Statistika */}
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

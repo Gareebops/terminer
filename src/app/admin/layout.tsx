@@ -8,6 +8,7 @@ import { LogoutButton } from "./logout-button";
 import { MobileHeader } from "./mobile-header";
 import { PublishControl } from "./publish-control";
 import { SubscriptionBanner } from "./subscription-banner";
+import { SupportChat } from "./support-chat";
 
 export default async function AdminLayout({
   children,
@@ -68,6 +69,7 @@ export default async function AdminLayout({
         <SubscriptionBanner status={sub.status} daysLeft={sub.daysLeft} />
         {children}
       </main>
+      <SupportChat />
     </div>
   );
 }

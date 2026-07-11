@@ -51,10 +51,11 @@ export function SettingsShell({
       </div>
 
       {/* Ispod xl nema živog pregleda - plutajuće dugme otvara sajt,
-          da se boja/font ne biraju naslepo */}
+          da se boja/font ne biraju naslepo. Desni ugao drži chat podrške
+          (support-chat.tsx), pa ovo dugme staje levo od njega */}
       <Button
         asChild
-        className="fixed bottom-4 right-4 z-40 h-11 rounded-full px-5 shadow-lg xl:hidden"
+        className="fixed bottom-4 right-20 z-40 h-11 rounded-full px-5 shadow-lg xl:hidden"
       >
         <a href={`/${slug}`} target="_blank" rel="noreferrer">
           <ExternalLink className="size-4" /> Pregled sajta

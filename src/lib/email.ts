@@ -245,6 +245,77 @@ export async function sendCustomerCancelledNotice(
   }
 }
 
+// Obaveštenje SUPERADMINU da je vlasnik salona otvorio nov razgovor sa
+// podrškom (live chat u adminu). Šalje se samo pri OTVARANJU razgovora,
+// ne za svaku poruku - odgovara se iz /superadmin/poruke.
+export interface SupportChatNoticeInput {
+  salonName: string;
+  slug: string;
+  ownerEmail: string | null;
+  firstMessage: string; // već sečen izvod (excerpt)
+  inboxUrl: string;
+}
+
+function supportChatNoticeHtml(input: SupportChatNoticeInput): string {
+  return `<!doctype html>
+<html lang="sr">
+<body style="margin:0;padding:24px 12px;background:#f4f4f5;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;">
+    <div style="background:#ffffff;border-radius:16px;padding:32px;">
+      <p style="margin:0;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:#71717a;">Terminer podrška</p>
+      <h1 style="margin:8px 0 4px;font-size:22px;color:#18181b;">Nov razgovor sa podrškom</h1>
+      <p style="margin:0 0 20px;font-size:14px;color:#52525b;">
+        <strong>${escapeHtml(input.salonName)}</strong> (/${escapeHtml(input.slug)})${
+          input.ownerEmail ? `, vlasnik ${escapeHtml(input.ownerEmail)}` : ""
+        } je upravo otvorio chat.
+      </p>
+      <blockquote style="margin:0 0 24px;padding:12px 16px;background:#f4f4f5;border-radius:12px;font-size:14px;color:#18181b;">${escapeHtml(input.firstMessage)}</blockquote>
+      <a href="${input.inboxUrl}" style="display:inline-block;background:#18181b;color:#ffffff;font-size:14px;font-weight:600;padding:10px 20px;border-radius:999px;text-decoration:none;">Odgovori u panelu</a>
+    </div>
+    <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#a1a1aa;">
+      Poslato preko <a href="https://terminer.rs" style="color:#a1a1aa;">Terminer</a> zakazivanja.
+    </p>
+  </div>
+</body>
+</html>`;
+}
+
+export async function sendSupportChatNotice(
+  input: SupportChatNoticeInput
+): Promise<{ sent: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("RESEND_API_KEY nije podešen - obaveštenje podršci preskočeno.");
+    return { sent: false };
+  }
+  // Isti izvor istine kao pristup /superadmin panelu (zarez-separisana lista)
+  const to = (process.env.SUPER_ADMIN_EMAIL ?? "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  if (to.length === 0) {
+    console.warn("SUPER_ADMIN_EMAIL nije podešen - obaveštenje podršci preskočeno.");
+    return { sent: false };
+  }
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM ?? FROM_FALLBACK,
+      to,
+      subject: `Nov razgovor sa podrškom - ${input.salonName}`,
+      html: supportChatNoticeHtml(input),
+    });
+    if (error) {
+      console.error("Resend greška (obaveštenje podršci):", error);
+      return { sent: false };
+    }
+    return { sent: true };
+  } catch (err) {
+    console.error("Slanje obaveštenja podršci nije uspelo:", err);
+    return { sent: false };
+  }
+}
+
 export async function sendBookingConfirmation(
   input: BookingEmailInput
 ): Promise<{ sent: boolean }> {

@@ -4,6 +4,41 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 11.7 (4) — LIVE CHAT PODRŠKE: vlasnik ↔ superadmin (⚠️ ČEKA
+`supabase db push`):** Plutajući widget "Podrška" dole desno u CELOM
+adminu ([admin/support-chat.tsx](src/app/admin/support-chat.tsx) +
+[support-chat-actions.ts](src/app/admin/support-chat-actions.ts), session
+klijent pod RLS-om); superadmin odgovara iz **/superadmin/poruke**
+(dvopanelni inbox [poruke/support-inbox.tsx](src/app/superadmin/poruke/support-inbox.tsx),
+akcije service rolom u [support-actions.ts](src/app/superadmin/support-actions.ts);
+link sa badge-om nepročitanih na glavnoj superadmin strani). Mejl na
+SUPER_ADMIN_EMAIL listu stiže pri svakom NOVOOTVORENOM razgovoru
+(`sendSupportChatNotice` u lib/email.ts, kroz `after()`). MODEL (migracija
+[20260711000001_podrska_chat.sql](supabase/migrations/20260711000001_podrska_chat.sql)):
+`support_conversations` (status open/closed, read markeri obe strane,
+partial unique "jedan otvoren po salonu" — 23505 pri trci = piši u
+postojeći) + `support_messages` (composite FK po konvenciji; grantovi:
+authenticated kolonski insert/update, anon ništa, service_role sve).
+Razgovor otvara PRVA poruka vlasnika (tad ide mejl); superadmin ga
+zatvara dugmetom, sledeća poruka vlasnika otvara nov razgovor + nov mejl;
+odgovor podrške u zatvorenom ga ponovo otvara (bez mejla). Widget
+prikazuje najskoriji razgovor PO AKTIVNOSTI (last_message_at, ne
+created_at). BEZ websocketa: polling server akcijama (widget 4s otvoren /
+60s badge, inbox 5s; skriveni tab ne vuče ništa). Superadmin chat akcije
+NAMERNO ne pišu u audit log (poruke su same sebi evidencija). Prateće:
+"Pregled sajta" plutajuće dugme u Podešavanjima pomereno na `right-20`
+(desni ugao drži chat). FAIL-SOFT pre migracije: prvi upit padne → widget
+se uopšte ne renderuje (ni flash), /superadmin/poruke prikazuje žuto
+upozorenje — VERIFIKOVANO kroz preview (fail-soft grane; build/tsc na
+čistom worktree-u jer je u radnom stablu tuđ WIP `appearance_confirmed`
+koji obara tsc — te izmene NISU u commitu). PUNU verifikaciju chat kruga
+uraditi POSLE `supabase db push` (vlasnik piše → mejl → odgovor →
+zatvaranje); E2E [podrska.spec.ts](tests/e2e/podrska.spec.ts) (3 testa)
+pokriva ceo krug u CI-ju. 104 unit (+8 support-chat helperi), lint zelen.
+ZA MIHAJLA: `supabase db push`, pa proveriti chat uživo; mejl stiže na
+sve SUPER_ADMIN_EMAIL adrese. Budući kandidati (svesno odloženo): mejl
+vlasniku kad podrška odgovori, Supabase Realtime umesto pollinga.
+
 **Novo od 11.7 (3) — PROZOR ZA OTKAZIVANJE LINKOM (Mihajlova odluka, u
 dva koraka istog dana):** KONAČNO PRAVILO: linkom iz mejla klijent
 otkazuje **najkasnije 48h pre početka termina**; termin zakazan unutar
