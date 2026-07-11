@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { GRACE_DAYS, isBookingPaused, subscriptionInfo } from "./billing";
+import { GRACE_DAYS, isBookingPaused, subscriptionInfo, trialReminderDue } from "./billing";
 
 // Logika koja odlučuje kad se salonu pauzira online zakazivanje - greška
 // od jednog dana ovde znači ugašeno zakazivanje salonu koji je platio.
@@ -113,5 +113,25 @@ describe("isBookingPaused", () => {
     expect(isBookingPaused({ trial_ends_at: daysFromNow(-30), paid_until: dateOnly(10) })).toBe(false);
     expect(isBookingPaused({ trial_ends_at: daysFromNow(-2), paid_until: null })).toBe(false);
     expect(isBookingPaused({ trial_ends_at: daysFromNow(-30), paid_until: null })).toBe(true);
+  });
+});
+
+describe("trialReminderDue", () => {
+  it("okida na tačno 3 dana do isteka probe", () => {
+    expect(trialReminderDue({ trial_ends_at: daysFromNow(3), paid_until: null }, 3)).toBe(true);
+  });
+
+  it("ne okida dan ranije ni dan kasnije (ceil granice)", () => {
+    // 3.5 dana -> daysLeft 4; 2 dana -> daysLeft 2
+    expect(trialReminderDue({ trial_ends_at: daysFromNow(3.5), paid_until: null }, 3)).toBe(false);
+    expect(trialReminderDue({ trial_ends_at: daysFromNow(2), paid_until: null }, 3)).toBe(false);
+  });
+
+  it("plaćen salon nema podsetnik ni kad mu proba formalno traje", () => {
+    expect(trialReminderDue({ trial_ends_at: daysFromNow(3), paid_until: dateOnly(20) }, 3)).toBe(false);
+  });
+
+  it("istekla proba ne okida", () => {
+    expect(trialReminderDue({ trial_ends_at: daysFromNow(-3), paid_until: null }, 3)).toBe(false);
   });
 });

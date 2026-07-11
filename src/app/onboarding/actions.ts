@@ -2,9 +2,11 @@
 
 import { z } from "zod";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bustTenantSiteCache } from "@/lib/tenant";
+import { sendNewSalonNotice } from "@/lib/email";
 import { RESERVED_SLUGS } from "@/lib/reserved-slugs";
 
 const schema = z.object({
@@ -56,7 +58,7 @@ export async function createSalon(input: {
   const { data: tenant, error } = await db
     .from("tenants")
     .insert({ name: parsed.data.name, slug: parsed.data.slug })
-    .select("id")
+    .select("id, trial_ends_at")
     .single();
 
   if (error) {
@@ -86,6 +88,20 @@ export async function createSalon(input: {
   // Ako je neko ranije posetio /{slug} dok salon nije postojao, keširan je
   // "ne postoji" rezultat - obori ga da novi salon odmah bude dostupan
   bustTenantSiteCache(parsed.data.slug);
+
+  // Superadmin saznaje za nov salon odmah, bez čekanja da uđe u panel;
+  // after() da mejl ne zadržava redirect novog vlasnika
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terminer.rs";
+  after(() =>
+    sendNewSalonNotice({
+      salonName: parsed.data.name,
+      slug: parsed.data.slug,
+      ownerEmail: user.email ?? null,
+      trialEndsAt: tenant.trial_ends_at ?? null,
+      panelUrl: `${baseUrl}/superadmin`,
+      siteUrl: `${baseUrl}/${parsed.data.slug}`,
+    })
+  );
 
   redirect("/admin");
 }

@@ -12,6 +12,7 @@ import {
   type Invoice,
 } from "@/lib/invoice";
 import type { Tenant } from "@/lib/types";
+import { plural } from "@/lib/plural";
 import { assertSuperAdmin } from "./actions";
 import { AccountControls } from "./account-controls";
 import { InvoiceActions } from "./invoice-actions";
@@ -35,12 +36,21 @@ export default async function SuperAdminPage() {
   if (!me) notFound();
 
   const db = createAdminClient();
+  // Aktivnost se meri po created_at rezervacije (kada je UPISANA, ne kada
+  // je termin) - to hvata i admin upis i online zakazivanje kao korišćenje.
+  // new Date() umesto Date.now() - react-hooks/purity brani Date.now() u
+  // renderu (isti obrazac kao ostatak fajla)
+  const now = new Date();
+  const since30 = new Date(now.getTime() - 30 * 86_400_000).toISOString();
   const [
     { data: tenants },
     { data: allInvoices },
     { data: owners },
     { data: auditLog },
     { data: chats },
+    { data: recentBookings },
+    { data: activeServices },
+    { data: activeStaff },
   ] = await Promise.all([
     db.from("tenants").select("*").order("created_at"),
     db.from("invoices").select("*, tenants(name, slug)").order("created_at", { ascending: false }),
@@ -52,7 +62,27 @@ export default async function SuperAdminPage() {
       .limit(30),
     // Pre migracije chata upit vrati grešku (data null) - badge je tada 0
     db.from("support_conversations").select("last_message_at, support_read_at"),
+    db.from("bookings").select("tenant_id, created_at").gte("created_at", since30),
+    db.from("services").select("tenant_id").eq("is_active", true),
+    db.from("staff").select("tenant_id").eq("is_active", true),
   ]);
+
+  // Zdravlje salona: rezervacije u 30/7 dana + obim podešenog sadržaja
+  const since7 = now.getTime() - 7 * 86_400_000;
+  const bookingActivity = new Map<string, { b30: number; b7: number }>();
+  for (const b of (recentBookings ?? []) as { tenant_id: string; created_at: string }[]) {
+    const a = bookingActivity.get(b.tenant_id) ?? { b30: 0, b7: 0 };
+    a.b30 += 1;
+    if (new Date(b.created_at).getTime() > since7) a.b7 += 1;
+    bookingActivity.set(b.tenant_id, a);
+  }
+  const countByTenant = (list: { tenant_id: string }[] | null) => {
+    const m = new Map<string, number>();
+    for (const r of list ?? []) m.set(r.tenant_id, (m.get(r.tenant_id) ?? 0) + 1);
+    return m;
+  };
+  const servicesCount = countByTenant(activeServices);
+  const staffCount = countByTenant(activeStaff);
 
   // Aktivnost posle read markera = razgovor čeka odgovor (poruka vlasnika
   // pomera last_message_at; odgovor podrške pomera i support_read_at)
@@ -60,14 +90,18 @@ export default async function SuperAdminPage() {
     (c) => new Date(c.last_message_at).getTime() > new Date(c.support_read_at).getTime()
   ).length;
 
-  // Vlasnik po salonu (kontakt + status potvrde naloga)
-  const ownerInfo = new Map<string, { email: string; confirmed: boolean }>();
+  // Vlasnik po salonu (kontakt + status potvrde + poslednja prijava)
+  const ownerInfo = new Map<
+    string,
+    { email: string; confirmed: boolean; lastSignIn: string | null }
+  >();
   for (const o of owners ?? []) {
     const { data } = await db.auth.admin.getUserById(o.user_id);
     if (data.user?.email) {
       ownerInfo.set(o.tenant_id, {
         email: data.user.email,
         confirmed: !!data.user.email_confirmed_at,
+        lastSignIn: data.user.last_sign_in_at ?? null,
       });
     }
   }
@@ -81,6 +115,20 @@ export default async function SuperAdminPage() {
     sub: subscriptionInfo(t),
   }));
 
+  // Hitnost na vrh: grace (plaćanje kasni) pa proba, unutar grupe manje
+  // preostalih dana prvo; expired pa active na dno. Stabilan sort čuva
+  // redosled registracije unutar istog ranga.
+  const statusRank: Record<string, number> = { grace: 0, trial: 1, expired: 2, active: 3 };
+  rows.sort(
+    (a, b) =>
+      statusRank[a.sub.status] - statusRank[b.sub.status] ||
+      a.sub.daysLeft - b.sub.daysLeft
+  );
+
+  const novih30 = rows.filter(
+    (r) => new Date(r.tenant.created_at).getTime() > now.getTime() - 30 * 86_400_000
+  ).length;
+
   const year = new Date().getFullYear();
   const stats = [
     {
@@ -92,6 +140,11 @@ export default async function SuperAdminPage() {
       label: "U probi",
       value: rows.filter((r) => r.sub.status === "trial").length,
       cls: "bg-lavender",
+    },
+    {
+      label: "Novi saloni (30d)",
+      value: novih30,
+      cls: "bg-white shadow-card",
     },
     {
       label: `Naplaćeno ${year}.`,
@@ -131,8 +184,8 @@ export default async function SuperAdminPage() {
           )}
         </Link>
 
-        {/* Statistika */}
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Statistika - 5 kartica: saloni u prvom redu, novac u drugom */}
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {stats.map((s) => (
             <div key={s.label} className={`rounded-[2rem] p-5 ${s.cls}`}>
               <p className="text-sm font-semibold opacity-60">{s.label}</p>
@@ -146,6 +199,10 @@ export default async function SuperAdminPage() {
         <div className="mt-4 space-y-3">
           {rows.map(({ tenant, sub }) => {
             const s = statusLabels[sub.status];
+            const act = bookingActivity.get(tenant.id) ?? { b30: 0, b7: 0 };
+            const nSvc = servicesCount.get(tenant.id) ?? 0;
+            const nStaff = staffCount.get(tenant.id) ?? 0;
+            const owner = ownerInfo.get(tenant.id);
             return (
               <div
                 key={tenant.id}
@@ -181,6 +238,13 @@ export default async function SuperAdminPage() {
                     {s.label}
                     {sub.status !== "expired" && ` · ${sub.daysLeft}d`}
                   </span>
+                  {/* Proba bez ijedne rezervacije = kandidat za javljanje
+                      pre nego što istekne */}
+                  {sub.status === "trial" && act.b30 === 0 && (
+                    <span className="rounded-full bg-amber-200 px-3 py-1 text-xs font-bold text-amber-950">
+                      bez rezervacija
+                    </span>
+                  )}
                   <span className="text-xs font-medium text-ink/70">
                     {tenant.paid_until
                       ? `Plaćeno do ${fmt(tenant.paid_until)}`
@@ -189,6 +253,15 @@ export default async function SuperAdminPage() {
                     {tenant.is_published ? "objavljen" : "neobjavljen"}
                   </span>
                 </div>
+                <p className="mt-2 text-xs font-medium text-ink/70">
+                  {act.b30}{" "}
+                  {plural(act.b30, ["rezervacija", "rezervacije", "rezervacija"])} u 30
+                  dana ({act.b7} u 7) · {nSvc}{" "}
+                  {plural(nSvc, ["usluga", "usluge", "usluga"])} · {nStaff}{" "}
+                  {plural(nStaff, ["član", "člana", "članova"])} tima · vlasnik
+                  prijavljen{" "}
+                  {owner?.lastSignIn ? fmt(owner.lastSignIn) : "nikad"}
+                </p>
                 <div className="mt-3 border-t border-ink/5 pt-3">
                   <TenantActions
                     tenantId={tenant.id}

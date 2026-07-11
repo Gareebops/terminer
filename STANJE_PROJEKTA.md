@@ -4,6 +4,63 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 11.7 (7) — SUPERADMIN RUNDA 2: CRON PODSETNIK ISTEKA PROBE +
+SORTIRANJE PO HITNOSTI + NOVI (30d) (⚠️ ZA MIHAJLA: dodaj `CRON_SECRET`
+env na Vercelu - nasumičan string, npr. `openssl rand -hex 32`; bez njega
+cron ruta vraća 401 i podsetnici ne idu):** (1) **PRVI VERCEL CRON u
+projektu**: [vercel.json](vercel.json) (novi fajl) svaki dan u 07:00 UTC
+zove [/api/cron/trial-podsetnik](src/app/api/cron/trial-podsetnik/route.ts)
+(prva /api ruta u projektu; slug "api" je odranije rezervisan). Ruta:
+Bearer CRON_SECRET provera (fail-closed - bez env-a 401, NE no-op),
+`trialReminderDue(t, 3)` u [billing.ts](src/lib/billing.ts) bira salone
+kojima proba ističe za TAČNO 3 dana (daysLeft je ceil → svaki salon
+uslov ispuni na tačno jedan dan = zaštita od duplog slanja BEZ čuvanja
+stanja; +4 unit testa, granice ceil-a); suspendovani preskočeni. Mejl:
+`sendTrialExpiryNotice` digest (1 mejl za sve salone tog dana, po salonu
+kartica sa aktivnošću - "bez rezervacija u 30 dana" amber ističe kome se
+javiti; subject nosi ime salona ili broj). Posle slanja upis u
+superadmin_audit_log (admin_email "sistem (cron)", akcija "podsetnik:
+proba ističe") - vidi se u Dnevniku akcija panela. Ako cron preskoči dan
+(Vercel ispad), taj salon ostaje bez podsetnika - svesno, bez sent-flag
+kolone. (2) **Sortiranje salona po hitnosti** na /superadmin: grace →
+trial → expired → active, unutar grupe manje preostalih dana prvo
+(stabilan sort čuva redosled registracije). (3) Stat **"Novi saloni
+(30d)"** (po tenants.created_at); grid statistike 4→5 kartica,
+lg:grid-cols-4 → lg:grid-cols-3 (red salona + red novca). LINT LEKCIJA:
+react-hooks/purity brani `Date.now()` i u SERVER komponenti, ali `new
+Date()` prolazi - u superadmin/page.tsx jedan `const now = new Date()` pa
+getTime() svuda. VERIFIKOVANO: 108 unit (16 billing), lint, tsc, build
+zeleni (build izlistao ƒ /api/cron/trial-podsetnik); 401 bez auth-a i sa
+pogrešnim tokenom potvrđen uživo na dev serveru. Pun tok slanja pokriven
+unit testovima selekcije + istim Resend obrascem kao mejl novog salona
+(verifikovan uživo u 11.7 (6)); POSLE deploya sa CRON_SECRET proveriti
+prvi run u Vercel → Crons logu.
+
+**Novo od 11.7 (6) — SUPERADMIN: MEJL ZA NOV SALON + PRAĆENJE AKTIVNOSTI
+(mejl verifikovan uživo kroz svež onboarding, test podaci obrisani):**
+(1) **Mejl superadminu pri registraciji salona**: `sendNewSalonNotice` u
+[email.ts](src/lib/email.ts) (isti obrazac kao chat obaveštenje:
+RESEND_API_KEY + SUPER_ADMIN_EMAIL lista gate-ovi, bez njih no-op sa
+warn) — ime salona, slug link, mejl vlasnika, "Proba traje do {datum}",
+dugme ka /superadmin. Poziv iz `createSalon`
+([onboarding/actions.ts](src/app/onboarding/actions.ts)) kroz `after()`
+da ne zadržava redirect novog vlasnika; tenant insert sada select-uje i
+trial_ends_at. NAPOMENA: proba počinje kreiranjem SALONA, ne naloga —
+registracija bez onboardinga ne šalje mejl (svesno). (2) **Aktivnost po
+salonu** na /superadmin ([page.tsx](src/app/superadmin/page.tsx)): red u
+kartici "N rezervacija u 30 dana (M u 7) · usluge · tim · vlasnik
+prijavljen {datum}" (rezervacije po created_at = korišćenje, ne datumu
+termina; usluge/tim samo aktivni; last_sign_in_at iz već postojećeg
+getUserById poziva) + amber bedž **"bez rezervacija"** za salon u probi
+sa 0 upisa u 30 dana (kandidat za javljanje pre isteka). 3 nova upita u
+postojeći Promise.all (bookings gte 30d, services/staff is_active).
+VERIFIKOVANO: ceo mejl tok uživo (svež nalog → onboarding UI → createSalon
+303 → Resend poziv bez greške u logu; mejl stigao na SUPER_ADMIN_EMAIL);
+superadmin UI aktivnosti pokriven sa tsc+build (bez superadmin kredencijala
+u sesiji — Mihajlo: baci pogled pri sledećoj prijavi); 104 unit, lint, tsc,
+build zeleni. IDEJE ZABELEŽENE (nije rađeno): sortiranje salona po isteku
+probe, trend registracija (novi 30d stat), mejl i za istek probe/fakture.
+
 **Novo od 11.7 (5) — VODIČ ZA POKRETANJE: UX DORADE (dizajn/UX analiza pa
 "implementiraj sve nalaze"; verifikovano uživo kroz svež nalog, test podaci
 obrisani):** (1) Korak 5 "Doteraj izgled" dobio dugme **"Sviđa mi se ovako"**

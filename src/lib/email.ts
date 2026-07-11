@@ -316,6 +316,182 @@ export async function sendSupportChatNotice(
   }
 }
 
+// Obaveštenje SUPERADMINU da je registrovan nov salon i da mu je počela
+// proba - šalje se iz createSalon (nalog bez salona još nema probu).
+export interface NewSalonNoticeInput {
+  salonName: string;
+  slug: string;
+  ownerEmail: string | null;
+  trialEndsAt: string | null; // ISO; null = kolona nedostupna, red se preskače
+  panelUrl: string;
+  siteUrl: string;
+}
+
+function newSalonNoticeHtml(input: NewSalonNoticeInput): string {
+  return `<!doctype html>
+<html lang="sr">
+<body style="margin:0;padding:24px 12px;background:#f4f4f5;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;">
+    <div style="background:#ffffff;border-radius:16px;padding:32px;">
+      <p style="margin:0;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:#71717a;">Terminer</p>
+      <h1 style="margin:8px 0 4px;font-size:22px;color:#18181b;">Novi salon na probi</h1>
+      <p style="margin:0 0 20px;font-size:14px;color:#52525b;">
+        <strong>${escapeHtml(input.salonName)}</strong> (<a href="${input.siteUrl}" style="color:#52525b;">/${escapeHtml(input.slug)}</a>)${
+          input.ownerEmail ? `, vlasnik ${escapeHtml(input.ownerEmail)}` : ""
+        }.${
+          input.trialEndsAt
+            ? ` Proba traje do ${dateLabelSr(input.trialEndsAt.slice(0, 10))}.`
+            : ""
+        }
+      </p>
+      <a href="${input.panelUrl}" style="display:inline-block;background:#18181b;color:#ffffff;font-size:14px;font-weight:600;padding:10px 20px;border-radius:999px;text-decoration:none;">Otvori superadmin panel</a>
+    </div>
+    <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#a1a1aa;">
+      Poslato preko <a href="https://terminer.rs" style="color:#a1a1aa;">Terminer</a> zakazivanja.
+    </p>
+  </div>
+</body>
+</html>`;
+}
+
+export async function sendNewSalonNotice(
+  input: NewSalonNoticeInput
+): Promise<{ sent: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("RESEND_API_KEY nije podešen - obaveštenje o novom salonu preskočeno.");
+    return { sent: false };
+  }
+  // Isti izvor istine kao pristup /superadmin panelu (zarez-separisana lista)
+  const to = (process.env.SUPER_ADMIN_EMAIL ?? "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  if (to.length === 0) {
+    console.warn("SUPER_ADMIN_EMAIL nije podešen - obaveštenje o novom salonu preskočeno.");
+    return { sent: false };
+  }
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM ?? FROM_FALLBACK,
+      to,
+      subject: `Novi salon na probi - ${input.salonName}`,
+      html: newSalonNoticeHtml(input),
+    });
+    if (error) {
+      console.error("Resend greška (novi salon):", error);
+      return { sent: false };
+    }
+    return { sent: true };
+  } catch (err) {
+    console.error("Slanje obaveštenja o novom salonu nije uspelo:", err);
+    return { sent: false };
+  }
+}
+
+// Podsetnik SUPERADMINU da salonima uskoro ističe proba (dnevni cron,
+// /api/cron/trial-podsetnik). Jedan digest mejl za sve salone tog dana,
+// sa aktivnošću - da se na prvi pogled vidi kome vredi da se javi.
+export interface TrialExpirySalon {
+  salonName: string;
+  slug: string;
+  ownerEmail: string | null;
+  trialEndsAt: string; // ISO
+  bookings30: number;
+  servicesCount: number;
+  staffCount: number;
+  published: boolean;
+  siteUrl: string;
+}
+
+export interface TrialExpiryNoticeInput {
+  salons: TrialExpirySalon[];
+  days: number;
+  panelUrl: string;
+}
+
+function trialExpiryNoticeHtml(input: TrialExpiryNoticeInput): string {
+  const cards = input.salons
+    .map(
+      (s) => `
+      <div style="border:1px solid #e4e4e7;border-radius:12px;padding:16px;margin:0 0 12px;">
+        <p style="margin:0;font-size:15px;color:#18181b;">
+          <strong>${escapeHtml(s.salonName)}</strong>
+          (<a href="${s.siteUrl}" style="color:#52525b;">/${escapeHtml(s.slug)}</a>)${
+            s.ownerEmail ? ` · ${escapeHtml(s.ownerEmail)}` : ""
+          }
+        </p>
+        <p style="margin:6px 0 0;font-size:13px;color:${s.bookings30 === 0 ? "#b45309" : "#52525b"};">
+          ${
+            s.bookings30 === 0
+              ? "<strong>Bez rezervacija u 30 dana</strong>"
+              : `${s.bookings30} rezervacija u 30 dana`
+          } · ${s.servicesCount} usluga · ${s.staffCount} u timu · ${
+            s.published ? "objavljen" : "neobjavljen"
+          } · proba do ${dateLabelSr(s.trialEndsAt.slice(0, 10))}
+        </p>
+      </div>`
+    )
+    .join("");
+  return `<!doctype html>
+<html lang="sr">
+<body style="margin:0;padding:24px 12px;background:#f4f4f5;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;">
+    <div style="background:#ffffff;border-radius:16px;padding:32px;">
+      <p style="margin:0;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:#71717a;">Terminer</p>
+      <h1 style="margin:8px 0 16px;font-size:22px;color:#18181b;">Proba ističe za ${input.days} dana</h1>
+      ${cards}
+      <a href="${input.panelUrl}" style="display:inline-block;margin-top:8px;background:#18181b;color:#ffffff;font-size:14px;font-weight:600;padding:10px 20px;border-radius:999px;text-decoration:none;">Otvori superadmin panel</a>
+    </div>
+    <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#a1a1aa;">
+      Poslato preko <a href="https://terminer.rs" style="color:#a1a1aa;">Terminer</a> zakazivanja.
+    </p>
+  </div>
+</body>
+</html>`;
+}
+
+export async function sendTrialExpiryNotice(
+  input: TrialExpiryNoticeInput
+): Promise<{ sent: boolean }> {
+  if (input.salons.length === 0) return { sent: false };
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("RESEND_API_KEY nije podešen - podsetnik o probi preskočen.");
+    return { sent: false };
+  }
+  const to = (process.env.SUPER_ADMIN_EMAIL ?? "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  if (to.length === 0) {
+    console.warn("SUPER_ADMIN_EMAIL nije podešen - podsetnik o probi preskočen.");
+    return { sent: false };
+  }
+  const subject =
+    input.salons.length === 1
+      ? `Proba ističe za ${input.days} dana - ${input.salons[0].salonName}`
+      : `Proba ističe za ${input.days} dana - ${input.salons.length} salona`;
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM ?? FROM_FALLBACK,
+      to,
+      subject,
+      html: trialExpiryNoticeHtml(input),
+    });
+    if (error) {
+      console.error("Resend greška (podsetnik o probi):", error);
+      return { sent: false };
+    }
+    return { sent: true };
+  } catch (err) {
+    console.error("Slanje podsetnika o probi nije uspelo:", err);
+    return { sent: false };
+  }
+}
+
 export async function sendBookingConfirmation(
   input: BookingEmailInput
 ): Promise<{ sent: boolean }> {

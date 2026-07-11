@@ -46,3 +46,14 @@ export function isBookingPaused(tenant: {
 }): boolean {
   return subscriptionInfo(tenant).status === "expired";
 }
+
+// Podsetnik superadminu iz dnevnog crona: proba ističe za TAČNO `days`
+// dana (daysLeft je ceil, pa svaki salon uslov ispuni na tačno jedan dan -
+// to je i zaštita od duplog slanja bez čuvanja stanja)
+export function trialReminderDue(
+  tenant: { trial_ends_at: string; paid_until: string | null },
+  days: number
+): boolean {
+  const info = subscriptionInfo(tenant);
+  return info.status === "trial" && info.daysLeft === days;
+}
