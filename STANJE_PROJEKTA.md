@@ -4,8 +4,10 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
-**Novo od 11.7 (4) — LIVE CHAT PODRŠKE: vlasnik ↔ superadmin (⚠️ ČEKA
-`supabase db push`):** Plutajući widget "Podrška" dole desno u CELOM
+**Novo od 11.7 (4) — LIVE CHAT PODRŠKE: vlasnik ↔ superadmin (migracija
+primenjena 11.7, VERIFIKOVANO UŽIVO; istim push-om primenjena i čekajuća
+20260709000001 grantovi — `db push --include-all` jer je bila starija od
+poslednje na produkciji):** Plutajući widget "Podrška" dole desno u CELOM
 adminu ([admin/support-chat.tsx](src/app/admin/support-chat.tsx) +
 [support-chat-actions.ts](src/app/admin/support-chat-actions.ts), session
 klijent pod RLS-om); superadmin odgovara iz **/superadmin/poruke**
@@ -31,13 +33,21 @@ NAMERNO ne pišu u audit log (poruke su same sebi evidencija). Prateće:
 se uopšte ne renderuje (ni flash), /superadmin/poruke prikazuje žuto
 upozorenje — VERIFIKOVANO kroz preview (fail-soft grane; build/tsc na
 čistom worktree-u jer je u radnom stablu tuđ WIP `appearance_confirmed`
-koji obara tsc — te izmene NISU u commitu). PUNU verifikaciju chat kruga
-uraditi POSLE `supabase db push` (vlasnik piše → mejl → odgovor →
-zatvaranje); E2E [podrska.spec.ts](tests/e2e/podrska.spec.ts) (3 testa)
-pokriva ceo krug u CI-ju. 104 unit (+8 support-chat helperi), lint zelen.
-ZA MIHAJLA: `supabase db push`, pa proveriti chat uživo; mejl stiže na
-sve SUPER_ADMIN_EMAIL adrese. Budući kandidati (svesno odloženo): mejl
-vlasniku kad podrška odgovori, Supabase Realtime umesto pollinga.
+koji obara tsc — te izmene NISU u commitu). VERIFIKOVANO UŽIVO 11.7 posle
+push-a, ceo krug kroz preview: poruka iz widgeta → mejl stigao (Resend,
+SUPER_ADMIN_EMAIL) → inbox badge 1 → odgovor → "Zatvori" → vlasnik vidi
+odgovor + obaveštenje o zatvaranju → nova poruka otvara NOV razgovor +
+drugi mejl; uz to /demo, wizard slotovi i admin rade posle grantova.
+Test razgovori obrisani service-rolom. E2E
+[podrska.spec.ts](tests/e2e/podrska.spec.ts) (3 testa) pokriva krug u
+CI-ju; 104 unit (+8 support-chat helperi), lint zelen. POUKA IZ
+VERIFIKACIJE: zaostali preview tab je CSS-sakriven pa `visibilityState`
+ostaje "visible", a Chrome mu throttle-uje tajmere na 1/min — zombi
+panel je na minut označavao poruke pročitanim (upisi tačno :25 svakog
+minuta); u pravom browseru pozadinski tab prijavljuje "hidden" pa guard
+u widgetu radi — artefakt okruženja, ne bag. Budući kandidati (svesno
+odloženo): mejl vlasniku kad podrška odgovori, Supabase Realtime umesto
+pollinga.
 
 **Novo od 11.7 (3) — PROZOR ZA OTKAZIVANJE LINKOM (Mihajlova odluka, u
 dva koraka istog dana):** KONAČNO PRAVILO: linkom iz mejla klijent
@@ -181,8 +191,9 @@ rAF frejmova - framer-motion exit animacije se NIKAD ne završe pa
 AnimatePresence mode="wait" izgleda "zamrznuto"; to je artefakt okruženja,
 ne bag (proveriti document.visibilityState pre debugovanja animacija).
 
-**Novo od 9.7 (3) — EKSPLICITNI GRANT-ovi ZA API ROLE (⚠️ ČEKA `supabase db
-push` OD MIHAJLA):** Zatvara upozorenje "ROK 30.10.2026" otkriveno pri
+**Novo od 9.7 (3) — EKSPLICITNI GRANT-ovi ZA API ROLE (PRIMENJENA 11.7 uz
+chat migraciju, `db push --include-all`; /demo + wizard slotovi + admin
+provereni uživo posle primene):** Zatvara upozorenje "ROK 30.10.2026" otkriveno pri
 podizanju CI-ja. Supabase tog datuma trajno gasi auto-expose — tabela u
 public šemi bez eksplicitnog GRANT-a postaje nedostupna kroz Data API i za
 service_role. Migracija
@@ -213,9 +224,8 @@ sajta ostaju čitljive (gallery bez provere redova — seed je ne puni).
 VAŽNO ZA BUDUĆE MIGRACIJE: nova tabela u public šemi mora u SOPSTVENOJ
 migraciji da dobije grantove za anon/authenticated po potrebi (service_role
 dobija automatski); bez toga je nedostupna kroz REST — to je namerno.
-ZA MIHAJLA: pokreni `supabase db push` (produkcija do tada radi po starom
-auto-expose ponašanju, bez žurbe pre 30.10.2026); posle pusha proveriti
-/demo i admin uživo.
+Primenjena na produkciju 11.7; /demo, wizard slotovi i admin provereni
+uživo odmah posle primene — rok 30.10.2026 je ZATVOREN.
 
 **Novo od 10.7 (2) — KUSTOMIZACIJA: 10 FONTOVA, NOVI TOKENI, "PREDLOŽI
 IZGLED":** (1) FONTOVI 5→10 parova ([fonts.ts](src/lib/fonts.ts):
@@ -995,8 +1005,8 @@ Popunjeni i rade (lokalno i na Vercelu): `RESEND_API_KEY`,
   postaje staff_id+dow+parity); shift_assignments.start_time/end_time +
   check (izuzetak nosi svoje vreme), drop shift_template_id; DROP TABLE
   shift_templates (podaci prepisani u izuzetke).
-- `20260709000001_eksplicitni_grantovi.sql` — **NIJE još primenjena (čeka
-  `supabase db push`)**. Kompletna matrica GRANT-ova za API role umesto
+- `20260709000001_eksplicitni_grantovi.sql` — primenjena 11.7 (uz chat
+  migraciju, `db push --include-all`). Kompletna matrica GRANT-ova za API role umesto
   auto-expose ponašanja koje Supabase gasi 30.10.2026 (service_role ALL +
   default privilegije za buduće objekte; authenticated CRUD tenant tabele,
   invoices select, tenants kolonski; anon select samo javne tabele) +
