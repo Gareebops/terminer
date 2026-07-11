@@ -59,7 +59,7 @@ function confirmationHtml(input: BookingEmailInput): string {
     .join("");
 
   const phoneNote = input.salonPhone
-    ? ` ili pozovi salon na <a href="tel:${escapeHtml(input.salonPhone)}" style="color:#18181b;">${escapeHtml(input.salonPhone)}</a>`
+    ? `, a kasnije pozovi salon na <a href="tel:${escapeHtml(input.salonPhone)}" style="color:#18181b;">${escapeHtml(input.salonPhone)}</a>`
     : "";
 
   return `<!doctype html>
@@ -72,7 +72,8 @@ function confirmationHtml(input: BookingEmailInput): string {
       <p style="margin:0 0 20px;font-size:14px;color:#52525b;">Ovo je potvrda tvoje rezervacije.</p>
       <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-top:1px solid #e4e4e7;padding-top:8px;">${rowsHtml}</table>
       <p style="margin:24px 0 0;font-size:13px;color:#71717a;line-height:1.6;">
-        Ne odgovara ti termin? Možeš da ga
+        Ne odgovara ti termin? U roku od sat vremena od zakazivanja (najkasnije
+        do početka termina) možeš da ga
         <a href="${input.cancelUrl}" style="color:#18181b;font-weight:600;">otkažeš ovde</a>${phoneNote}.
       </p>
     </div>
@@ -197,14 +198,15 @@ function customerCancelledHtml(input: CustomerCancelledInput): string {
       <p style="margin:0;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:#71717a;">${escapeHtml(input.salonName)}</p>
       <h1 style="margin:8px 0 4px;font-size:22px;color:#18181b;">Termin je otkazan</h1>
       <p style="margin:0 0 20px;font-size:14px;color:#52525b;">
-        Nažalost, salon je morao da otkaže tvoj termin
+        Tvoj termin
         <strong>${escapeHtml(input.serviceName)}</strong>${input.staffName ? ` (${escapeHtml(input.staffName)})` : ""}
-        zakazan za <strong>${dateLabelSr(input.date)} u ${input.startTime}</strong>.
+        zakazan za <strong>${dateLabelSr(input.date)} u ${input.startTime}</strong>
+        je otkazan u salonu.
       </p>
       <p style="margin:0;font-size:14px;color:#52525b;line-height:1.6;">
         Novi termin možeš da
         <a href="${input.bookingUrl}" style="color:#18181b;font-weight:600;">zakažeš ovde</a>${phoneNote}.
-        Izvinjavamo se zbog neprijatnosti.
+        Ako otkazivanje nisi tražio/la, javi se salonu.
       </p>
     </div>
     <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#a1a1aa;">

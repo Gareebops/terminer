@@ -4,6 +4,40 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 11.7 (3) — PROZOR ZA OTKAZIVANJE LINKOM: SAT VREMENA OD
+ZAKAZIVANJA (Mihajlova odluka):** klijent može linkom iz mejla da otkaže
+SAMO u roku od sat vremena od trenutka zakazivanja (i nikad posle početka
+termina - postojeća provera ostaje). Posle isteka stranica
+/{slug}/otkazivanje/{token} nudi telefon salona (tel: dugme) umesto
+dugmeta za otkazivanje; bez telefona u podešavanjima poruka upućuje na
+kontakt na sajtu. Implementacija: [cancel.ts](src/lib/booking/cancel.ts)
+(CANCEL_WINDOW_MINUTES=60, linkCancelExpired čista funkcija + 4 unit
+testa; linkCancelExpiredNow wrapper za server komponente -
+react-hooks/purity brani Date.now() u renderu, isti obrazac kao
+nowInZone); provera u cancelBooking (fail-closed: greška guard SELECT-a
+sada PREKIDA otkazivanje - ranije je pad čitanja preskakao i "started"
+proveru) sa `code: "window_expired"` u odgovoru pa kartica pređe u
+"istekao" prikaz i kad prozor istekne dok je stranica otvorena. Tekstovi
+usklađeni: mejl potvrde i ekran uspeha wizarda kažu "u roku od sat
+vremena od zakazivanja (najkasnije do početka termina)"; landing FAQ
+ažuriran; mejl "salon je otkazao" neutralizovan ("je otkazan u salonu" +
+"Ako otkazivanje nisi tražio/la, javi se salonu" umesto izvinjenja - sa
+novim pravilom najčešći admin otkaz je na MOLBU klijenta telefonom).
+Novi E2E [otkazivanje-prozor.spec.ts](tests/e2e/otkazivanje-prozor.spec.ts)
+(created_at unazađen service klijentom → stranica nudi telefon, bez
+dugmeta, booking ostaje confirmed). Adversarialna revizija (3 sočiva)
+našla i ISPRAVLJENO: fail-open guard, salon bez telefona, netačno
+obećanje za termin zakazan <1h pre početka, zamrznuto dugme posle isteka,
+zbunjujući mejl, FAQ, E2E rupa. SVESNO NEREŠENO (Mihajlo da odluči):
+(1) retroaktivnost - linkovi iz VEĆ poslatih mejlova (stari tekst bez
+roka) prestaju da rade sat posle zakazivanja; pre launcha nema pravih
+klijenata pa je prihvaćeno bez grandfatheringa; (2) interakcija sa
+anti-spam limitom 3 aktivne rezervacije po telefonu - klijent koji
+propusti prozor drži slot do termina i može da se zaključa za
+samoposluživanje (jedini izlaz telefon). VERIFIKOVANO: sveža rezervacija
+nudi otkazivanje, unazađena (2h) nudi telefon, 94 unit, lint, tsc,
+build zeleni; probni podaci obrisani.
+
 **Novo od 11.7 (2) — PREDLOG IZGLEDA: 39 TEMA + PAMĆENJE PRIKAZANIH + MAGIC
 DUGME (Mihajlo: "vrti 4-5 istih, obogati i oboji dugme"):** (1) KATALOG
 24→39 tema ([themes.ts](src/lib/themes.ts)): 15 novih iz dizajn revizije

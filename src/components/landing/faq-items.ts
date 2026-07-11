@@ -12,7 +12,7 @@ export const FAQ_ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "Kako klijenti zakazuju?",
-    a: "Na tvom sajtu izaberu uslugu, osobu i slobodan termin - bez naloga i bez instaliranja aplikacije. Potvrda im stiže na email, a termin mogu i da otkažu linkom iz mejla. Ti dobijaš obaveštenje o svakoj rezervaciji.",
+    a: "Na tvom sajtu izaberu uslugu, osobu i slobodan termin - bez naloga i bez instaliranja aplikacije. Potvrda im stiže na email, a ako se predomisle, termin otkazuju linkom iz mejla u roku od sat vremena od zakazivanja - kasnije izmene idu preko tebe. Ti dobijaš obaveštenje o svakoj rezervaciji.",
   },
   {
     q: "Radim sam/sama - da li mi ovo uopšte treba?",

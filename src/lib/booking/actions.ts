@@ -12,6 +12,7 @@ import {
   fromMinutes,
   type TimeRange,
 } from "@/lib/booking/slots";
+import { linkCancelExpired } from "@/lib/booking/cancel";
 import { nowInZone, zonedToUtc } from "@/lib/booking/timezone";
 import {
   addDaysISO,
@@ -617,7 +618,7 @@ export async function createBooking(
 export async function cancelBooking(input: {
   bookingId: string;
   cancelToken: string;
-}): Promise<{ ok: boolean; error?: string }> {
+}): Promise<{ ok: boolean; error?: string; code?: "window_expired" }> {
   const ids = z
     .object({ bookingId: uuidSchema, cancelToken: uuidSchema })
     .safeParse(input);
@@ -627,12 +628,16 @@ export async function cancelBooking(input: {
 
   // Prošao termin se ne može otkazati ni direktnim pozivom akcije -
   // UI to već brani, ali server mora imati sopstvenu proveru
-  const { data: existing } = await db
+  const { data: existing, error: guardError } = await db
     .from("bookings")
-    .select("date, start_time, tenants(timezone)")
+    .select("date, start_time, created_at, tenants(timezone)")
     .eq("id", ids.data.bookingId)
     .eq("cancel_token", ids.data.cancelToken)
     .maybeSingle();
+  // Pad čitanja ne sme da preskoči provere ispod (fail-closed)
+  if (guardError) {
+    return { ok: false, error: "Nešto nije uspelo. Pokušaj ponovo." };
+  }
   if (existing) {
     const tz =
       (existing.tenants as unknown as { timezone: string } | null)?.timezone ??
@@ -644,6 +649,16 @@ export async function cancelBooking(input: {
         toMinutes(existing.start_time.slice(0, 5)) <= now.minutes);
     if (started) {
       return { ok: false, error: "Termin je već prošao, pa otkazivanje više nije moguće." };
+    }
+    // Link za otkazivanje važi sat vremena od zakazivanja (lib/booking/cancel);
+    // code omogućava kartici da pređe u "istekao prozor" prikaz bez refresha
+    if (linkCancelExpired(existing.created_at, Date.now())) {
+      return {
+        ok: false,
+        code: "window_expired",
+        error:
+          "Prošlo je više od sat vremena od zakazivanja, pa otkazivanje preko linka više nije moguće. Za izmenu se javi salonu.",
+      };
     }
   }
 

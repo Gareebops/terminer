@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { CalendarX2, Check, Clock } from "lucide-react";
+import { CalendarX2, Check, Clock, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,15 +27,23 @@ export function CancelCard({
   slug,
   booking,
   isPast,
+  windowExpired = false,
+  salonPhone = null,
 }: {
   slug: string;
   booking: CancelCardBooking | null;
   isPast: boolean;
+  // Prošlo je više od sat vremena od zakazivanja - link više ne otkazuje
+  windowExpired?: boolean;
+  salonPhone?: string | null;
 }) {
   const [cancelled, setCancelled] = useState(false);
   // Otkazivanje traži potvrdu - slučajan klik iz mejla ne sme da obriše
   // termin bez pitanja (nema "undo")
   const [confirming, setConfirming] = useState(false);
+  // Prozor može da istekne dok stranica stoji otvorena - server tada vraća
+  // code pa kartica pređe u "istekao" prikaz umesto večitog dugmeta
+  const [expiredNow, setExpiredNow] = useState(false);
   const [pending, startTransition] = useTransition();
 
   if (!booking) {
@@ -57,8 +65,12 @@ export function CancelCard({
   const dateLabel = `${DAY_NAMES_SR[new Date(`${booking.date}T12:00:00`).getDay()]}, ${datumSr(booking.date)}`;
 
   const isCancelled = cancelled || booking.status === "cancelled";
+  const expired = windowExpired || expiredNow;
   const canCancel =
-    !isCancelled && !isPast && ["pending", "confirmed"].includes(booking.status);
+    !isCancelled &&
+    !isPast &&
+    !expired &&
+    ["pending", "confirmed"].includes(booking.status);
 
   function confirmCancel() {
     if (!booking) return;
@@ -69,6 +81,9 @@ export function CancelCard({
       });
       if (res.ok) {
         setCancelled(true);
+      } else if (res.code === "window_expired") {
+        setExpiredNow(true);
+        setConfirming(false);
       } else {
         toast.error(res.error ?? "Otkazivanje nije uspelo. Pokušaj ponovo.");
       }
@@ -114,6 +129,14 @@ export function CancelCard({
           <p className="mt-4 text-sm text-muted-foreground">
             Termin je već prošao, pa otkazivanje više nije moguće.
           </p>
+        ) : expired ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Prošlo je više od sat vremena od zakazivanja, pa otkazivanje preko
+            linka više nije moguće.
+            {salonPhone
+              ? " Za izmenu ili otkazivanje pozovi salon."
+              : " Za izmenu ili otkazivanje javi se salonu - kontakt je na sajtu salona."}
+          </p>
         ) : !canCancel ? (
           <p className="mt-4 text-sm text-muted-foreground">
             Ova rezervacija se ne može otkazati preko linka. Pozovi salon za izmenu.
@@ -152,7 +175,22 @@ export function CancelCard({
                 <CalendarX2 className="size-4" /> Otkaži termin
               </Button>
             )}
-            <Button variant={canCancel ? "outline" : "default"} className="h-11" asChild>
+            {expired && !isCancelled && salonPhone && (
+              <Button className="h-11" asChild>
+                <a href={`tel:${salonPhone}`}>
+                  <Phone className="size-4" /> {salonPhone}
+                </a>
+              </Button>
+            )}
+            <Button
+              variant={
+                canCancel || (expired && !isCancelled && salonPhone)
+                  ? "outline"
+                  : "default"
+              }
+              className="h-11"
+              asChild
+            >
               <Link href={isCancelled ? `/${slug}/zakazi` : `/${slug}`}>
                 {isCancelled ? "Zakaži novi termin" : "Nazad na sajt"}
               </Link>
