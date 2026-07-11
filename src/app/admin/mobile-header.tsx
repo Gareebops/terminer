@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { ArrowSquareOut, List, X } from "@/components/icons";
+import { ExternalLink, Menu, X } from "lucide-react";
 import { AdminNav } from "./admin-nav";
 import { LogoutButton } from "./logout-button";
 import { PublishControl } from "./publish-control";
@@ -59,7 +59,7 @@ export function MobileHeader({
             aria-expanded={open}
             className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/10 transition-colors hover:bg-white/20"
           >
-            <List className="size-5" />
+            <Menu className="size-5" />
           </button>
         </div>
       </div>
@@ -87,7 +87,7 @@ export function MobileHeader({
                   target="_blank"
                   className="mt-1 flex items-center gap-1 text-xs text-white/50 hover:text-white"
                 >
-                  /{slug} <ArrowSquareOut className="size-3" />
+                  /{slug} <ExternalLink className="size-3" />
                 </Link>
               </div>
               <DialogPrimitive.Close asChild>

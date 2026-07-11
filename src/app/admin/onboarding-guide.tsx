@@ -3,13 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowRight,
-  ArrowSquareOut,
-  Check,
-  Copy,
-  RocketLaunch,
-} from "@/components/icons";
+import { ArrowRight, Check, Copy, ExternalLink, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -288,7 +282,7 @@ export function OnboardingGuide({
                   <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2">
                     <Button asChild size="sm" variant="outline" className="rounded-full">
                       <a href={`/${slug}`} target="_blank" rel="noreferrer">
-                        <ArrowSquareOut className="size-3.5" /> Pogledaj sajt
+                        <ExternalLink className="size-3.5" /> Pogledaj sajt
                       </a>
                     </Button>
                     <Button
@@ -297,7 +291,7 @@ export function OnboardingGuide({
                       className="max-sm:h-10"
                       onClick={() => setPublishOpen(true)}
                     >
-                      <RocketLaunch className="size-4" /> Objavi sajt
+                      <Rocket className="size-4" /> Objavi sajt
                     </Button>
                   </div>
                 )}
@@ -322,7 +316,7 @@ export function OnboardingGuide({
         <DialogContent className="rounded-[2rem] font-display sm:max-w-md">
           <DialogHeader>
             <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-ink text-mint">
-              <RocketLaunch className="size-7" />
+              <Rocket className="size-7" />
             </span>
             <DialogTitle className="text-center text-xl font-extrabold tracking-tight">
               Objavi svoj sajt
@@ -355,7 +349,7 @@ export function OnboardingGuide({
         <DialogContent className="rounded-[2rem] font-display sm:max-w-md">
           <DialogHeader>
             <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-mint text-ink">
-              <RocketLaunch className="size-7" />
+              <Rocket className="size-7" />
             </span>
             <DialogTitle className="text-center text-xl font-extrabold tracking-tight">
               Sajt je objavljen!
@@ -393,7 +387,7 @@ export function OnboardingGuide({
           <div className="flex justify-center">
             <Button asChild variant="outline" className="rounded-full">
               <a href={siteUrl} target="_blank" rel="noreferrer">
-                <ArrowSquareOut className="size-4" /> Otvori sajt
+                <ExternalLink className="size-4" /> Otvori sajt
               </a>
             </Button>
           </div>

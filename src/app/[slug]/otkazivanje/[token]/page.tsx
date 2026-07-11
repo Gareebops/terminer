@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "@/components/icons";
+import { ArrowLeft } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantSite } from "@/lib/tenant";
 import { linkCancelExpiredNow } from "@/lib/booking/cancel";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { ArrowsClockwise, Check, Copy, Globe } from "@/components/icons";
+import { Check, Copy, Globe, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -133,7 +133,7 @@ export function DomainCard({
                 onClick={recheck}
                 title="Proveri status domena"
               >
-                <ArrowsClockwise className={`size-3.5 ${pending ? "animate-spin" : ""}`} />
+                <RefreshCw className={`size-3.5 ${pending ? "animate-spin" : ""}`} />
                 Proveri
               </Button>
             </div>

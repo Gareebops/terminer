@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Copy, UploadSimple } from "@/components/icons";
+import { Copy, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -221,7 +221,7 @@ function PhotoCard({
             disabled={pending}
             onClick={() => fileRef.current?.click()}
           >
-            <UploadSimple className="size-4" />
+            <Upload className="size-4" />
             {pending ? "Otpremanje..." : photoUrl ? "Zameni" : "Otpremi"}
           </Button>
           {photoUrl && (

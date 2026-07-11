@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { Check } from "@/components/icons";
+import { Check } from "lucide-react";
 
 // Samoodigravajuća demonstracija booking flowa u telefon okviru.
 // Faze: usluga → frizer → termin → uspeh, pa petlja ispočetka.

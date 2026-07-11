@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDots, CircleNotch, MagnifyingGlass, Phone } from "@/components/icons";
+import { CalendarDays, Loader2, Phone, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -110,7 +110,7 @@ export function BookingsTable({
     return (
       <div className="rounded-[2rem] border border-dashed p-8 text-center">
         <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-mint/50 text-ink">
-          <CalendarDots className="size-5" />
+          <CalendarDays className="size-5" />
         </span>
         <p className="mt-3 text-lg font-bold tracking-tight">
           {history ? "Još nema prošlih termina" : "Nema predstojećih rezervacija"}
@@ -132,7 +132,7 @@ export function BookingsTable({
   return (
     <div>
       <div className="relative mb-4 max-w-xs">
-        <MagnifyingGlass className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -140,7 +140,7 @@ export function BookingsTable({
           className="pl-9 pr-9"
         />
         {searching && (
-          <CircleNotch className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+          <Loader2 className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
         )}
       </div>
       {bookings.length === 0 ? (

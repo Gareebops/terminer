@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { CaretLeft, CaretRight, X } from "@/components/icons";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { FadeUp, ZoomOnHover } from "@/components/animate";
 import type { Gallery } from "@/lib/types";
 
@@ -108,7 +108,7 @@ export function GalleryGrid({ images }: { images: Gallery[] }) {
                       aria-label="Prethodna"
                       className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2.5 text-white transition-colors hover:bg-white/25"
                     >
-                      <CaretLeft className="size-6" />
+                      <ChevronLeft className="size-6" />
                     </button>
                     <button
                       type="button"
@@ -119,7 +119,7 @@ export function GalleryGrid({ images }: { images: Gallery[] }) {
                       aria-label="Sledeća"
                       className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2.5 text-white transition-colors hover:bg-white/25"
                     >
-                      <CaretRight className="size-6" />
+                      <ChevronRight className="size-6" />
                     </button>
                     <span className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white">
                       {idx + 1} / {images.length}

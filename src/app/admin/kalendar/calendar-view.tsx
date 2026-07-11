@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Phone, Plus, Prohibit } from "@/components/icons";
+import { Ban, Phone, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -294,7 +294,7 @@ function BlockDialog({
       <Dialog open={open && !conflicts} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button variant="outline">
-            <Prohibit className="size-4" /> Blokiraj termin
+            <Ban className="size-4" /> Blokiraj termin
           </Button>
         </DialogTrigger>
         <DialogContent>

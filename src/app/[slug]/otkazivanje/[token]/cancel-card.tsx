@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
-import { CalendarX, Check, Clock, Phone } from "@/components/icons";
+import { CalendarX2, Check, Clock, Phone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -95,7 +95,7 @@ export function CancelCard({
       <CardContent className="pt-10 pb-10 text-center">
         {isCancelled ? (
           <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
-            <CalendarX className="size-8" />
+            <CalendarX2 className="size-8" />
           </span>
         ) : (
           <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -163,7 +163,7 @@ export function CancelCard({
                 Odustani
               </Button>
               <Button variant="destructive" className="h-11" onClick={confirmCancel} disabled={pending}>
-                <CalendarX className="size-4" />
+                <CalendarX2 className="size-4" />
                 {pending ? "Otkazivanje…" : "Da, otkaži"}
               </Button>
             </div>
@@ -172,7 +172,7 @@ export function CancelCard({
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             {canCancel && (
               <Button variant="destructive" className="h-11" onClick={() => setConfirming(true)}>
-                <CalendarX className="size-4" /> Otkaži termin
+                <CalendarX2 className="size-4" /> Otkaži termin
               </Button>
             )}
             {expired && !isCancelled && salonPhone && (

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, CalendarDots, Plus, Prohibit } from "@/components/icons";
+import { ArrowUpRight, Ban, CalendarDays, Plus } from "lucide-react";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { fromMinutes, toMinutes } from "@/lib/booking/slots";
@@ -183,7 +183,7 @@ export default async function AdminDashboardPage() {
         </div>
         <Button asChild variant="brand" size="pill">
           <Link href="/admin/kalendar">
-            <CalendarDots className="size-4" /> Otvori kalendar
+            <CalendarDays className="size-4" /> Otvori kalendar
           </Link>
         </Button>
       </div>
@@ -201,7 +201,7 @@ export default async function AdminDashboardPage() {
           href="/admin/kalendar?blokada=1"
           className="flex items-center justify-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-card transition-colors hover:bg-ink/5 sm:justify-start"
         >
-          <Prohibit className="size-4" /> Blokiraj vreme
+          <Ban className="size-4" /> Blokiraj vreme
         </Link>
         <ShareSiteButton slug={tenant.slug} />
       </div>

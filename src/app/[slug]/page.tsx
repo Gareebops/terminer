@@ -2,13 +2,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import {
-  At,
-  CaretDown,
+  AtSign,
+  CalendarClock,
+  ChevronDown,
   Clock,
-  ClockAfternoon,
   MapPin,
   Phone,
-} from "@/components/icons";
+} from "lucide-react";
 import { FadeUp, HeroItem, HeroStagger } from "@/components/animate";
 import { Button } from "@/components/ui/button";
 import { DAY_NAMES_SR, formatPriceRange, fromMinutes } from "@/lib/booking/slots";
@@ -224,7 +224,7 @@ export default async function SalonPage({
           aria-label="Pogledaj ponudu"
           className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full p-2 text-white/50 transition-colors hover:text-white motion-safe:animate-bounce"
         >
-          <CaretDown className="size-5" />
+          <ChevronDown className="size-5" />
         </a>
       </section>
 
@@ -348,7 +348,7 @@ export default async function SalonPage({
               )}
               {igHandle && (
                 <p className="flex items-center gap-2.5">
-                  <At className="size-4 text-primary" />
+                  <AtSign className="size-4 text-primary" />
                   <a
                     href={`https://instagram.com/${igHandle}`}
                     target="_blank"
@@ -363,7 +363,7 @@ export default async function SalonPage({
             {weekly && (
               <div className="min-w-56">
                 <p className="flex items-center gap-2 text-sm font-semibold">
-                  <ClockAfternoon className="size-4 text-primary" /> Radno vreme
+                  <CalendarClock className="size-4 text-primary" /> Radno vreme
                   <span
                     className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                       weekly.openNow

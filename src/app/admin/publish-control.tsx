@@ -2,13 +2,7 @@
 
 import { useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  ArrowSquareOut,
-  Check,
-  Copy,
-  Globe,
-  RocketLaunch,
-} from "@/components/icons";
+import { Check, Copy, ExternalLink, Globe, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -149,7 +143,7 @@ export function PublishControl({
           onClick={() => setOpen(true)}
           className="flex w-full items-center justify-center gap-2 rounded-full bg-mint px-4 py-2.5 text-sm font-bold text-ink transition-opacity hover:opacity-90"
         >
-          <RocketLaunch className="size-4" /> Objavi sajt
+          <Rocket className="size-4" /> Objavi sajt
         </button>
       )
     ) : published ? (
@@ -179,7 +173,7 @@ export function PublishControl({
             <>
               <DialogHeader>
                 <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-mint text-ink">
-                  {justPublished ? <RocketLaunch className="size-7" /> : <Globe className="size-7" />}
+                  {justPublished ? <Rocket className="size-7" /> : <Globe className="size-7" />}
                 </span>
                 <DialogTitle className="text-center text-xl font-extrabold tracking-tight">
                   {justPublished ? "Sajt je objavljen!" : "Tvoj sajt je online"}
@@ -209,7 +203,7 @@ export function PublishControl({
               <div className="flex justify-center">
                 <Button asChild className="rounded-full">
                   <a href={siteUrl} target="_blank" rel="noreferrer">
-                    <ArrowSquareOut className="size-4" /> Otvori sajt
+                    <ExternalLink className="size-4" /> Otvori sajt
                   </a>
                 </Button>
               </div>
@@ -273,7 +267,7 @@ export function PublishControl({
             <>
               <DialogHeader>
                 <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-ink text-mint">
-                  <RocketLaunch className="size-7" />
+                  <Rocket className="size-7" />
                 </span>
                 <DialogTitle className="text-center text-xl font-extrabold tracking-tight">
                   Objavi svoj sajt

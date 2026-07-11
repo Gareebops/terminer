@@ -1,6 +1,6 @@
 "use client";
 
-import { Printer } from "@/components/icons";
+import { Printer } from "lucide-react";
 
 export function PrintButton() {
   return (

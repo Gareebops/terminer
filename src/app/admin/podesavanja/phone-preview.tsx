@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowSquareOut, ArrowsClockwise } from "@/components/icons";
+import { ExternalLink, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { brandGradient } from "@/lib/color";
 
@@ -66,11 +66,11 @@ export function PhonePreview({
             title="Osveži pregled"
             onClick={onRefresh}
           >
-            <ArrowsClockwise className="size-4" />
+            <RefreshCw className="size-4" />
           </Button>
           <Button variant="ghost" size="icon" title="Otvori sajt" asChild>
             <Link href={`/${slug}`} target="_blank">
-              <ArrowSquareOut className="size-4" />
+              <ExternalLink className="size-4" />
             </Link>
           </Button>
         </div>

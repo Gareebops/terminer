@@ -4,14 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import {
-  CalendarDots,
-  CalendarPlus,
-  Check,
-  Clock,
-  Copy,
-  UsersThree,
-} from "@/components/icons";
+import { CalendarDays, CalendarPlus, Check, Clock, Copy, Users } from "lucide-react";
 import { ConfettiBurst } from "@/components/confetti";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -144,7 +137,7 @@ function JumpToDate({
         }}
         className="flex h-full min-h-16 w-12 flex-col items-center justify-center rounded-[var(--surface-radius)] border transition-colors hover:bg-accent"
       >
-        <CalendarDots className="size-5" />
+        <CalendarDays className="size-5" />
       </button>
       <input
         ref={inputRef}
@@ -795,7 +788,7 @@ export function BookingWizard({
                   onClick={() => pickMember(null)}
                 >
                   <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <UsersThree className="size-5" />
+                    <Users className="size-5" />
                   </div>
                   <div>
                     <p className="font-medium">Svejedno mi je</p>

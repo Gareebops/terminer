@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 // Kroz template iz [slug]/layout postaje "Zakaži termin | {salon}"
 export const metadata: Metadata = { title: "Zakaži termin" };
-import { ArrowLeft } from "@/components/icons";
+import { ArrowLeft } from "lucide-react";
 import { nowInZone } from "@/lib/booking/timezone";
 import { getTenantSite } from "@/lib/tenant";
 import { BookingWizard } from "./booking-wizard";

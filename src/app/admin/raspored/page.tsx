@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CaretLeft, CaretRight } from "@/components/icons";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -64,7 +64,7 @@ export default async function SchedulePage({
           <AbsenceDialog staff={staff} />
           <Button variant="outline" size="icon" asChild>
             <Link href={`/admin/raspored?od=${prevWeek}`}>
-              <CaretLeft className="size-4" />
+              <ChevronLeft className="size-4" />
             </Link>
           </Button>
           <span className="min-w-40 text-center text-sm font-medium">
@@ -72,7 +72,7 @@ export default async function SchedulePage({
           </span>
           <Button variant="outline" size="icon" asChild>
             <Link href={`/admin/raspored?od=${nextWeek}`}>
-              <CaretRight className="size-4" />
+              <ChevronRight className="size-4" />
             </Link>
           </Button>
         </div>

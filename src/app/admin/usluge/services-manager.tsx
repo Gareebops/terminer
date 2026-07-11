@@ -2,15 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  PencilSimple,
-  Plus,
-  Scissors,
-  Sparkle,
-  Trash,
-} from "@/components/icons";
+import { ArrowDown, ArrowUp, Pencil, Plus, Scissors, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -266,7 +258,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
                   setOpen(true);
                 }}
               >
-                <PencilSimple className="size-4" />
+                <Pencil className="size-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -276,7 +268,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
                 title="Obriši"
                 onClick={() => setToDelete(s)}
               >
-                <Trash className="size-4 text-destructive" />
+                <Trash2 className="size-4 text-destructive" />
               </Button>
             </div>
           </div>
@@ -308,7 +300,7 @@ export function ServicesManager({ services }: { services: Service[] }) {
                     className="rounded-full"
                     disabled={samplesPending}
                   >
-                    <Sparkle className="size-4" />
+                    <Sparkles className="size-4" />
                     {samplesPending ? "Ubacivanje..." : "Ubaci primere za..."}
                   </Button>
                 </DropdownMenuTrigger>

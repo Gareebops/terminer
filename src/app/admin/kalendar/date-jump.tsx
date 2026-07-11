@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDots } from "@/components/icons";
+import { CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Skok na proizvoljan datum - strelice dan-po-dan su spore za "vidi
@@ -26,7 +26,7 @@ export function DateJump({ day }: { day: string }) {
           else (el as HTMLInputElement).focus();
         }}
       >
-        <CalendarDots className="size-4" />
+        <CalendarDays className="size-4" />
       </Button>
       <input
         ref={inputRef}

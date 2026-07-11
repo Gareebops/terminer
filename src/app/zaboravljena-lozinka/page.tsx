@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { EnvelopeOpen } from "@/components/icons";
+import { MailCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,7 +39,7 @@ export default function ForgotPasswordPage() {
         {sent ? (
           <CardContent className="pt-10 pb-8 text-center">
             <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-mint text-ink">
-              <EnvelopeOpen className="size-8" />
+              <MailCheck className="size-8" />
             </span>
             <h1 className="mt-5 text-2xl font-extrabold tracking-tight">
               Proveri sanduče

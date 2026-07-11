@@ -100,19 +100,13 @@ service-role skriptom. POUKA: skriveni preview tab ume da "pojede" pointer
 evente (Radix select/dijalozi) - JS klik + native setter za kontrolisane
 inpute radi pouzdano.
 
-**Novo od 11.7 — PHOSPHOR IKONICE UMESTO LUCIDE (ceo proizvod):** Mihajlova
-odluka - lucide je delovao generički. Sve produktne ikonice (40 fajlova) sada
-idu kroz centralni modul [src/components/icons.tsx](src/components/icons.tsx):
-Phosphor "duotone" za semantičke (nav, kartice, prazna stanja), "bold" za
-sitne glifove (strelice, x, check, spinner). UVEK uvoziti odavde - jedna
-tačka menja karakter celog seta; koristi se `dist/ssr` varijanta (bez React
-context-a, radi u server i client komponentama). Semantički izbori: Početna=
-House, Rezervacije=Ticket (rima sa "ulaznicom" uspeha), Raspored=ClockUser,
-Podešavanja=Sliders, Objavi=RocketLaunch, Kalendar=CalendarDots. shadcn
-`src/components/ui/*` interni glifovi ostaju na lucide (nevidljiva razlika,
-ne dirati). Drawer admin menija dobio `scrollbar-none` (beli skrolbar na
-niskim ekranima). Verifikovano kroz preview (drawer/nav/dashboard/wizard),
-96 unit + lint + tsc + build zeleni.
+**Novo od 11.7 — IKONICE: PHOSPHOR PROBAN I VRAĆEN (Mihajlova odluka):**
+Ceo proizvod je 11.7. prebačen na Phosphor duotone (commit 78d98b9) pa
+VRAĆEN na lucide isti dan - Mihajlu se stara ikonografija više dopada.
+NE predlagati ponovo zamenu icon seta; lucide je svesni izbor. Iz eksperimenta
+je zadržan samo `scrollbar-none` na skrol kontejneru drawer menija (beli
+skrolbar na niskim ekranima). Ako ikad zatreba: mapiranje i centralni modul
+stoje u istoriji na commitu 78d98b9.
 
 **Novo od 10.7 (3) — UI/UX AUDIT IMPLEMENTIRAN U CELOSTI (31 nalaz, Mihajlo
 odobrio "sve"):** Kompletan dizajn audit (inventar → 7 dimenzija → nalazi →
