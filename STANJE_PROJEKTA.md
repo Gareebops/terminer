@@ -4,6 +4,44 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 11.7 (8) — PRE-LAUNCH ANALIZE: BEZBEDNOST ČISTA + SECURITY
+HEADERI + LCP ISPRAVKE (Lighthouse pravi throttling: landing 77→98,
+demo 85→94):** (1) **Bezbednosna analiza celog sistema** — pregledani:
+cancel_token (UUIDv4, 122 bita), IDOR fakture/izvoz (RLS+assertSuperAdmin),
+sve superadmin akcije (guard+audit log), tenant izolacija admin akcija
+(tenant_id NIKAD sa klijenta, jedina `.or()` interpolacija u
+getStaffDayBusy validira UUID pre), open redirect u /auth/callback
+(blokiran), curenje tajni u klijent (nema), XSS (samo statični JSON-LD),
+storage politike (upis samo owner/admin u svoj folder), custom domeni
+(zabranjeni platformski sufiksi), cron (fail-closed) — SVE ČISTO. Jedini
+nalaz ispravljen: **security headeri** u [next.config.ts](next.config.ts)
+(X-Frame-Options SAMEORIGIN — ne DENY, phone-preview iframe!;
+nosniff, Referrer-Policy, Permissions-Policy). CSP svesno odložen (Next
+inline skripte traže nonce). Zabeleženo za kasnije: transferOwnership
+listUsers perPage 1000 (pukne posle 1000. korisnika); npm audit 2
+moderate (postcss u next canary). (2) **Performanse produkcije izmerene**:
+TTFB landing 210ms (CDN HIT), /demo toplo 310-670ms; fra1 potvrđen;
+analytics beacon radi. DVE LCP ISPRAVKE: (a) `HeroItem` u
+[animate.tsx](src/components/animate.tsx) NE kreće od opacity 0 (samo
+y-klizanje) — SSR je isporučivao NEVIDLJIV hero tekst do hidratacije pa
+je pravi LCP na sporom telefonu bio 4.8s; (b) hero slika sajta salona:
+`priority` je u Next 16 DEPRECIRAN (daje samo preload link BEZ
+fetchPriority!) → `preload` + `fetchPriority="high"` u [slug]/page.tsx.
+VAŽNA LEKCIJA O LIGHTHOUSE-u: default (simulirani/lantern) throttling
+landing H1 tereti sa ~3.4s "render delay" i POSLE ispravki (model veže
+paint za JS graf) — artefakt simulacije, dokazano trace-om pod
+`--throttling-method=devtools` (FCP=LCP=2.1s, jedan paint H1). Realne
+brojke MERITI devtools metodom; PSI/PageSpeed koristi lantern pa će
+lab broj ostati pesimističan (CrUX field podaci su merodavni).
+Pre/posle pod devtools throttlingom: landing FCP 2.9→1.8, LCP 4.8→1.8,
+skor 77→98; demo FCP 3.1→1.9, LCP 3.4→2.8 (lokalno bez CDN keša
+slike), skor 85→94. Uz to launch.json dobio `terminer-prod` (npm start).
+VERIFIKOVANO: headeri curl-om na lokalnom prod serveru, SSR HTML bez
+opacity:0 + fetchPriority na obe img/link, screenshot landing+demo
+identičan, konzola čista; 108 unit, lint, tsc, build zeleni. ZA MIHAJLA
+posle deploya: PSI kvota se resetuje dnevno — pravi field podaci stižu
+u Search Console/CrUX tek sa saobraćajem.**
+
 **Novo od 11.7 (7) — SUPERADMIN RUNDA 2: CRON PODSETNIK ISTEKA PROBE +
 SORTIRANJE PO HITNOSTI + NOVI (30d) (⚠️ ZA MIHAJLA: dodaj `CRON_SECRET`
 env na Vercelu - nasumičan string, npr. `openssl rand -hex 32`; bez njega

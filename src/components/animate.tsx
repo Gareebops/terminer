@@ -56,13 +56,16 @@ export function HeroItem({
 }) {
   const reduce = useReducedMotion();
   if (reduce) return <div className={className}>{children}</div>;
+  // Hero je LCP element (naslov landinga / tekst preko hero slike) i NE SME
+  // da kreće od opacity 0: SSR bi isporučio nevidljiv sadržaj do hidratacije
+  // pa LCP štoperica čeka kraj animacije (mereno +1.7-3s na sporom telefonu).
+  // Ulaz je zato samo klizanje - sadržaj je naslikan od prvog frejma.
   return (
     <motion.div
       className={className}
       variants={{
-        hidden: { opacity: 0, y: 28 },
+        hidden: { y: 28 },
         show: {
-          opacity: 1,
           y: 0,
           transition: { duration: 0.6, ease: [0.21, 0.47, 0.32, 0.98] },
         },

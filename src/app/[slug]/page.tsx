@@ -152,12 +152,16 @@ export default async function SalonPage({
 
       {/* Hero */}
       <section className="relative isolate overflow-hidden bg-zinc-950 text-white">
+        {/* LCP element sajta: preload + fetchPriority (Next 16 je
+            deprecirao priority koji je davao samo preload link) - bez
+            high prioriteta slika čeka u redu iza JS/font zahteva */}
         {settings?.hero_image_url && (
           <Image
             src={settings.hero_image_url}
             alt=""
             fill
-            priority
+            preload
+            fetchPriority="high"
             className="object-cover opacity-50"
           />
         )}

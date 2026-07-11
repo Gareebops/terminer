@@ -9,6 +9,13 @@
       "autoPort": true
     },
     {
+      "name": "terminer-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start"],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
       "name": "terminer-mobile-web",
       "runtimeExecutable": "sh",
       "runtimeArgs": ["-c", "cd mobile && npx expo start --web --port 8090"],
