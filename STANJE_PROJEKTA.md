@@ -4,6 +4,63 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 11.7 (5) — VODIČ ZA POKRETANJE: UX DORADE (dizajn/UX analiza pa
+"implementiraj sve nalaze"; verifikovano uživo kroz svež nalog, test podaci
+obrisani):** (1) Korak 5 "Doteraj izgled" dobio dugme **"Sviđa mi se ovako"**
+(flag `appearance_confirmed` u onboarding jsonb; GuideStep.confirm
+generalizovan u objekat label/patch/toast — ranije je korak bez ijedne
+izmene izgleda BLOKIRAO objavu kroz vodič jer se publish CTA renderuje tek
+kad su svi prethodni koraci done). (2) Proslava objave (vodič I
+publish-control) dobila **"šta dalje"**: tekst + dugme "Zakaži probni
+termin" → /{slug}/zakazi (aktivacija = prva rezervacija, ne objava).
+(3) "Nastavi vodič" toast i pri RUČNOM čuvanju usluge dok je vodič aktivan
+(services-manager prima guideActive, usluge/page.tsx računa isto kao staff
+strana); Podešavanja dobila link "Nastavi vodič na Početnoj →" (vidljiv dok
+je vodič aktivan — pandan ShowGuideLink za sakriven). (4) "Podeli sajt" na
+Početnoj prima published i za neobjavljen sajt daje toast.warning (link bi
+posetiocima bio 404 — zamka u onboardingu). (5) Vodič premešten IZNAD brzih
+akcija (za svež salon je primarni sadržaj; pozicija FIKSNA bez obzira na
+published da proslava preživi refresh). (6) A11y: progressbar role +
+aria-value*, sr-only "Završeno:" u kvačici, aria-current="step";
+closeWelcome guta pad upisa flaga. ISPRAVKA DOKUMENTACIJE: zapis 6.7 (3)
+preširoko tvrdi da i vodičev dijalog objave nudi "Objavi svejedno" — force
+nudi SAMO publish-control; vodič na emptySite samo toastuje uputstvo
+(svesno: kroz vodič je prazan sajt praktično nemoguć). LEKCIJE ZA PREVIEW:
+skriven tab ne računa layout (getBoundingClientRect = 0, read_page prazan)
+dok se ne uradi screenshot; otvaranje Radix dijaloga traži PRAVI klik
+(computer na koordinate iz screenshota), ali dugmad u VEĆ otvorenom
+dijalogu rade i na JS .click(); get_page_text čita samo <main> pa ne vidi
+portale. VERIFIKOVANO: ceo tok kroz svež nalog (welcome → korak 5 potvrda →
+5 od 6 → objava kroz vodič → proslava sa novim CTA; warning toast Podeli
+sajt; link u Podešavanjima); 104 unit, lint, tsc, build zeleni; nalog/salon
+obrisani service skriptom.
+
+**Novo od 11.7 (5) — SENTRY SAMO NA PRODUKCIJI + CHAT POLLING OTPORAN NA
+MREŽU (Sentry prijava posle deploja = dev šum, ne produkcijski bag):**
+Mihajlova Sentry prijava "TypeError: Failed to fetch / fetchServerAction"
+je stigla sa LOKALNOG dev servera (Turbopack dev imena chunk-ova u
+stack-u; okidač: gašenje dev servera ispod otvorenog admin taba čiji chat
+widget polluje). Ispravke: (1) Sentry init (instrumentation.ts +
+instrumentation-client.ts) sada traži i `NODE_ENV === "production"` — DSN
+stoji i u lokalnom .env.local pa su dev sesije slale šum u isti projekat
+i trošile kvotu; (2) chat widget i superadmin inbox hvataju mrežne padove
+server akcija (try/catch oko poll/send/reply/close - poll ćuti i pokušava
+ponovo, slanje daje toast) — bez ovoga bi PRAVI korisnik na lošoj vezi
+punio Sentry unhandled rejection-ima na svaka 4s; (3) PRVI tick pollinga
+ide bez visibility provere (jednokratan, bezopasan) — tab otvoren u
+pozadini inače ne bi ni prikazao dugme podrške do 60s posle fokusa (tako
+je i otkriveno: preview tab prijavljuje visibilityState "hidden").
+VERIFIKOVANO kroz preview: server ugašen ispod otvorenog panela → POST
+pada sa ERR_CONNECTION_REFUSED, konzola ČISTA (ranije unhandled
+TypeError); `window.__SENTRY__` u dev-u više ne postoji. UZ TO: CI pad
+posle push-a NIJE bio od chata — Phosphor install/revert (78d98b9+6311fbb)
+je iz package-lock izbacio @emnapi unose koje traži
+@tailwindcss/oxide-wasm32-wasi (`npm ci` EUSAGE u CI-ju; lokalni npm 11
+toleriše, CI-jev npm 10 ne; ranije isti bug — 510121f). package.json je
+identičan poslednjem zelenom commitu pa je lock VRAĆEN sa 8365476
+(commit b03e84c). POUKA: posle npm install/uninstall ciklusa proveriti
+`npm ci` (ili bar da @emnapi unosi postoje) pre commita lock fajla.
+
 **Novo od 11.7 (4) — LIVE CHAT PODRŠKE: vlasnik ↔ superadmin (migracija
 primenjena 11.7, VERIFIKOVANO UŽIVO; istim push-om primenjena i čekajuća
 20260709000001 grantovi — `db push --include-all` jer je bila starija od

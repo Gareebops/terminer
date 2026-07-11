@@ -35,7 +35,14 @@ export function SupportChat() {
   const lastCountRef = useRef(0);
 
   const refresh = useCallback(async (markRead: boolean) => {
-    const state = await getSupportChat({ markRead });
+    let state: Awaited<ReturnType<typeof getSupportChat>>;
+    try {
+      state = await getSupportChat({ markRead });
+    } catch {
+      // Mrežni pad ili ugašen server - prolazan; sledeći poll pokušava
+      // ponovo, bez unhandled rejection (Sentry šum na lošoj vezi)
+      return;
+    }
     if (!state.ok) {
       setHidden(true);
       return;
@@ -52,8 +59,13 @@ export function SupportChat() {
     if (hidden) return;
     let cancelled = false;
     let timer: number;
+    // Prvi tick BEZ visibility provere: jednokratan je i bezopasan, a tab
+    // otvoren u pozadini inače ne bi ni prikazao dugme dok ne dođe red na
+    // sledeći (do 60s posle fokusa). Ponavljanja poštuju guard.
+    let first = true;
     const tick = async () => {
-      if (document.visibilityState === "visible") await refresh(open);
+      if (first || document.visibilityState === "visible") await refresh(open);
+      first = false;
       if (!cancelled) {
         timer = window.setTimeout(tick, open ? OPEN_POLL_MS : IDLE_POLL_MS);
       }
@@ -88,8 +100,14 @@ export function SupportChat() {
     const body = draft.trim();
     if (!body || sending) return;
     setSending(true);
-    const result = await sendSupportMessage({ body });
-    setSending(false);
+    let result: { ok: boolean; error?: string };
+    try {
+      result = await sendSupportMessage({ body });
+    } catch {
+      result = { ok: false };
+    } finally {
+      setSending(false);
+    }
     if (!result.ok) {
       toast.error(result.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       return;

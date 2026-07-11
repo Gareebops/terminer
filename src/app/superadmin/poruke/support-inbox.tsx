@@ -28,12 +28,18 @@ export function SupportInbox({ initialItems }: { initialItems: InboxItem[] }) {
   const lastCountRef = useRef(0);
 
   const refresh = useCallback(async () => {
-    const [inbox, threadResult] = await Promise.all([
-      listSupportInbox(),
-      selectedId ? getSupportThread(selectedId) : Promise.resolve(null),
-    ]);
-    if (inbox.ok) setItems(inbox.items);
-    if (threadResult?.ok && threadResult.thread) setThread(threadResult.thread);
+    // Mrežni pad je prolazan - sledeći poll pokušava ponovo, bez
+    // unhandled rejection (Sentry šum na lošoj vezi)
+    try {
+      const [inbox, threadResult] = await Promise.all([
+        listSupportInbox(),
+        selectedId ? getSupportThread(selectedId) : Promise.resolve(null),
+      ]);
+      if (inbox.ok) setItems(inbox.items);
+      if (threadResult?.ok && threadResult.thread) setThread(threadResult.thread);
+    } catch {
+      // ignoriši - polling nastavlja
+    }
   }, [selectedId]);
 
   useEffect(() => {
@@ -53,7 +59,12 @@ export function SupportInbox({ initialItems }: { initialItems: InboxItem[] }) {
   async function openThread(id: string) {
     setSelectedId(id);
     setThread(null);
-    const result = await getSupportThread(id);
+    let result: Awaited<ReturnType<typeof getSupportThread>>;
+    try {
+      result = await getSupportThread(id);
+    } catch {
+      result = { ok: false };
+    }
     if (result.ok && result.thread) {
       setThread(result.thread);
       // Otvaranjem je pročitano - badge u listi se gasi odmah
@@ -71,8 +82,14 @@ export function SupportInbox({ initialItems }: { initialItems: InboxItem[] }) {
     const body = draft.trim();
     if (!body || !selectedId || sending) return;
     setSending(true);
-    const result = await replySupportMessage({ conversationId: selectedId, body });
-    setSending(false);
+    let result: { ok: boolean; error?: string };
+    try {
+      result = await replySupportMessage({ conversationId: selectedId, body });
+    } catch {
+      result = { ok: false };
+    } finally {
+      setSending(false);
+    }
     if (!result.ok) {
       toast.error(result.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       return;
@@ -83,7 +100,12 @@ export function SupportInbox({ initialItems }: { initialItems: InboxItem[] }) {
 
   async function handleClose() {
     if (!selectedId) return;
-    const result = await closeSupportConversation(selectedId);
+    let result: { ok: boolean; error?: string };
+    try {
+      result = await closeSupportConversation(selectedId);
+    } catch {
+      result = { ok: false };
+    }
     if (!result.ok) {
       toast.error(result.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       return;
