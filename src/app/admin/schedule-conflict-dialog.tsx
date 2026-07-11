@@ -1,6 +1,6 @@
 "use client";
 
-import { TriangleAlert } from "lucide-react";
+import { Warning } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -39,7 +39,7 @@ export function ScheduleConflictDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <TriangleAlert className="size-5 text-amber-600" />
+            <Warning className="size-5 text-amber-600" />
             Rezervacije ispadaju iz radnog vremena
           </DialogTitle>
         </DialogHeader>

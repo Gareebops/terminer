@@ -4,8 +4,8 @@ import {
   CalendarCheck,
   Globe,
   Scissors,
-  Users,
-} from "lucide-react";
+  UsersThree,
+} from "@/components/icons";
 import { HeroItem, HeroStagger } from "@/components/animate";
 import { CONTACT_EMAIL } from "@/components/legal-page";
 import { FaqAccordion } from "@/components/landing/faq";
@@ -38,7 +38,7 @@ const features = [
     surface: "bg-mint",
   },
   {
-    icon: Users,
+    icon: UsersThree,
     title: "Smene i tim",
     text: "Raspored po smenama za svakog zaposlenog - termini se nude samo kada neko stvarno radi.",
     surface: "bg-lavender",

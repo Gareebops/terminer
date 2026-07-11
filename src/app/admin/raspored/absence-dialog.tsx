@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CalendarOff } from "lucide-react";
+import { CalendarSlash } from "@/components/icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,7 +64,7 @@ export function AbsenceDialog({ staff }: { staff: Staff[] }) {
       <Dialog open={open && !conflicts} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button variant="outline" disabled={staff.length === 0}>
-            <CalendarOff className="size-4" /> Odsustvo
+            <CalendarSlash className="size-4" /> Odsustvo
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md">

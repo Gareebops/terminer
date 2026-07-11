@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays } from "lucide-react";
+import { CalendarDots } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { updateOnboarding } from "../actions";
 
@@ -26,7 +26,7 @@ export function RasporedIntro() {
   return (
     <div className="mt-6 flex flex-wrap items-center gap-4 rounded-[2rem] bg-lavender p-6">
       <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ink text-lavender">
-        <CalendarDays className="size-5" />
+        <CalendarDots className="size-5" />
       </span>
       <div className="min-w-0 flex-1 basis-72">
         <p className="text-sm font-bold tracking-tight">Kako radi raspored</p>

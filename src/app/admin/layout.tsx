@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ArrowSquareOut } from "@/components/icons";
 import { getAdminContext } from "@/lib/admin";
 import { subscriptionInfo } from "@/lib/billing";
 import { CONTACT_EMAIL } from "@/components/legal-page";
@@ -41,7 +41,7 @@ export default async function AdminLayout({
             target="_blank"
             className="mt-1 flex items-center gap-1 text-xs text-white/50 hover:text-white"
           >
-            /{tenant.slug} <ExternalLink className="size-3" />
+            /{tenant.slug} <ArrowSquareOut className="size-3" />
           </Link>
         </div>
         <div className="px-3 pt-2">

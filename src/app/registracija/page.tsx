@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MailCheck } from "lucide-react";
+import { EnvelopeOpen } from "@/components/icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -99,7 +99,7 @@ export default function RegisterPage() {
         <Card className="w-full max-w-sm rounded-3xl border-0 text-center shadow-card">
           <CardContent className="pt-10 pb-8">
             <span className="mx-auto flex size-16 items-center justify-center rounded-full bg-mint text-ink">
-              <MailCheck className="size-8" />
+              <EnvelopeOpen className="size-8" />
             </span>
             <h1 className="mt-5 text-2xl font-extrabold tracking-tight">
               Proveri sanduče

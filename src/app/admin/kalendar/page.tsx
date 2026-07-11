@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CaretLeft, CaretRight } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -94,7 +94,7 @@ export default async function CalendarPage({
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" asChild>
             <Link href={`/admin/kalendar?dan=${addDays(day, -1)}`}>
-              <ChevronLeft className="size-4" />
+              <CaretLeft className="size-4" />
             </Link>
           </Button>
           <span className="min-w-44 text-center text-sm font-medium">
@@ -102,7 +102,7 @@ export default async function CalendarPage({
           </span>
           <Button variant="outline" size="icon" asChild>
             <Link href={`/admin/kalendar?dan=${addDays(day, 1)}`}>
-              <ChevronRight className="size-4" />
+              <CaretRight className="size-4" />
             </Link>
           </Button>
           <DateJump day={day} />

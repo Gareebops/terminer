@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@/components/icons";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { OnboardingState, Service, Staff, WorkingHours } from "@/lib/types";

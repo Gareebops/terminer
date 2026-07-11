@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRef, useState, useTransition } from "react";
-import { ArrowLeft, ArrowRight, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, ArrowRight, Trash, UploadSimple } from "@/components/icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -99,7 +99,7 @@ export function GalleryManager({
       />
       {images.length > 0 && (
         <Button disabled={uploading} onClick={() => fileRef.current?.click()}>
-          <Upload className="size-4" />
+          <UploadSimple className="size-4" />
           {uploading ? "Otpremanje..." : "Dodaj fotografije"}
         </Button>
       )}
@@ -122,7 +122,7 @@ export function GalleryManager({
               aria-label="Obriši fotografiju"
               className="absolute right-2 top-2 rounded-md bg-black/60 p-2.5 text-white transition focus-visible:opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
             >
-              <Trash2 className="size-4" />
+              <Trash className="size-4" />
             </button>
             <div className="absolute bottom-2 left-2 flex gap-1 transition sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
               <button
@@ -159,7 +159,7 @@ export function GalleryManager({
       {images.length === 0 && (
         <div className="mt-6 rounded-[2rem] border border-dashed p-8 text-center">
           <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-mint/50 text-ink">
-            <Upload className="size-5" />
+            <UploadSimple className="size-5" />
           </span>
           <p className="mt-3 text-lg font-bold tracking-tight">Pokaži najbolje radove</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-ink/70">
@@ -171,7 +171,7 @@ export function GalleryManager({
             disabled={uploading}
             onClick={() => fileRef.current?.click()}
           >
-            <Upload className="size-4" />
+            <UploadSimple className="size-4" />
             {uploading ? "Otpremanje..." : "Otpremi fotografije"}
           </Button>
         </div>

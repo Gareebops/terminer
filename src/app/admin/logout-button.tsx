@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut } from "lucide-react";
+import { SignOut } from "@/components/icons";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -18,7 +18,7 @@ export function LogoutButton() {
         router.refresh();
       }}
     >
-      <LogOut className="size-4" />
+      <SignOut className="size-4" />
       Odjava
     </button>
   );

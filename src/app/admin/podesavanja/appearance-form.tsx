@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRef, useState, useTransition } from "react";
-import { Check, Upload } from "lucide-react";
+import { Check, UploadSimple } from "@/components/icons";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -200,7 +200,7 @@ function ImageUploadRow({
           disabled={pending}
           onClick={() => fileRef.current?.click()}
         >
-          <Upload className="size-4" />
+          <UploadSimple className="size-4" />
           {pending ? "Otpremanje..." : currentUrl ? "Zameni" : "Otpremi"}
         </Button>
         {currentUrl && (

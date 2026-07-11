@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "@/components/icons";
 
 // Faktura se najčešće otvara u novom tabu (target="_blank"), gde nema
 // istorije za "nazad". Zato: ako postoji istorija - vrati se; ako je tab

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { CaretRight, PencilSimple, Plus, Trash } from "@/components/icons";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -144,7 +144,7 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
                   {m.bio ?? "Usluge i radno vreme"}
                 </p>
               </div>
-              <ChevronRight className="ml-auto size-4 text-muted-foreground" />
+              <CaretRight className="ml-auto size-4 text-muted-foreground" />
             </Link>
             <div className="ml-3 flex gap-1">
               <Button
@@ -158,7 +158,7 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
                   setOpen(true);
                 }}
               >
-                <Pencil className="size-4" />
+                <PencilSimple className="size-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -168,7 +168,7 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
                 title="Obriši"
                 onClick={() => setToDelete(m)}
               >
-                <Trash2 className="size-4 text-destructive" />
+                <Trash className="size-4 text-destructive" />
               </Button>
             </div>
           </div>

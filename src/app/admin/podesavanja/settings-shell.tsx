@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { ArrowSquareOut } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import type { SiteSettings } from "@/lib/types";
 import { AppearanceForm } from "./appearance-form";
@@ -57,7 +57,7 @@ export function SettingsShell({
         className="fixed bottom-4 right-4 z-40 h-11 rounded-full px-5 shadow-lg xl:hidden"
       >
         <a href={`/${slug}`} target="_blank" rel="noreferrer">
-          <ExternalLink className="size-4" /> Pregled sajta
+          <ArrowSquareOut className="size-4" /> Pregled sajta
         </a>
       </Button>
     </div>

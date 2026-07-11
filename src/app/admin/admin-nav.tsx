@@ -3,27 +3,27 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  CalendarDays,
-  CalendarRange,
-  ClipboardList,
+  CalendarDots,
+  ClockUser,
   CreditCard,
+  House,
   Images,
-  LayoutDashboard,
   Scissors,
-  Settings,
-  Users,
-} from "lucide-react";
+  Sliders,
+  Ticket,
+  UsersThree,
+} from "@/components/icons";
 
 const nav = [
-  { href: "/admin", label: "Početna", icon: LayoutDashboard },
-  { href: "/admin/kalendar", label: "Kalendar", icon: CalendarDays },
-  { href: "/admin/rezervacije", label: "Rezervacije", icon: ClipboardList },
+  { href: "/admin", label: "Početna", icon: House },
+  { href: "/admin/kalendar", label: "Kalendar", icon: CalendarDots },
+  { href: "/admin/rezervacije", label: "Rezervacije", icon: Ticket },
   { href: "/admin/usluge", label: "Usluge", icon: Scissors },
-  { href: "/admin/zaposleni", label: "Zaposleni", icon: Users },
-  { href: "/admin/raspored", label: "Raspored", icon: CalendarRange },
+  { href: "/admin/zaposleni", label: "Zaposleni", icon: UsersThree },
+  { href: "/admin/raspored", label: "Raspored", icon: ClockUser },
   { href: "/admin/galerija", label: "Galerija", icon: Images },
   { href: "/admin/pretplata", label: "Pretplata", icon: CreditCard },
-  { href: "/admin/podesavanja", label: "Podešavanja", icon: Settings },
+  { href: "/admin/podesavanja", label: "Podešavanja", icon: Sliders },
 ];
 
 export function AdminNav() {
