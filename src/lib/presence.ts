@@ -13,7 +13,12 @@ export function isOnline(
 ): boolean {
   if (!lastSeen) return false;
   const t = new Date(lastSeen).getTime();
-  return Number.isFinite(t) && now.getTime() - t < ONLINE_THRESHOLD_MS;
+  if (!Number.isFinite(t)) return false;
+  const diff = now.getTime() - t;
+  // Budući timestamp se NE računa kao online: vlasnik bi REST upisom
+  // "2030-01-01" bio trajno "online" - falsifikat mora da kuca stalno
+  // kao i pravi ping (mali negativni zazor pokriva skew servera i baze)
+  return diff >= -HEARTBEAT_MS && diff < ONLINE_THRESHOLD_MS;
 }
 
 // Ljudski opis poslednje aktivnosti u panelu: "online" / "pre 5 min" /

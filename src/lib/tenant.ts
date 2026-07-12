@@ -5,6 +5,7 @@ import {
   createClient as createSupabaseClient,
   type SupabaseClient,
 } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Gallery,
@@ -41,6 +42,30 @@ export function tenantSiteTag(slug: string): string {
 export function bustTenantSiteCache(slug: string): void {
   updateTag(tenantSiteTag(slug));
 }
+
+// Tenant po slugu BEZ obzira na objavljenost/suspenziju (service role) -
+// SAMO za tokove gde pravo pristupa dokazuje nešto drugo (cancel_token iz
+// mejla) i za razlikovanje "skriven" od "ne postoji" u [slug]/layout.
+// NIKAD ne koristiti za prikaz javnog sadržaja sajta.
+export interface HiddenTenant {
+  id: string;
+  slug: string;
+  name: string;
+  timezone: string;
+  is_published: boolean;
+  suspended_at: string | null;
+}
+
+export const getHiddenTenant = cache(
+  async (slug: string): Promise<HiddenTenant | null> => {
+    const { data } = await createAdminClient()
+      .from("tenants")
+      .select("id, slug, name, timezone, is_published, suspended_at")
+      .eq("slug", slug)
+      .maybeSingle();
+    return (data as HiddenTenant) ?? null;
+  }
+);
 
 // Anon klijent bez kolačića: vidi tačno ono što i neulogovan posetilac
 // (RLS javno čitanje objavljenih salona), pa keš ne zavisi od sesije.

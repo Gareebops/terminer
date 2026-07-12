@@ -58,7 +58,7 @@ export default async function SuperAdminPage() {
     db.from("tenant_members").select("tenant_id, last_seen_at"),
     db
       .from("superadmin_audit_log")
-      .select("created_at")
+      .select("created_at, details")
       .eq("action", CRON_MARKER_ACTION)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -175,6 +175,12 @@ export default async function SuperAdminPage() {
 
   // Nalozi koji nikad nisu napravili salon - nevidljivi u listi salona
   const memberIds = new Set((allMembers ?? []).map((m) => m.user_id));
+  const superAdminEmails = new Set(
+    (process.env.SUPER_ADMIN_EMAIL ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+  );
   const orphans: OrphanAccount[] = users
     .filter((u) => !memberIds.has(u.id))
     .sort((a, b) => (b.created_at > a.created_at ? 1 : -1))
@@ -184,6 +190,7 @@ export default async function SuperAdminPage() {
       createdLabel: fmt(u.created_at),
       lastSignInLabel: u.last_sign_in_at ? fmt(u.last_sign_in_at) : null,
       confirmed: !!u.email_confirmed_at,
+      superadmin: !!u.email && superAdminEmails.has(u.email.toLowerCase()),
     }));
 
   const novih30 = rows.filter(
@@ -271,11 +278,16 @@ export default async function SuperAdminPage() {
   }));
 
   // Zdravlje crona: bez CRON_SECRET ruta vraća 401; marker stariji od 48h
-  // znači da Vercel cron ne radi (upisuje se na SVAKOM uspešnom runu)
+  // znači da Vercel cron ne radi (upisuje se na SVAKOM uspešnom runu).
+  // email_ok=false u markeru = cron radi ali mejlovi ne odlaze (npr.
+  // istekao RESEND_API_KEY) - stariji markeri to polje nemaju (undefined
+  // se ne tretira kao pad)
   const cronSecretSet = !!process.env.CRON_SECRET;
   const cronLastRun = cronMarker?.created_at ?? null;
   const cronStale =
     !cronLastRun || now.getTime() - new Date(cronLastRun).getTime() > 48 * 3_600_000;
+  const cronEmailFailed =
+    (cronMarker?.details as Record<string, unknown> | null)?.email_ok === false;
 
   return (
     <main className="min-h-screen flex-1 bg-canvas p-6 font-display text-ink">
@@ -292,13 +304,17 @@ export default async function SuperAdminPage() {
         ) : (
           <p
             className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
-              cronStale ? "bg-amber-200 text-amber-950" : "bg-ink/5 text-ink/70"
+              cronStale || cronEmailFailed
+                ? "bg-amber-200 text-amber-950"
+                : "bg-ink/5 text-ink/70"
             }`}
           >
-            {cronStale && <TriangleAlert className="size-3.5" />}
+            {(cronStale || cronEmailFailed) && <TriangleAlert className="size-3.5" />}
             Cron podsetnik:{" "}
             {cronLastRun
-              ? `poslednja provera ${datumVremeSr(cronLastRun)}${cronStale ? " (kasni!)" : ""}`
+              ? `poslednja provera ${datumVremeSr(cronLastRun)}${cronStale ? " (kasni!)" : ""}${
+                  cronEmailFailed ? " - mejlovi NISU otišli (proveri RESEND_API_KEY)" : ""
+                }`
               : "još nema zabeleženog runa"}
           </p>
         )}

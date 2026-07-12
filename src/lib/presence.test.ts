@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isOnline, ONLINE_THRESHOLD_MS, presenceLabel } from "./presence";
+import { HEARTBEAT_MS, isOnline, ONLINE_THRESHOLD_MS, presenceLabel } from "./presence";
 
 // Indikator "online" u superadmin panelu: pogrešan prag znači da Mihajlo
 // zove vlasnika "vidim da si u panelu" dok ovaj nije - ili obrnuto.
@@ -18,6 +18,14 @@ describe("isOnline", () => {
     expect(isOnline(null, NOW)).toBe(false);
     expect(isOnline(undefined, NOW)).toBe(false);
     expect(isOnline("nije-datum", NOW)).toBe(false);
+  });
+
+  it("budući timestamp nije online (REST falsifikat), mali skew jeste", () => {
+    // "2030" upisan direktno kroz REST ne sme da daje trajno online
+    expect(isOnline(iso(-365 * 86_400_000), NOW)).toBe(false);
+    expect(isOnline(iso(-(HEARTBEAT_MS + 1000)), NOW)).toBe(false);
+    // Zazor za skew server ↔ baza: heartbeat "iz budućnosti" do 1 intervala
+    expect(isOnline(iso(-30_000), NOW)).toBe(true);
   });
 });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -132,9 +133,21 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
               href={`/admin/zaposleni/${m.id}`}
               className="flex min-w-0 flex-1 items-center gap-3"
             >
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted font-semibold">
-                {m.name.charAt(0)}
-              </div>
+              {/* Fotografija (kao u kalendaru/rasporedu/wizardu) - lakše
+                  prepoznavanje; inicijal je fallback */}
+              {m.photo_url ? (
+                <Image
+                  src={m.photo_url}
+                  alt=""
+                  width={40}
+                  height={40}
+                  className="size-10 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted font-semibold">
+                  {m.name.charAt(0)}
+                </div>
+              )}
               <div className="min-w-0">
                 <p className="break-words font-medium">
                   {m.name}{" "}

@@ -15,9 +15,14 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      setFieldError("Unesi ispravnu email adresu.");
+      return;
+    }
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -58,7 +63,8 @@ export default function ForgotPasswordPage() {
               <CardTitle className="text-2xl font-extrabold tracking-tight">Zaboravljena lozinka</CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={onSubmit} className="space-y-4">
+              {/* noValidate: native balončić bi preduhitrio srpsku poruku */}
+              <form onSubmit={onSubmit} noValidate className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email naloga</Label>
                   <Input
@@ -67,15 +73,25 @@ export default function ForgotPasswordPage() {
                     autoComplete="email"
                     className="h-11"
                     required
+                    aria-invalid={!!fieldError}
+                    aria-describedby={fieldError ? "email-error" : undefined}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setFieldError(null);
+                    }}
                   />
+                  {fieldError && (
+                    <p id="email-error" className="text-xs font-medium text-red-700">
+                      {fieldError}
+                    </p>
+                  )}
                 </div>
                 <Button type="submit" variant="brand-mint" className="h-11 w-full" disabled={loading}>
                   {loading ? "Slanje..." : "Pošalji link za novu lozinku"}
                 </Button>
                 <p className="text-center text-sm text-muted-foreground">
-                  Setio si se?{" "}
+                  Ipak znaš lozinku?{" "}
                   <Link href="/prijava" className="underline">
                     Prijavi se
                   </Link>

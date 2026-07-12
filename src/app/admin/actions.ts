@@ -658,6 +658,11 @@ export async function updateStaffSchedule(
     .eq("id", staffId);
   if (staffError) return { ok: false, error: "Čuvanje nije uspelo." };
 
+  // schedule_mode/rotation_anchor žive na KEŠIRANOM staff redu booking
+  // konteksta - bez busta bi prelaz weekly↔smene (ili promena parnosti)
+  // do 60s nudio slotove po staroj šemi i primao termine u pogrešno vreme
+  bustTenantSiteCache(tenant.slug);
+
   // Vlasnik je svesno sačuvao radno vreme - to štiklira korak vodiča
   await mergeOnboarding(supabase, tenant.id, { schedule_confirmed: true });
 
@@ -891,6 +896,25 @@ export async function adminCreateBooking(
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
   const d = parsed.data;
+
+  // Regex propušta kalendarski nevalidan datum (31.2.) i vreme "12:99" -
+  // zonedToUtc bi na njih bacio sirov RangeError umesto poruke. Native
+  // picker ovakve vrednosti ne šalje, ali akcija mora sama da se brani.
+  // PROŠLI datumi su NAMERNO dozvoljeni: naknadno evidentiranje termina
+  // dogovorenih telefonom.
+  const [yy, mm, dd] = d.date.split("-").map(Number);
+  const dt = new Date(Date.UTC(yy, mm - 1, dd));
+  if (
+    dt.getUTCFullYear() !== yy ||
+    dt.getUTCMonth() !== mm - 1 ||
+    dt.getUTCDate() !== dd
+  ) {
+    return { ok: false, error: "Neispravan datum." };
+  }
+  const [th, tm] = d.time.split(":").map(Number);
+  if (th > 23 || tm > 59) {
+    return { ok: false, error: "Neispravno vreme." };
+  }
 
   const [serviceRes, staffRes] = await Promise.all([
     supabase
@@ -1276,6 +1300,16 @@ export async function addGalleryImage(url: string): Promise<ActionResult> {
     return { ok: false, error: "Neispravna adresa slike." };
   }
 
+  // Isti limit kao na klijentu (gallery-manager MAX_IMAGES) - direktan
+  // poziv akcije ne sme da ga zaobiđe
+  const { count } = await supabase
+    .from("gallery")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", tenant.id);
+  if ((count ?? 0) >= 24) {
+    return { ok: false, error: "Galerija prima najviše 24 slike - obriši neku pa dodaj novu." };
+  }
+
   const { error } = await supabase
     .from("gallery")
     .insert({ tenant_id: tenant.id, image_url: url });
@@ -1403,7 +1437,8 @@ export async function updateBillingInfo(info: string): Promise<ActionResult> {
     .update({ billing_note: parsed.data || null })
     .eq("id", tenant.id);
   if (error) return { ok: false, error: "Čuvanje nije uspelo." };
-  revalidatePath("/admin/podesavanja");
+  // Podaci za fakturu žive na /admin/pretplata (naplata preseljena)
+  revalidatePath("/admin/pretplata");
   return { ok: true };
 }
 
@@ -1476,7 +1511,10 @@ export async function createInvoice(
       .select("id")
       .single();
     if (!error) {
-      revalidatePath("/admin/podesavanja");
+      // Istorija uplata i status žive na /admin/pretplata (naplata je
+      // preseljena sa Podešavanja) - bez ovoga lista ostaje stara dok
+      // vlasnik ručno ne osveži
+      revalidatePath("/admin/pretplata");
       return { ok: true, invoiceId: created.id };
     }
     if (error.code === "23505") {

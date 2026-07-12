@@ -236,9 +236,12 @@ export function AccountControls({
     <div className="flex flex-wrap items-center gap-1.5">
       <button
         disabled={pending}
-        onClick={() =>
-          run(() => sendOwnerPasswordReset(tenantId), "Reset lozinke je poslat vlasniku.")
-        }
+        onClick={() => {
+          // Prvo dugme u redu - slučajan klik bi vlasniku poslao mejl za
+          // promenu lozinke i zbunio ga, zato potvrda kao kod storna
+          if (!confirm("Poslati vlasniku mejl za promenu lozinke?")) return;
+          run(() => sendOwnerPasswordReset(tenantId), "Reset lozinke je poslat vlasniku.");
+        }}
         className={`${pill} bg-ink/10 text-ink`}
         title="Šalje standardni mejl za promenu lozinke"
       >

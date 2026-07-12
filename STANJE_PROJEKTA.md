@@ -4,6 +4,72 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 12.7 (7) — MEDIUM + LOW PAKET IZ ANALIZE ODRAĐEN (Mihajlo: "odradi
+i izmene iz medium i low paketa"); 140 unit, lint, tsc, build zeleni, uživo
+verifikovano:** Sve preporuke iz 12.7 (6) sprovedene osim svesnih izuzetaka.
+**MEDIUM:** (1) superadmin custom iznos fakture — nova čista funkcija
+`parseSrIznos` (tenant-actions.tsx): "1.990"→1990, "1.990,00"→1990,
+"1990.50"→1990.5 (tačka = decimala samo van grupe od 3); input `type=text`
++ ŽIVI pregled "= X RSD" + confirm sa parsiranim iznosom; server odbija
+< 100 RSD (issueInvoice) — founder faktura više ne može tiho na 1,49 RSD.
+Verifikovano izolovanim testom svih 14 slučajeva. (2) "Obriši nalog"
+(orphan) — server (deleteAccountWithoutSalon) odbija naloge sa
+SUPER_ADMIN_EMAIL liste; UI (orphan-accounts) im prikazuje bedž
+"superadmin" umesto dugmeta (`superadmin` flag iz page.tsx). (3)
+deleteTenant — REDOSLED obrnut: tenant red se briše PRVI (ako padne, salon
+ostaje netaknut, retry radi), pa tek onda nepovratno čišćenje storage/Vercel
+domen; tenant_label upis ostaje pre delete-a (tenant_id posle njega null).
+(4) updateStaffSchedule sada zove `bustTenantSiteCache` (prelaz
+weekly↔smene/parnost više ne služi stare slotove 60s). (5) Deaktiviran
+zaposleni sa terminima OSTAJE kolona u Kalendaru (kalendar/page dovlači
+inactive staff koji imaju rezervacije tog dana; zaglavlje "neaktivan · N
+termina"); nova rezervacija/blokada nude SAMO aktivne (activeStaff u
+calendar-view). PRAVILO: [slug] stranice same gate-uju javni sadržaj —
+layout više nije brana (vidi #6). (6) Link za otkazivanje iz mejla radi i
+za NEOBJAVLJEN/suspendovan salon: uveden `getHiddenTenant` (service-role,
+React cache) u lib/tenant — otkazivanje/[token]/page ga koristi umesto
+getTenantSite (token je sam po sebi dokaz prava); linkovi ka sajtu u
+CancelCard se kriju kad `publiclyVisible=false` (inače bi 404). [slug]/layout
+za skriven salon renderuje decu u podrazumevanom okviru umesto notFound.
+VERIFIKOVANO uživo: /studio-test/otkazivanje/{fake-token} renderuje
+"Rezervacija nije pronađena" umesto 404. (7) /auth/callback čita error
+parametre: istekao link (otp_expired) → /prijava?greska=link (amber), otkazan
+Google consent (access_denied) → čista /prijava — više NE "Nalog je
+potvrđen". (8) Belo <body> iza DARK teme salona rešeno: [slug]/layout emituje
+`<style>html{background:...}</style>` + `generateViewport` sa themeColor po
+salonu (`siteBackground` prati --background tokene). VERIFIKOVANO na /demo:
+htmlBg rgb(10,10,10), themeColor #0a0a0a. (9) Auth forme (prijava/
+registracija/zaboravljena-lozinka) dobile `noValidate` + srpske inline
+poruke (registracija +email validacija); native balončić više ne preduhitri.
+VERIFIKOVANO uživo: prazan submit registracije → 4 srpske poruke, bez
+native bubble. (10) .env.example dopunjen svih 12 varijabli (RESEND,
+EMAIL_FROM, APP_URL, CRON_SECRET, VERCEL_*, komentari obavezna/opciona).
+**LOW:** isOnline odbacuje BUDUĆI timestamp (+test; REST falsifikat
+"online" onemogućen); CRON_SECRET poređenje timingSafeEqual; cron marker
+nosi `email_ok` pa panel razlikuje "radi" od "mejlovi ne odlaze"; reset
+lozinke dobio confirm; cancelInvoice audit + tenant kontekst;
+extendSubscription koristi addMonths klamp (kraj meseca); RESERVED_SLUGS +
+"opengraph-image"; slug min/max srpske Zod poruke; createSalon parcijalni
+pad briše tenant-siroče; galerija limit 24 i na serveru (addGalleryImage);
+adminCreateBooking validira kalendarski datum/vreme (31.2., 12:99);
+createBooking vraća `code:"slot_gone"` (wizard ne poredi tekst "zauzet");
+createInvoice/updateBillingInfo revalidiraju /admin/pretplata (ne stare
+Podešavanje); domen akcije bustuju keš (canonical); lista Zaposleni
+prikazuje FOTKU umesto inicijala (VERIFIKOVANO uživo); datumi kroz
+lib/datum.ts (admin/page, wizard month label, hero-demo); nedelja A/B i
+default odsustva primaju `today` iz zone salona (staff-detail,
+absence-dialog); mrtav ui/calendar.tsx OBRISAN; loading.tsx za /superadmin.
+**SVESNO NIJE DIRANO (rizik/odluka):** uklanjanje neiskorišćenih npm
+zavisnosti (react-hook-form/@hookform/date-fns/react-day-picker) i
+`import "server-only"` u admin klijentu — oba traže npm install/uninstall
+sa @emnapi lockfile rizikom u CI baš pred launch; kandidati za IZOLOVAN
+post-launch commit sa `npm ci` proverom (calendar.tsx koji je JEDINI
+koristio react-day-picker jeste obrisan). mergeOnboarding read-merge-write
+trka ostaje poznat trade-off (traži jsonb `||` RPC + migraciju). Admin
+native date pickeri (DateJump/kalendar dijalozi) čekaju Mihajlovo "kreni"
+za MiniCalendar tretman. Deo produkcijskih koraka (db push, test saloni,
+CRON_SECRET, Vercel env) i dalje na Mihajlu — vidi 12.7 (6).**
+
 **Novo od 12.7 (6) — FINALNA PRE-LAUNCH ANALIZA (6 paralelnih agenata:
 klijent/admin/superadmin/dizajn/kvalitet/bezbednost) + 2 HIGH ISPRAVKE:**
 (1) BILANS: 0 BLOCKER u kodu; bezbednost ČISTA (sve superadmin runda 3

@@ -27,6 +27,7 @@ export default function RegisterPage() {
   const [fieldErrors, setFieldErrors] = useState<{
     fullName?: string;
     phone?: string;
+    email?: string;
     password?: string;
   }>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -40,6 +41,9 @@ export default function RegisterPage() {
     }
     if (!/^\+?[0-9 /-]{6,20}$/.test(phone.trim())) {
       errs.phone = "Unesi ispravan broj telefona.";
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) {
+      errs.email = "Unesi ispravnu email adresu.";
     }
     if (password.length < 8) {
       errs.password = "Lozinka mora imati bar 8 karaktera.";
@@ -139,7 +143,9 @@ export default function RegisterPage() {
           </p>
         </CardHeader>
         <CardContent>
-          <form onSubmit={onSubmit} className="space-y-4">
+          {/* noValidate: native required balončić (jezik browsera) bi
+              preduhitrio srpske inline poruke ispod polja */}
+          <form onSubmit={onSubmit} noValidate className="space-y-4">
             {formError && (
               <p
                 role="alert"
@@ -205,9 +211,19 @@ export default function RegisterPage() {
                 autoComplete="email"
                 className="h-11"
                 required
+                aria-invalid={!!fieldErrors.email}
+                aria-describedby={fieldErrors.email ? "email-error" : undefined}
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setFieldErrors((f) => ({ ...f, email: undefined }));
+                }}
               />
+              {fieldErrors.email && (
+                <p id="email-error" className="text-xs font-medium text-red-700">
+                  {fieldErrors.email}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Lozinka (min 8 karaktera)</Label>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Check } from "lucide-react";
+import { datumSr } from "@/lib/datum";
 
 // Samoodigravajuća demonstracija booking flowa u telefon okviru.
 // Faze: usluga → frizer → termin → uspeh, pa petlja ispočetka.
@@ -32,7 +33,7 @@ const SLOTS = ["10:00", "10:30", "11:00", "12:00", "12:30", "13:00"];
 function nextFridayLabel(): string {
   const d = new Date();
   d.setDate(d.getDate() + (((5 - d.getDay() + 7) % 7) || 7));
-  return `Petak, ${d.toLocaleDateString("sr-Latn-RS", { day: "numeric", month: "long" })}`;
+  return `Petak, ${datumSr(d, { day: "numeric", month: "long" })}`;
 }
 
 const listStagger = {

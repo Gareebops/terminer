@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getAdminContext } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { bustTenantSiteCache } from "@/lib/tenant";
 import {
   removeDomainFromVercel,
   vercelEnv,
@@ -162,6 +163,9 @@ export async function setCustomDomain(
     await removeDomainFromVercel(previous);
   }
 
+  // custom_domain je od SEO paketa deo keširanog javnog sajta (canonical,
+  // JSON-LD) - bez busta javne strane do 5 min služe canonical na staru adresu
+  bustTenantSiteCache(tenant.slug);
   revalidatePath("/admin/podesavanja");
   return { ok: true, status: await fetchDomainStatus(domain) };
 }
@@ -184,6 +188,8 @@ export async function removeCustomDomain(): Promise<Result<object>> {
     .eq("id", tenant.id);
   if (error) return { ok: false, error: "Uklanjanje nije uspelo. Pokušaj ponovo." };
 
+  // Isti razlog kao u setCustomDomain: canonical se odmah vraća na terminer.rs
+  bustTenantSiteCache(tenant.slug);
   revalidatePath("/admin/podesavanja");
   return { ok: true };
 }

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getTenantSite } from "@/lib/tenant";
+import { getHiddenTenant } from "@/lib/tenant";
 import { linkCancelExpiredNow } from "@/lib/booking/cancel";
 import { nowInZone } from "@/lib/booking/timezone";
 import { toMinutes } from "@/lib/booking/slots";
@@ -28,20 +28,27 @@ export default async function CancelPage({
   params: Promise<{ slug: string; token: string }>;
 }) {
   const { slug, token } = await params;
-  const site = await getTenantSite(slug);
-  if (!site || !TOKEN_RE.test(token)) notFound();
+  // Namerno NE getTenantSite: link iz mejla mora da radi i kad salon u
+  // međuvremenu postane neobjavljen/suspendovan - token je sam po sebi
+  // dokaz prava, a termin i dalje važi (drži i anti-spam limit klijenta)
+  const tenant = await getHiddenTenant(slug);
+  if (!tenant || !TOKEN_RE.test(token)) notFound();
 
   const db = createAdminClient();
-  const { data: booking } = await db
-    .from("bookings")
-    .select(
-      "id, cancel_token, date, start_time, end_time, status, customer_name, created_at, starts_at, services(name), staff(name)"
-    )
-    .eq("tenant_id", site.tenant.id)
-    .eq("cancel_token", token)
-    .maybeSingle();
+  const [{ data: booking }, { data: settings }] = await Promise.all([
+    db
+      .from("bookings")
+      .select(
+        "id, cancel_token, date, start_time, end_time, status, customer_name, created_at, starts_at, services(name), staff(name)"
+      )
+      .eq("tenant_id", tenant.id)
+      .eq("cancel_token", token)
+      .maybeSingle(),
+    db.from("site_settings").select("phone").eq("tenant_id", tenant.id).maybeSingle(),
+  ]);
 
-  const now = nowInZone(site.tenant.timezone);
+  const publiclyVisible = tenant.is_published && !tenant.suspended_at;
+  const now = nowInZone(tenant.timezone);
   const isPast =
     !!booking &&
     (booking.date < now.date ||
@@ -56,18 +63,23 @@ export default async function CancelPage({
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10">
-      <Link
-        href={`/${site.tenant.slug}`}
-        className="flex items-center gap-1 text-sm text-muted-foreground hover:underline"
-      >
-        <ArrowLeft className="size-4" /> {site.tenant.name}
-      </Link>
+      {/* Link ka sajtu samo dok je salon javno vidljiv - inače vodi u 404 */}
+      {publiclyVisible ? (
+        <Link
+          href={`/${tenant.slug}`}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:underline"
+        >
+          <ArrowLeft className="size-4" /> {tenant.name}
+        </Link>
+      ) : (
+        <p className="text-sm text-muted-foreground">{tenant.name}</p>
+      )}
       <h1 className="mt-4 font-heading text-3xl font-bold tracking-tight">
         Otkazivanje termina
       </h1>
       <div className="mt-8">
         <CancelCard
-          slug={site.tenant.slug}
+          slug={tenant.slug}
           booking={
             booking
               ? {
@@ -87,7 +99,8 @@ export default async function CancelPage({
           }
           isPast={isPast}
           windowExpired={windowExpired}
-          salonPhone={site.settings?.phone ?? null}
+          salonPhone={settings?.phone ?? null}
+          publiclyVisible={publiclyVisible}
         />
       </div>
     </main>

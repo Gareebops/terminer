@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { trialReminderDue } from "@/lib/billing";
@@ -20,9 +21,19 @@ const REMINDER_DAYS = 3;
 
 export async function GET(request: Request) {
   // Vercel Cron šalje "Authorization: Bearer ${CRON_SECRET}" kad je env
-  // podešen; bez secreta je ruta zaključana (fail-closed, ne no-op)
+  // podešen; bez secreta je ruta zaključana (fail-closed, ne no-op).
+  // Poređenje preko sha-obeleženih bafera: timingSafeEqual traži jednake
+  // dužine, a običan !== curi dužinu/prefiks kroz vreme odgovora
   const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  const provided = request.headers.get("authorization") ?? "";
+  const expected = `Bearer ${secret}`;
+  const providedBuf = Buffer.from(provided);
+  const expectedBuf = Buffer.from(expected);
+  if (
+    !secret ||
+    providedBuf.length !== expectedBuf.length ||
+    !timingSafeEqual(providedBuf, expectedBuf)
+  ) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -141,6 +152,9 @@ export async function GET(request: Request) {
       checked: (tenants ?? []).length,
       sent: res.sent ? due.length : 0,
       owners_notified: ownersNotified.length,
+      // Panel iz ovoga razlikuje "cron radi" od "cron radi ali mejlovi ne
+      // odlaze" (npr. istekao RESEND_API_KEY) - due > 0 a ništa poslato
+      email_ok: res.sent || ownersNotified.length > 0,
     },
   });
 

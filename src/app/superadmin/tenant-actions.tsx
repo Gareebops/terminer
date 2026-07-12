@@ -5,6 +5,21 @@ import { toast } from "sonner";
 import { formatAmount, PLANS, type PlanId } from "@/lib/invoice";
 import { extendSubscription, extendTrial, issueInvoice, setPaidUntil } from "./actions";
 
+// Srpski unos iznosa: "1.990", "1.990,00" i "1990.50" moraju značiti ono
+// što Mihajlo vidi - Number("1.990") bi tiho dao 1,99 RSD! Tačke su
+// separator hiljada kad postoji zapeta ili kad iza svake idu tačno 3
+// cifre; inače je tačka decimalni zarez. null = prazno (cenovnik).
+export function parseSrIznos(raw: string): number | null {
+  let s = raw.trim().replace(/\s+/g, "").replace(/rsd$/i, "");
+  if (!s) return null;
+  if (s.includes(",")) {
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
+    s = s.replace(/\./g, "");
+  }
+  return Number(s);
+}
+
 export function TenantActions({
   tenantId,
   status,
@@ -30,9 +45,18 @@ export function TenantActions({
   }
 
   function submitInvoice() {
-    const custom = amount.trim() === "" ? undefined : Number(amount.replace(",", "."));
+    const parsedAmount = parseSrIznos(amount);
+    const custom = parsedAmount === null ? undefined : parsedAmount;
     if (custom !== undefined && (!Number.isFinite(custom) || custom <= 0)) {
       toast.error("Iznos mora biti pozitivan broj (prazan = cenovnik).");
+      return;
+    }
+    // Potvrda sa PARSIRANIM iznosom - da "1.990" nikad tiho ne postane
+    // faktura na 1,99 RSD
+    if (
+      custom !== undefined &&
+      !confirm(`Izdati fakturu na ${formatAmount(custom)} RSD?`)
+    ) {
       return;
     }
     startTransition(async () => {
@@ -102,15 +126,26 @@ export function TenantActions({
             </button>
           ))}
           <input
-            type="number"
-            min="1"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder={`${formatAmount(PLANS[plan].amount)} RSD`}
             title="Prilagođen iznos (prazan = cenovnik)"
             className="w-32 rounded-full border border-ink/15 px-3 py-1 text-xs font-semibold"
           />
+          {/* Živi pregled parsiranog iznosa - "1.990" se ovde odmah vidi
+              kao 1.990,00 RSD (ili kao greška), pre klika na Izdaj */}
+          {amount.trim() !== "" && (
+            <span className="text-xs font-semibold text-ink/70">
+              {(() => {
+                const n = parseSrIznos(amount);
+                return n !== null && Number.isFinite(n) && n > 0
+                  ? `= ${formatAmount(n)} RSD`
+                  : "neispravan iznos";
+              })()}
+            </span>
+          )}
           <button
             disabled={pending}
             onClick={submitInvoice}

@@ -423,7 +423,10 @@ export type CreateBookingResult =
       // Kome je termin dodeljen - kod "any" klijent tek ovde saznaje ime
       staffName: string;
     }
-  | { ok: false; error: string };
+  // code "slot_gone": izabrani termin je nestao (zauzet u međuvremenu ILI
+  // pao ispod MIN_LEAD_MINUTES / dan blokiran) - wizard na osnovu koda
+  // osvežava slotove i vraća na izbor termina, bez poređenja teksta poruke
+  | { ok: false; error: string; code?: "slot_gone" };
 
 export async function createBooking(
   raw: z.infer<typeof createBookingSchema>
@@ -493,7 +496,7 @@ export async function createBooking(
   const perStaff = await computeSlotsPerStaff(ctx, input.date);
   const candidates = ctx.staffList.filter((_, i) => perStaff[i].includes(input.time));
   if (candidates.length === 0) {
-    return { ok: false, error: "Termin više nije dostupan. Izaberi drugi." };
+    return { ok: false, code: "slot_gone", error: "Termin više nije dostupan. Izaberi drugi." };
   }
   for (let i = candidates.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -559,7 +562,7 @@ export async function createBooking(
     }
   }
   if (!booking || !assigned) {
-    return { ok: false, error: "Termin je upravo zauzet. Izaberi drugi." };
+    return { ok: false, code: "slot_gone", error: "Termin je upravo zauzet. Izaberi drugi." };
   }
 
   // Mejlovi (nikad ne obaraju booking): potvrda klijentu ako je ostavio

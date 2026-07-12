@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bustTenantSiteCache } from "@/lib/tenant";
 import { logAdminAction } from "@/lib/audit";
-import { invoicePeriod, PLANS, revertedPaidUntil, type PlanId } from "@/lib/invoice";
+import { addMonths, invoicePeriod, PLANS, revertedPaidUntil, type PlanId } from "@/lib/invoice";
 
 // Superadmin = vlasnik platforme (SUPER_ADMIN_EMAIL u env).
 export async function assertSuperAdmin(): Promise<{ email: string } | null> {
@@ -113,6 +113,14 @@ export async function issueInvoice(input: {
 }): Promise<{ ok: true; invoiceId: string; reused: boolean } | { ok: false; error: string }> {
   const parsed = issueInvoiceSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Neispravni podaci." };
+  // Članarina ispod 100 RSD je praktično sigurno greška u unosu
+  // ("1.990" parsiran kao 1,99) - bolje odbiti nego izdati pogrešnu fakturu
+  if (parsed.data.amount !== undefined && parsed.data.amount < 100) {
+    return {
+      ok: false,
+      error: "Iznos je manji od 100 RSD - proveri unos (separator hiljada?).",
+    };
+  }
   const me = await assertSuperAdmin();
   if (!me) return { ok: false, error: "Nemaš pristup." };
 
@@ -277,7 +285,7 @@ export async function cancelInvoice(invoiceId: string): Promise<ActionResult> {
     .update({ status: "cancelled" })
     .eq("id", invoiceId)
     .eq("status", "issued")
-    .select("id")
+    .select("id, tenant_id, tenant_label")
     .maybeSingle();
   if (error || !data) {
     return { ok: false, error: "Storniranje nije uspelo (možda je već plaćena?)." };
@@ -285,6 +293,9 @@ export async function cancelInvoice(invoiceId: string): Promise<ActionResult> {
   await logAdminAction({
     adminEmail: me.email,
     action: "faktura stornirana",
+    // Tenant kontekst da pretraga dnevnika po salonu nalazi i storna
+    tenantId: data.tenant_id,
+    tenantLabel: data.tenant_label,
     details: { invoice_id: invoiceId },
   });
   revalidatePath("/superadmin");
@@ -379,14 +390,13 @@ export async function extendSubscription(input: {
     .maybeSingle();
   if (!tenant) return { ok: false, error: "Salon nije pronađen." };
 
-  // Produžetak ide od danas ili od postojećeg isteka - šta god je kasnije
-  const today = new Date();
+  // Produžetak ide od danas ili od postojećeg isteka - šta god je kasnije.
+  // addMonths (lib/invoice) klampuje na kraj meseca (31.8 + 1 mes = 30.9),
+  // isto kao periodi faktura - Date.setMonth bi prelio u 1.10.
+  const today = new Date().toISOString().slice(0, 10);
   const base =
-    tenant.paid_until && new Date(tenant.paid_until) > today
-      ? new Date(tenant.paid_until)
-      : today;
-  base.setMonth(base.getMonth() + parsed.data.months);
-  const paidUntil = base.toISOString().slice(0, 10);
+    tenant.paid_until && tenant.paid_until > today ? tenant.paid_until : today;
+  const paidUntil = addMonths(base, parsed.data.months);
 
   const { error } = await db
     .from("tenants")

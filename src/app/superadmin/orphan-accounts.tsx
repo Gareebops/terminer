@@ -13,6 +13,9 @@ export interface OrphanAccount {
   createdLabel: string;
   lastSignInLabel: string | null;
   confirmed: boolean;
+  // Superadmin nalozi su po dizajnu bez salona pa upadaju u ovu listu -
+  // označeni su i bez dugmeta za brisanje (server ih svakako odbija)
+  superadmin: boolean;
 }
 
 export function OrphanAccounts({ accounts }: { accounts: OrphanAccount[] }) {
@@ -58,13 +61,19 @@ export function OrphanAccounts({ accounts }: { accounts: OrphanAccount[] }) {
               {acc.lastSignInLabel ?? "nikad"}
               {!acc.confirmed && " · nepotvrđen"}
             </span>
-            <button
-              disabled={pending}
-              onClick={() => remove(acc)}
-              className="ml-auto rounded-full border border-ink/15 px-3 py-1.5 text-xs font-bold text-ink/70 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
-            >
-              Obriši nalog
-            </button>
+            {acc.superadmin ? (
+              <span className="ml-auto rounded-full bg-lavender/40 px-3 py-1.5 text-xs font-bold text-ink/70">
+                superadmin
+              </span>
+            ) : (
+              <button
+                disabled={pending}
+                onClick={() => remove(acc)}
+                className="ml-auto rounded-full border border-ink/15 px-3 py-1.5 text-xs font-bold text-ink/70 transition-colors hover:bg-red-50 hover:text-red-700 disabled:opacity-40"
+              >
+                Obriši nalog
+              </button>
+            )}
           </div>
         ))}
       </div>

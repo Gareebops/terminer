@@ -31,6 +31,10 @@ function LoginForm() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
+    if (!email.trim() || !password) {
+      setFormError("Upiši email i lozinku.");
+      return;
+    }
     setLoading(true);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -78,7 +82,8 @@ function LoginForm() {
             se ili zatraži nov.
           </p>
         )}
-        <form onSubmit={onSubmit} className="space-y-4">
+        {/* noValidate: native required balončić bi preduhitrio srpsku poruku */}
+        <form onSubmit={onSubmit} noValidate className="space-y-4">
           {formError && (
             <p
               role="alert"

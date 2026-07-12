@@ -22,12 +22,12 @@ import {
 } from "@/components/ui/select";
 import { createAbsence } from "../actions";
 import { ScheduleConflictDialog } from "../schedule-conflict-dialog";
-import { formatDateISO } from "@/lib/booking/slots";
 import type { ScheduleConflict, Staff } from "@/lib/types";
 
-// Odmor/bolovanje: opseg datuma odjednom, umesto klika po danu
-export function AbsenceDialog({ staff }: { staff: Staff[] }) {
-  const today = formatDateISO(new Date());
+// Odmor/bolovanje: opseg datuma odjednom, umesto klika po danu.
+// today dolazi iz zone salona (server) - browser new Date() bi oko ponoći
+// ili u drugoj zoni ponudio pogrešan podrazumevani datum
+export function AbsenceDialog({ staff, today }: { staff: Staff[]; today: string }) {
   const [open, setOpen] = useState(false);
   const [who, setWho] = useState("all");
   const [from, setFrom] = useState(today);

@@ -16,6 +16,9 @@ export const RESERVED_SLUGS = new Set([
   "api",
   "_next",
   "favicon.ico",
+  // root metadata ruta bez ekstenzije (sitemap.xml/robots.txt/icon.svg
+  // slug regex ionako odbija zbog tačke) - opengraph-image bi zasenio [slug]
+  "opengraph-image",
   // rezerve za buduće rute / zabuna sa poddomenima
   "www",
   "app",

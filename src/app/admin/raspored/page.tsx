@@ -61,7 +61,7 @@ export default async function SchedulePage({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <AbsenceDialog staff={staff} />
+          <AbsenceDialog staff={staff} today={today} />
           <Button variant="outline" size="icon" asChild>
             <Link href={`/admin/raspored?od=${prevWeek}`}>
               <ChevronLeft className="size-4" />

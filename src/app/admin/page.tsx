@@ -4,6 +4,7 @@ import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
 import { fromMinutes, toMinutes } from "@/lib/booking/slots";
 import { nowInZone } from "@/lib/booking/timezone";
+import { datumSr } from "@/lib/datum";
 import { plural } from "@/lib/plural";
 import { isAppearanceTouched } from "@/lib/guide";
 import { Button } from "@/components/ui/button";
@@ -108,7 +109,7 @@ export default async function AdminDashboardPage() {
     } else if (next.date === addDaysISO(today, 1)) {
       nextLabel = `sutra u ${time}`;
     } else {
-      nextLabel = `${new Date(`${next.date}T12:00:00`).toLocaleDateString("sr-Latn-RS", {
+      nextLabel = `${datumSr(next.date, {
         weekday: "short",
         day: "numeric",
         month: "numeric",
@@ -163,9 +164,8 @@ export default async function AdminDashboardPage() {
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">Početna</h1>
           <p className="mt-1 text-sm font-medium text-ink/70">
-            {/* sr-Latn: podrazumevani sr-RS ispisuje imena dana ćirilicom */}
             {greeting} ·{" "}
-            {todayDate.toLocaleDateString("sr-Latn-RS", {
+            {datumSr(todayDate, {
               weekday: "long",
               day: "numeric",
               month: "long",

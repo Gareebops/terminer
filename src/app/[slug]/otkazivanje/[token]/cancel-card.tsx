@@ -29,6 +29,7 @@ export function CancelCard({
   isPast,
   windowExpired = false,
   salonPhone = null,
+  publiclyVisible = true,
 }: {
   slug: string;
   booking: CancelCardBooking | null;
@@ -36,6 +37,9 @@ export function CancelCard({
   // Prošlo je više od sat vremena od zakazivanja - link više ne otkazuje
   windowExpired?: boolean;
   salonPhone?: string | null;
+  // Salon je objavljen i nije suspendovan - tek tada linkovi ka sajtu vode
+  // negde (inače bi "Nazad na sajt" iz mejla vodio u 404)
+  publiclyVisible?: boolean;
 }) {
   const [cancelled, setCancelled] = useState(false);
   // Otkazivanje traži potvrdu - slučajan klik iz mejla ne sme da obriše
@@ -54,9 +58,11 @@ export function CancelCard({
           <p className="mt-2 text-muted-foreground">
             Link nije važeći ili je rezervacija u međuvremenu obrisana.
           </p>
-          <Button asChild className="mt-6 h-11">
-            <Link href={`/${slug}`}>Nazad na sajt</Link>
-          </Button>
+          {publiclyVisible && (
+            <Button asChild className="mt-6 h-11">
+              <Link href={`/${slug}`}>Nazad na sajt</Link>
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
@@ -190,19 +196,23 @@ export function CancelCard({
                 </a>
               </Button>
             )}
-            <Button
-              variant={
-                canCancel || (expired && !isCancelled && salonPhone)
-                  ? "outline"
-                  : "default"
-              }
-              className="h-11"
-              asChild
-            >
-              <Link href={isCancelled ? `/${slug}/zakazi` : `/${slug}`}>
-                {isCancelled ? "Zakaži novi termin" : "Nazad na sajt"}
-              </Link>
-            </Button>
+            {/* Sajt/zakazivanje su dostupni samo dok je salon javno vidljiv;
+                za sklonjen salon link bi vodio u 404, pa se ne prikazuje */}
+            {publiclyVisible && (
+              <Button
+                variant={
+                  canCancel || (expired && !isCancelled && salonPhone)
+                    ? "outline"
+                    : "default"
+                }
+                className="h-11"
+                asChild
+              >
+                <Link href={isCancelled ? `/${slug}/zakazi` : `/${slug}`}>
+                  {isCancelled ? "Zakaži novi termin" : "Nazad na sajt"}
+                </Link>
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

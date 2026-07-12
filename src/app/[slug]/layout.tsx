@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
 import {
   brandGradient,
@@ -9,7 +9,7 @@ import {
 } from "@/lib/color";
 import { getFontPair } from "@/lib/fonts";
 import { plural } from "@/lib/plural";
-import { getTenantSite } from "@/lib/tenant";
+import { getHiddenTenant, getTenantSite, type TenantSite } from "@/lib/tenant";
 
 // SEO za sajt salona: naslov i opis su salonovi, ne Terminerovi.
 // getTenantSite je React cache, pa layout ne plaća drugi upit.
@@ -60,6 +60,34 @@ export async function generateMetadata({
   };
 }
 
+// Boja podloge CELOG dokumenta za dati salon. Wrapper div nosi bg-background,
+// ali <body> bi ostao beo - na pravim telefonima (iOS overscroll, Android
+// glow, učitavanje) oko tamnog sajta bljesne belo. Ista boja ide i u
+// theme-color meta (browser traka prati temu salona). Konstante prate
+// --background tokene iz globals.css (oklch(1 0 0) / oklch(0.145 0 0)).
+function siteBackground(site: TenantSite): string {
+  const theme = site.settings?.theme ?? {};
+  const mode = theme.mode === "dark" ? "dark" : "light";
+  if (theme.background === "tinted") {
+    const accent = displayColor(site.settings?.primary_color ?? "#18181b", mode);
+    return mode === "dark"
+      ? mix("#0a0a0a", accent, 0.12)
+      : mix("#ffffff", accent, 0.055);
+  }
+  return mode === "dark" ? "#0a0a0a" : "#ffffff";
+}
+
+export async function generateViewport({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Viewport> {
+  const { slug } = await params;
+  const site = await getTenantSite(slug);
+  if (!site) return {};
+  return { themeColor: siteBackground(site) };
+}
+
 // Tema salona (boja, font par, svetla/tamna varijanta) se primenjuje ovde,
 // pa važi za sajt i za booking stranicu. Boja ide u shadcn --primary token
 // uz automatski izračunat kontrast teksta; tamna varijanta preko .dark klase.
@@ -72,7 +100,21 @@ export default async function SalonLayout({
 }) {
   const { slug } = await params;
   const site = await getTenantSite(slug);
-  if (!site) notFound();
+  if (!site) {
+    // Salon postoji ali nije javno vidljiv (neobjavljen/suspendovan):
+    // deca se ipak renderuju u podrazumevanom okviru, jer SVAKA stranica
+    // pod [slug] sama gate-uje javni sadržaj (page i zakazi rade notFound),
+    // a otkazivanje/[token] NAMERNO radi i za skriven salon - gost sa
+    // tokenom iz mejla ne sme da dobije 404 zato što je sajt u međuvremenu
+    // sklonjen s mreže (termin i dalje važi). PRAVILO ZA BUDUĆE STRANICE
+    // pod [slug]: obavezno sopstveno gate-ovanje, layout više nije brana.
+    if (!(await getHiddenTenant(slug))) notFound();
+    return (
+      <div className="flex min-h-screen flex-1 flex-col bg-background text-foreground">
+        {children}
+      </div>
+    );
+  }
 
   const theme = site.settings?.theme ?? {};
   const mode = theme.mode === "dark" ? "dark" : "light";
@@ -122,6 +164,8 @@ export default async function SalonLayout({
         ["--app-font-sans" as string]: fontPair.sansVar,
       }}
     >
+      {/* html pozadina u boji teme - overscroll/učitavanje bez belog bljeska */}
+      <style>{`html{background-color:${siteBackground(site)}}`}</style>
       {children}
     </div>
   );

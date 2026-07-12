@@ -146,9 +146,10 @@ function MiniCalendar({
   const monthPrefix = `${view.y}-${pad2(view.m + 1)}`;
   const canPrev = monthPrefix > min.slice(0, 7);
   const canNext = monthPrefix < max.slice(0, 7);
-  const monthLabel = new Date(view.y, view.m, 1)
-    .toLocaleDateString("sr-Latn-RS", { month: "long", year: "numeric" })
-    .replace(/^./, (c) => c.toUpperCase());
+  const monthLabel = datumSr(new Date(view.y, view.m, 1), {
+    month: "long",
+    year: "numeric",
+  }).replace(/^./, (c) => c.toUpperCase());
 
   const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
   // getDay: nedelja = 0, a naša nedelja počinje ponedeljkom
@@ -692,7 +693,10 @@ export function BookingWizard({
         setDone(true);
       } else {
         toast.error(res.error);
-        if (res.error.includes("zauzet")) {
+        // Termin nestao (zauzet / pao ispod praga / dan blokiran) - osveži
+        // slotove i vrati na izbor termina. Kod umesto poređenja teksta:
+        // grana "nema kandidata" ne sadrži reč "zauzet"
+        if (res.code === "slot_gone") {
           setTime(null);
           setSlots(null);
           try {

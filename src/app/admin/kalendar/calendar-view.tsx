@@ -666,6 +666,9 @@ export function CalendarView({
   const gridHeight = (dayEnd - dayStart) * PX_PER_MIN + PAD_Y * 2;
 
   const staffNameById = new Map(staff.map((m) => [m.id, m.name]));
+  // Deaktiviran zaposleni se prikazuje kao kolona SAMO da bi mu se videli
+  // postojeći termini - nova ručna rezervacija/blokada nudi samo aktivne
+  const activeStaff = staff.filter((m) => m.is_active);
 
   return (
     <div>
@@ -679,14 +682,14 @@ export function CalendarView({
         <NewBookingDialog
           key={`nb-${day}-${newBooking.nonce}`}
           day={day}
-          staff={staff}
+          staff={activeStaff}
           services={services}
           open={newBooking.open}
           onOpenChange={(o) => setNewBooking((s) => ({ ...s, open: o }))}
           initialStaffId={newBooking.staffId}
           initialTime={newBooking.time}
         />
-        <BlockDialog key={`bl-${day}`} day={day} staff={staff} defaultOpen={openBlock} />
+        <BlockDialog key={`bl-${day}`} day={day} staff={activeStaff} defaultOpen={openBlock} />
       </div>
 
       <div className="rounded-[2rem] bg-white p-3 shadow-card">
@@ -725,11 +728,13 @@ export function CalendarView({
                   <span className="truncate">{m.name}</span>
                 </span>
                 <span className="block truncate text-[11px] font-normal text-ink/60">
-                  {count > 0
-                    ? `${count} ${plural(count, ["termin", "termina", "termina"])}`
-                    : radi
-                      ? "bez termina"
-                      : "ne radi"}
+                  {!m.is_active
+                    ? `neaktivan · ${count} ${plural(count, ["termin", "termina", "termina"])}`
+                    : count > 0
+                      ? `${count} ${plural(count, ["termin", "termina", "termina"])}`
+                      : radi
+                        ? "bez termina"
+                        : "ne radi"}
                 </span>
               </div>
             );

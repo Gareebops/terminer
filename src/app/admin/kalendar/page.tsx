@@ -78,6 +78,33 @@ export default async function CalendarPage({
   // Radno okno po zaposlenom za taj dan (izuzetak gazi pravilo) -
   // vreme van okna se u gridu šrafira, "Ne radi" = cela kolona
   const staff = (staffRes.data ?? []) as Staff[];
+  const bookings = (bookingsRes.data ?? []) as (Booking & {
+    services: { name: string } | null;
+  })[];
+
+  // Deaktiviran zaposleni (npr. dao otkaz) sa budućim potvrđenim terminima
+  // MORA da ostane u kalendaru za taj dan - inače termin postoji u bazi
+  // (klijent dolazi, slot zauzet) a nigde se ne vidi. deleteStaff pada na
+  // deaktivaciju baš kad ima rezervacija, pa je ovo realan slučaj.
+  const activeIds = new Set(staff.map((m) => m.id));
+  const missingStaffIds = [
+    ...new Set(
+      bookings
+        .map((b) => b.staff_id)
+        .filter((id): id is string => !!id && !activeIds.has(id))
+    ),
+  ];
+  if (missingStaffIds.length > 0) {
+    const { data: inactive } = await supabase
+      .from("staff")
+      .select("*")
+      .eq("tenant_id", tenant.id)
+      .in("id", missingStaffIds)
+      .order("sort_order");
+    // Na kraj liste - aktivni tim ostaje levo
+    staff.push(...((inactive ?? []) as Staff[]));
+  }
+
   const hours = (hoursRes.data ?? []) as WorkingHours[];
   const exceptions = (exceptionsRes.data ?? []) as ScheduleException[];
   const windows: Record<string, WorkWindow> = Object.fromEntries(
@@ -117,9 +144,7 @@ export default async function CalendarPage({
           day={day}
           staff={staff}
           services={(servicesRes.data ?? []) as Service[]}
-          bookings={
-            (bookingsRes.data ?? []) as (Booking & { services: { name: string } | null })[]
-          }
+          bookings={bookings}
           blockedSlots={(blockedRes.data ?? []) as BlockedSlot[]}
           windows={windows}
           nowMinutes={day === now.date ? now.minutes : null}

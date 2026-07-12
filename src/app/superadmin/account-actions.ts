@@ -243,17 +243,27 @@ export async function deleteTenant(input: {
   }
 
   // 0) Fakture su finansijski zapis - prežive brisanje (FK set null od
-  //    migracije 20260712000001) uz labelu salona; custom domen se skida
-  //    sa Vercel projekta da ne ostane da visi
+  //    migracije 20260712000001) uz labelu salona; MORA pre delete-a jer
+  //    tenant_id posle njega postaje null
   await ctx.db
     .from("invoices")
     .update({ tenant_label: label(ctx.tenant) })
     .eq("tenant_id", ctx.tenant.id);
+
+  // 1) Tenant red PRVI - kaskada nosi sve child tabele i članstva. Ako
+  //    ovde pukne, salon ostaje NETAKNUT (sa slikama i domenom) pa retry
+  //    radi; nepovratno čišćenje (storage, domen) ide tek posle uspeha -
+  //    obrnut redosled je ranije mogao da ostavi živ sajt bez slika.
+  const { error } = await ctx.db.from("tenants").delete().eq("id", ctx.tenant.id);
+  if (error) return { ok: false, error: "Brisanje salona nije uspelo." };
+  bustTenantSiteCache(ctx.tenant.slug);
+
+  // 2) Custom domen se skida sa Vercel projekta da ne ostane da visi;
+  //    storage fajlovi salona (logo, hero, tim, galerija) - best-effort,
+  //    salon je već obrisan
   if (ctx.tenant.custom_domain) {
     await removeDomainFromVercel(ctx.tenant.custom_domain);
   }
-
-  // 1) Storage fajlovi salona (logo, hero, tim, galerija)
   const { data: files } = await ctx.db.storage
     .from("tenant-media")
     .list(ctx.tenant.id, { limit: 1000 });
@@ -271,12 +281,6 @@ export async function deleteTenant(input: {
   if (paths.length > 0) {
     await ctx.db.storage.from("tenant-media").remove(paths);
   }
-
-  // 2) Tenant red - kaskada nosi sve child tabele i članstva; fakture
-  //    ostaju sa tenant_id = null (finansijski zapis)
-  const { error } = await ctx.db.from("tenants").delete().eq("id", ctx.tenant.id);
-  if (error) return { ok: false, error: "Brisanje salona nije uspelo." };
-  bustTenantSiteCache(ctx.tenant.slug);
 
   // 3) Auth nalog vlasnika - samo ako ne vodi nijedan drugi salon
   let ownerDeleted = false;
@@ -492,6 +496,20 @@ export async function deleteAccountWithoutSalon(userId: string): Promise<ActionR
   const { data: userRes } = await db.auth.admin.getUserById(userId);
   const email = userRes.user?.email ?? null;
   if (!userRes.user) return { ok: false, error: "Nalog nije pronađen." };
+
+  // Superadmin nalozi su po dizajnu nalozi BEZ salona, pa se pojavljuju u
+  // ovoj listi - jedan klik ne sme da obriše sopstveni login (sesija bi
+  // umrla usred rada) niti tuđi superadmin nalog
+  const superAdmins = (process.env.SUPER_ADMIN_EMAIL ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (email && superAdmins.includes(email.toLowerCase())) {
+    return {
+      ok: false,
+      error: "Nalog je na SUPER_ADMIN_EMAIL listi - superadmin nalozi se ne brišu odavde.",
+    };
+  }
 
   const { error } = await db.auth.admin.deleteUser(userId);
   if (error) return { ok: false, error: "Brisanje naloga nije uspelo." };

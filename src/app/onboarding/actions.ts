@@ -19,8 +19,8 @@ const schema = z.object({
       /^[a-z0-9](?:-?[a-z0-9])*$/,
       "Adresa može da sadrži samo mala slova, brojeve i crtice."
     )
-    .min(2)
-    .max(40),
+    .min(2, "Adresa mora imati bar 2 znaka.")
+    .max(40, "Adresa može imati najviše 40 znakova."),
 });
 
 export async function createSalon(input: {
@@ -82,7 +82,11 @@ export async function createSalon(input: {
   ]);
   if (memberRes.error || settingsRes.error) {
     console.error("createSalon setup failed:", memberRes.error, settingsRes.error);
-    return { error: "Greška pri podešavanju salona. Kontaktiraj podršku." };
+    // Best-effort čišćenje: tenant je upisan a članstvo/podešavanja nisu,
+    // pa bi ostao "salon bez vlasnika" koji TRAJNO drži slug (23505 pri
+    // ponovnom pokušaju). Kaskada nosi eventualni polovičan insert.
+    await db.from("tenants").delete().eq("id", tenant.id);
+    return { error: "Greška pri podešavanju salona. Pokušaj ponovo." };
   }
 
   // Ako je neko ranije posetio /{slug} dok salon nije postojao, keširan je

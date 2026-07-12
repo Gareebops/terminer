@@ -29,7 +29,7 @@ import {
   updateStaffSchedule,
   upsertStaff,
 } from "../../actions";
-import { DAY_NAMES_SR, formatDateISO, formatPriceRange } from "@/lib/booking/slots";
+import { DAY_NAMES_SR, formatPriceRange } from "@/lib/booking/slots";
 import {
   addDaysISO,
   DEFAULT_HORIZON_DAYS,
@@ -355,14 +355,16 @@ function ScheduleCard({
   staff,
   workingHours,
   guideNext,
+  today,
 }: {
   staff: Staff;
   workingHours: WorkingHours[];
   // Postavljen dok korak vodiča "radno vreme" još nije potvrđen - uspešno
   // čuvanje tada otvara dijalog "Korak završen" umesto toasta
   guideNext: GuideNextInfo | null;
+  // Danas u zoni salona (server) - vidi napomenu u StaffDetail
+  today: string;
 }) {
-  const today = formatDateISO(new Date());
   const [mode, setMode] = useState<ScheduleMode>(staff.schedule_mode);
   const [thisWeekParity, setThisWeekParity] = useState<0 | 1>(
     staff.schedule_mode === "rotating" && staff.rotation_anchor
@@ -517,12 +519,17 @@ export function StaffDetail({
   assignedServiceIds,
   workingHours,
   guideNext,
+  today,
 }: {
   staff: Staff;
   services: Service[];
   assignedServiceIds: string[];
   workingHours: WorkingHours[];
   guideNext: GuideNextInfo | null;
+  // Današnji datum u ZONI SALONA (server) - klijentski new Date() bi oko
+  // ponoći ned/pon (ili vlasnik u drugoj zoni) izračunao parnost A/B za
+  // pogrešnu nedelju pa bi se prikazana i sačuvana rotacija razišle
+  today: string;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set(assignedServiceIds));
   const [savingServices, startServices] = useTransition();
@@ -585,7 +592,12 @@ export function StaffDetail({
         </CardContent>
       </Card>
 
-      <ScheduleCard staff={staff} workingHours={workingHours} guideNext={guideNext} />
+      <ScheduleCard
+        staff={staff}
+        workingHours={workingHours}
+        guideNext={guideNext}
+        today={today}
+      />
 
       <HorizonCard staff={staff} />
     </div>

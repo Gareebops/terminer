@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getAdminContext } from "@/lib/admin";
 import { createClient } from "@/lib/supabase/server";
+import { nowInZone } from "@/lib/booking/timezone";
 import { guideNextInfo, isAppearanceTouched } from "@/lib/guide";
 import type {
   OnboardingState,
@@ -82,6 +83,7 @@ export default async function StaffDetailPage({
           assignedServiceIds={(linksRes.data ?? []).map((l) => l.service_id)}
           workingHours={(hoursRes.data ?? []) as WorkingHours[]}
           guideNext={next}
+          today={nowInZone(tenant.timezone).date}
         />
       </div>
     </div>
