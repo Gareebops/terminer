@@ -37,6 +37,8 @@ import {
   weekParityFor,
 } from "@/lib/booking/schedule";
 import { ScheduleConflictDialog } from "../../schedule-conflict-dialog";
+import { GuideStepDone } from "../../guide-step-done";
+import type { GuideNextInfo } from "@/lib/guide";
 import type {
   ScheduleConflict,
   ScheduleMode,
@@ -352,13 +354,14 @@ function HorizonCard({ staff }: { staff: Staff }) {
 function ScheduleCard({
   staff,
   workingHours,
-  guideActive,
+  guideNext,
 }: {
   staff: Staff;
   workingHours: WorkingHours[];
-  guideActive: boolean;
+  // Postavljen dok korak vodiča "radno vreme" još nije potvrđen - uspešno
+  // čuvanje tada otvara dijalog "Korak završen" umesto toasta
+  guideNext: GuideNextInfo | null;
 }) {
-  const router = useRouter();
   const today = formatDateISO(new Date());
   const [mode, setMode] = useState<ScheduleMode>(staff.schedule_mode);
   const [thisWeekParity, setThisWeekParity] = useState<0 | 1>(
@@ -371,6 +374,8 @@ function ScheduleCard({
     buildDayRows(workingHours, 1, buildDayRows(workingHours, 0))
   );
   const [conflicts, setConflicts] = useState<ScheduleConflict[] | null>(null);
+  // Poruka u dijalogu "Korak završen"; null = zatvoren
+  const [stepDoneMsg, setStepDoneMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const monday = mondayOf(today);
@@ -402,13 +407,9 @@ function ScheduleCard({
       if (res.ok) {
         setConflicts(null);
         // Tokom vodiča: čuvanje radnog vremena je štikliralo korak, pa
-        // toast nudi povratak na vodič
-        toast.success(
-          "Radno vreme je sačuvano.",
-          guideActive
-            ? { action: { label: "Nastavi vodič", onClick: () => router.push("/admin") } }
-            : undefined
-        );
+        // upadljiv dijalog vodi pravo na sledeći korak
+        if (guideNext) setStepDoneMsg("Radno vreme je sačuvano.");
+        else toast.success("Radno vreme je sačuvano.");
       } else if ("conflicts" in res && res.conflicts) {
         setConflicts(res.conflicts);
       } else {
@@ -489,6 +490,14 @@ function ScheduleCard({
         onConfirm={() => save(true)}
         pending={pending}
       />
+
+      {guideNext && (
+        <GuideStepDone
+          message={stepDoneMsg}
+          next={guideNext}
+          onClose={() => setStepDoneMsg(null)}
+        />
+      )}
     </Card>
   );
 }
@@ -498,13 +507,13 @@ export function StaffDetail({
   services,
   assignedServiceIds,
   workingHours,
-  guideActive,
+  guideNext,
 }: {
   staff: Staff;
   services: Service[];
   assignedServiceIds: string[];
   workingHours: WorkingHours[];
-  guideActive: boolean;
+  guideNext: GuideNextInfo | null;
 }) {
   const [selected, setSelected] = useState<Set<string>>(new Set(assignedServiceIds));
   const [savingServices, startServices] = useTransition();
@@ -567,7 +576,7 @@ export function StaffDetail({
         </CardContent>
       </Card>
 
-      <ScheduleCard staff={staff} workingHours={workingHours} guideActive={guideActive} />
+      <ScheduleCard staff={staff} workingHours={workingHours} guideNext={guideNext} />
 
       <HorizonCard staff={staff} />
     </div>

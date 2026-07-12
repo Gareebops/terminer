@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { fromMinutes, toMinutes } from "@/lib/booking/slots";
 import { nowInZone } from "@/lib/booking/timezone";
 import { plural } from "@/lib/plural";
+import { isAppearanceTouched } from "@/lib/guide";
 import { Button } from "@/components/ui/button";
 import { CountUp } from "@/components/count-up";
 import type { OnboardingState, SiteSettings } from "@/lib/types";
@@ -120,16 +121,6 @@ export default async function AdminDashboardPage() {
   const settings = (settingsRes.data ?? null) as SiteSettings | null;
   const onboarding = (settings?.onboarding ?? {}) as OnboardingState;
   const staffIds = ((staffRes.data ?? []) as { id: string }[]).map((s) => s.id);
-  const appearanceTouched = !!(
-    settings &&
-    (settings.logo_url ||
-      settings.hero_image_url ||
-      // theme ima default '{}' - dirnut je tek kad forma upiše font/mod
-      (settings.theme && Object.keys(settings.theme).length > 0) ||
-      settings.phone ||
-      settings.address ||
-      settings.primary_color !== "#18181b")
-  );
   // Guide ostaje montiran i kad je sajt objavljen (kartica se sama sakrije) -
   // tako proslava objave preživi refresh koji server akcija povuče
   const showGuide = !tenant.suspended_at && !onboarding.guide_hidden;
@@ -198,12 +189,14 @@ export default async function AdminDashboardPage() {
           salonName={tenant.name}
           published={tenant.is_published}
           showWelcome={!onboarding.welcome_seen && !tenant.is_published}
-          servicesCount={servicesRes.count ?? 0}
-          staffCount={staffIds.length}
-          scheduleConfirmed={!!onboarding.schedule_confirmed}
-          singleStaffId={staffIds.length === 1 ? staffIds[0] : null}
-          appearanceTouched={appearanceTouched}
-          appearanceConfirmed={!!onboarding.appearance_confirmed}
+          data={{
+            servicesCount: servicesRes.count ?? 0,
+            staffCount: staffIds.length,
+            scheduleConfirmed: !!onboarding.schedule_confirmed,
+            singleStaffId: staffIds.length === 1 ? staffIds[0] : null,
+            appearanceTouched: isAppearanceTouched(settings),
+            appearanceConfirmed: !!onboarding.appearance_confirmed,
+          }}
         />
       )}
 

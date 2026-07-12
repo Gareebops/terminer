@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, Pencil, Plus, Scissors, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -24,7 +23,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { GuideStepDone } from "../guide-step-done";
 import { formatPriceRange } from "@/lib/booking/slots";
+import type { GuideNextInfo } from "@/lib/guide";
 import type { Service } from "@/lib/types";
 import {
   deleteService,
@@ -44,14 +45,15 @@ const SAMPLE_KINDS: { id: SampleServiceKind; label: string }[] = [
 
 function ServiceForm({
   service,
-  guideActive,
   onDone,
+  onStepDone,
 }: {
   service?: Service;
-  guideActive: boolean;
   onDone: () => void;
+  // Postavljen dok korak vodiča "usluge" još nije završen - uspešno
+  // čuvanje tada otvara dijalog "Korak završen" umesto toasta
+  onStepDone: (() => void) | null;
 }) {
-  const router = useRouter();
   const [name, setName] = useState(service?.name ?? "");
   const [description, setDescription] = useState(service?.description ?? "");
   const [duration, setDuration] = useState(String(service?.duration_minutes ?? 30));
@@ -74,14 +76,10 @@ function ServiceForm({
         isActive,
       });
       if (res.ok) {
-        // Dok je vodič aktivan i ručno čuvanje nudi povratak na Početnu -
-        // isti obrazac kao primeri usluga i radno vreme kod zaposlenog
-        toast.success(
-          "Sačuvano.",
-          guideActive
-            ? { action: { label: "Nastavi vodič", onClick: () => router.push("/admin") } }
-            : undefined
-        );
+        // Dijalog "Korak završen" preuzima potvrdu dok vodič čeka ovaj
+        // korak; toast ostaje za redovan rad
+        if (onStepDone) onStepDone();
+        else toast.success("Sačuvano.");
         onDone();
       } else {
         toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
@@ -152,15 +150,17 @@ function ServiceForm({
 
 export function ServicesManager({
   services,
-  guideActive,
+  guideNext,
 }: {
   services: Service[];
-  guideActive: boolean;
+  // Postavljen dok korak vodiča "usluge" još nije završen
+  guideNext: GuideNextInfo | null;
 }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Service | undefined>();
   const [toDelete, setToDelete] = useState<Service | null>(null);
+  // Poruka u dijalogu "Korak završen"; null = zatvoren
+  const [stepDoneMsg, setStepDoneMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [samplesPending, startSamples] = useTransition();
 
@@ -168,12 +168,11 @@ export function ServicesManager({
     startSamples(async () => {
       const res = await insertSampleServices(kind);
       if (res.ok) {
+        const poruka = `Ubačeno ${res.count ?? ""} primera - cene i trajanja izmeni po svom cenovniku.`;
         // Primeri se ubacuju samo u prazan cenovnik = praktično uvek tokom
-        // vodiča, pa toast nudi povratak na sledeći korak
-        toast.success(
-          `Ubačeno ${res.count ?? ""} primera - izmeni cene i trajanja po svom cenovniku.`,
-          { action: { label: "Sledeći korak", onClick: () => router.push("/admin") } }
-        );
+        // vodiča, pa upadljiv dijalog vodi na sledeći korak
+        if (guideNext) setStepDoneMsg(poruka);
+        else toast.success(poruka);
       } else {
         toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
       }
@@ -216,7 +215,9 @@ export function ServicesManager({
           <ServiceForm
             key={editing?.id ?? "new"}
             service={editing}
-            guideActive={guideActive}
+            onStepDone={
+              guideNext ? () => setStepDoneMsg("Prva usluga je upisana.") : null
+            }
             onDone={() => {
               setOpen(false);
               setEditing(undefined);
@@ -337,6 +338,14 @@ export function ServicesManager({
           </div>
         )}
       </div>
+
+      {guideNext && (
+        <GuideStepDone
+          message={stepDoneMsg}
+          next={guideNext}
+          onClose={() => setStepDoneMsg(null)}
+        />
+      )}
 
       <ConfirmDialog
         open={!!toDelete}

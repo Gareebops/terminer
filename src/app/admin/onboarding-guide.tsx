@@ -15,53 +15,29 @@ import {
 } from "@/components/ui/dialog";
 import { ConfettiBurst } from "@/components/confetti";
 import { HeroDemo } from "@/components/landing/hero-demo";
+import { guideSteps, type GuideData, type GuideStep } from "@/lib/guide";
 import { plural } from "@/lib/plural";
 import { setPublished, updateOnboarding } from "./actions";
 
 // Vodič za pokretanje: koraci se štikliraju sami iz stvarnih podataka
 // (bez "tutorial state" mašinerije), pa vodič prepoznaje i ono što je
-// vlasnik uradio bez njega. Kartica nestaje objavom sajta, ali komponenta
-// ostaje montirana (published prop) da bi proslava objave preživela
-// osvežavanje Početne koje server akcija povuče.
-
-interface GuideStep {
-  title: string;
-  done: boolean;
-  meta?: string;
-  desc?: string;
-  cta?: { href: string; label: string };
-  // Koraci čiji default može stvarno biti dobar (radno vreme, izgled)
-  // nude i potvrdu pored CTA - automatska provera defaulta ne postoji,
-  // a bez potvrde bi korak blokirao objavu kroz vodič
-  confirm?: {
-    label: string;
-    patch: { scheduleConfirmed?: boolean; appearanceConfirmed?: boolean };
-    toast: string;
-  };
-}
+// vlasnik uradio bez njega. Model koraka deli sa trakom vodiča (guide-rail)
+// kroz lib/guide. Kartica nestaje objavom sajta, ali komponenta ostaje
+// montirana (published prop) da bi proslava objave preživela osvežavanje
+// Početne koje server akcija povuče.
 
 export function OnboardingGuide({
   slug,
   salonName,
   published,
   showWelcome,
-  servicesCount,
-  staffCount,
-  scheduleConfirmed,
-  singleStaffId,
-  appearanceTouched,
-  appearanceConfirmed,
+  data,
 }: {
   slug: string;
   salonName: string;
   published: boolean;
   showWelcome: boolean;
-  servicesCount: number;
-  staffCount: number;
-  scheduleConfirmed: boolean;
-  singleStaffId: string | null;
-  appearanceTouched: boolean;
-  appearanceConfirmed: boolean;
+  data: GuideData;
 }) {
   const router = useRouter();
   const [welcomeOpen, setWelcomeOpen] = useState(showWelcome);
@@ -83,62 +59,7 @@ export function OnboardingGuide({
     `Naš salon je sada online - pogledaj i zakaži termin: ${siteUrl}`
   );
 
-  const steps: GuideStep[] = [
-    {
-      title: "Napravi nalog i nazovi salon",
-      done: true,
-    },
-    {
-      title: "Dodaj usluge i cene",
-      done: servicesCount > 0,
-      meta:
-        servicesCount > 0
-          ? `${servicesCount} ${plural(servicesCount, ["usluga", "usluge", "usluga"])}`
-          : undefined,
-      desc: "Šišanje, manikir, masaža - šta god radiš. Trajanje određuje koliko termin zauzima u kalendaru.",
-      cta: { href: "/admin/usluge", label: "Dodaj usluge" },
-    },
-    {
-      title: "Dodaj tim",
-      done: staffCount > 0,
-      meta:
-        staffCount > 0
-          ? `${staffCount} ${plural(staffCount, ["član", "člana", "članova"])}`
-          : undefined,
-      desc: "I ako radiš sam - ti si tim. Klijenti biraju kod koga zakazuju termin.",
-      cta: { href: "/admin/zaposleni", label: "Dodaj tim" },
-    },
-    {
-      title: "Proveri radno vreme i smene",
-      done: scheduleConfirmed,
-      desc: "Novi član tima automatski dobija pon-sub 09-20. Ako salon radi drugačije ili neko radi u smenama, promeni to kod zaposlenog - od radnog vremena se prave slobodni termini.",
-      cta: {
-        href: singleStaffId ? `/admin/zaposleni/${singleStaffId}` : "/admin/zaposleni",
-        label: "Proveri radno vreme",
-      },
-      confirm: {
-        label: "Već je tačno",
-        patch: { scheduleConfirmed: true },
-        toast: "Radno vreme je potvrđeno.",
-      },
-    },
-    {
-      title: "Doteraj izgled sajta",
-      done: appearanceTouched || appearanceConfirmed,
-      desc: "Boja brenda, slike i kontakt podaci - da sajt liči baš na tvoj salon.",
-      cta: { href: "/admin/podesavanja", label: "Otvori izgled" },
-      confirm: {
-        label: "Sviđa mi se ovako",
-        patch: { appearanceConfirmed: true },
-        toast: "Izgled je potvrđen.",
-      },
-    },
-    {
-      title: "Pogledaj sajt i objavi ga",
-      done: false,
-      desc: "Proveri kako izgleda klijentima, pa ga pusti na mrežu jednim klikom.",
-    },
-  ];
+  const steps = guideSteps(data);
   const doneCount = steps.filter((s) => s.done).length;
   const currentIndex = steps.findIndex((s) => !s.done);
 
@@ -289,7 +210,9 @@ export function OnboardingGuide({
                     {step.meta}
                   </span>
                 )}
-                {isCurrent && step.cta && (
+                {/* publish ima cta samo za traku vodiča - kartica mu
+                    renderuje sopstveni blok sa dijalogom objave */}
+                {isCurrent && step.cta && step.id !== "publish" && (
                   <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2">
                     {step.confirm && (
                       <Button
@@ -310,7 +233,7 @@ export function OnboardingGuide({
                     </Button>
                   </div>
                 )}
-                {isCurrent && i === steps.length - 1 && (
+                {isCurrent && step.id === "publish" && (
                   <div className="ml-auto flex shrink-0 flex-wrap justify-end gap-2">
                     <Button asChild size="sm" variant="outline" className="rounded-full">
                       <a href={`/${slug}`} target="_blank" rel="noreferrer">
@@ -445,8 +368,7 @@ export function OnboardingGuide({
               Dobro došli u Terminer
             </DialogTitle>
             <DialogDescription className="text-center">
-              Ovako klijenti zakazuju termin - sami, sa telefona, i u 3
-              ujutru:
+              Ovako klijenti zakazuju termin - sami, sa telefona, bilo kada:
             </DialogDescription>
           </DialogHeader>
 

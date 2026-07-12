@@ -2,8 +2,12 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { getAdminContext } from "@/lib/admin";
 import { subscriptionInfo } from "@/lib/billing";
+import { createClient } from "@/lib/supabase/server";
+import { isAppearanceTouched, type GuideData } from "@/lib/guide";
+import type { OnboardingState, SiteSettings } from "@/lib/types";
 import { CONTACT_EMAIL } from "@/components/legal-page";
 import { AdminNav } from "./admin-nav";
+import { GuideRail } from "./guide-rail";
 import { LogoutButton } from "./logout-button";
 import { MobileHeader } from "./mobile-header";
 import { PublishControl } from "./publish-control";
@@ -17,6 +21,35 @@ export default async function AdminLayout({
 }) {
   const { tenant } = await getAdminContext();
   const sub = subscriptionInfo(tenant);
+
+  // Traka vodiča prati vlasnika po celom adminu dok vodič traje. Upiti se
+  // rade SAMO dok sajt nije objavljen (svež salon, malo podataka) - posle
+  // objave ili sakrivanja vodiča redovan rad ne plaća ništa.
+  let guideData: GuideData | null = null;
+  if (!tenant.is_published && !tenant.suspended_at) {
+    const supabase = await createClient();
+    const [settingsRes, servicesRes, staffRes] = await Promise.all([
+      supabase.from("site_settings").select("*").eq("tenant_id", tenant.id).maybeSingle(),
+      supabase
+        .from("services")
+        .select("id", { count: "exact", head: true })
+        .eq("tenant_id", tenant.id),
+      supabase.from("staff").select("id").eq("tenant_id", tenant.id).eq("is_active", true),
+    ]);
+    const settings = (settingsRes.data ?? null) as SiteSettings | null;
+    const onboarding = (settings?.onboarding ?? {}) as OnboardingState;
+    if (!onboarding.guide_hidden) {
+      const staffIds = ((staffRes.data ?? []) as { id: string }[]).map((s) => s.id);
+      guideData = {
+        servicesCount: servicesRes.count ?? 0,
+        staffCount: staffIds.length,
+        scheduleConfirmed: !!onboarding.schedule_confirmed,
+        appearanceTouched: isAppearanceTouched(settings),
+        appearanceConfirmed: !!onboarding.appearance_confirmed,
+        singleStaffId: staffIds.length === 1 ? staffIds[0] : null,
+      };
+    }
+  }
 
   return (
     <div
@@ -67,6 +100,7 @@ export default async function AdminLayout({
           </div>
         )}
         <SubscriptionBanner status={sub.status} daysLeft={sub.daysLeft} />
+        {guideData && <GuideRail data={guideData} />}
         {children}
       </main>
       <SupportChat />

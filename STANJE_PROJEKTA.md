@@ -4,6 +4,48 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 12.7 (2) — TRAKA VODIČA: vodič više ne traži vraćanje na Početnu
+(Mihajlo: "u svim koracima da ga vodimo za ruku - tu se korisnik odlučuje"):**
+Do sada je posle svakog koraka jedini put dalje bio prolazni toast "Nastavi
+vodič" ili znanje da se klikne Početna - lako za pogubiti se. Sada: (1)
+**Traka vodiča** ([admin/guide-rail.tsx](src/app/admin/guide-rail.tsx),
+renderuje je admin layout) prati vlasnika po CELOM adminu dok vodič traje:
+mint čip "Vodič · N od 6" + sledeći korak + direktno CTA dugme; na stranici
+tekućeg koraka umesto navigacije prikazuje uputstvo (hint) i - ključno -
+dugmad potvrde **"Već je tačno"/"Sviđa mi se ovako" na licu mesta** (ranije
+su živele samo u kartici na Početnoj = obavezan povratak). Server akcije
+revalidiraju rutu pa se layout i traka sami preračunaju posle svakog čuvanja
+- traka odmah ponudi sledeći korak. Na Početnoj se ne renderuje (tamo je puna
+kartica); upiti u layoutu (settings+services+staff) idu SAMO dok sajt nije
+objavljen i vodič nije sakriven - redovan rad ne plaća ništa. (2) **Model
+koraka izdvojen u [lib/guide.ts](src/lib/guide.ts)** (guideSteps/
+nextGuideStep/stepMatchesPath/isAppearanceTouched) - JEDAN izvor istine za
+karticu (onboarding-guide) i traku; publish korak nosi cta "/admin" samo za
+traku (kartica mu renderuje svoj blok sa dijalogom). (3) **Dijalog "Korak
+završen!"** ([admin/guide-step-done.tsx](src/app/admin/guide-step-done.tsx))
+umesto toasta posle završenog koraka (Mihajlo: toast koji ističe je
+previše neupadljiv): kvačica + poruka + progress bar + veliko mint CTA na
+sledeći korak + "Ostani na ovoj stranici". Otvara se kad se korak STVARNO
+završi, ne pri svakom čuvanju - server strane šalju `guideNext`
+(`guideNextInfo(data, upravoZavršenKorak)` iz lib/guide) SAMO dok je korak
+tog ekrana nezavršen: usluge (prva usluga/primeri; prazan cenovnik pri
+renderu), radno vreme (schedule_confirmed još false) i potvrde iz trake
+("Već je tačno"/"Sviđa mi se ovako"). Naknadna čuvanja = običan toast BEZ
+akcije. Potvrde iz KARTICE na Početnoj ostaju toast (kartica se vidljivo
+ažurira u mestu). (4) Link "Nastavi vodič na Početnoj" u Podešavanjima
+UKLONJEN (traka ga zamenjuje; ShowGuideLink za sakriven vodič ostaje).
+(5) Welcome dijalog: "i u 3 ujutru" → "bilo kada" (Mihajlova formulacija).
+VERIFIKOVANO: 122 unit (+14 guide model), lint, tsc, build zeleni; traka i
+dijalog vizuelno kroz privremenu stranicu (desktop+mobil 375px, prelom
+čist, konzola čista; stranica obrisana). NIJE verifikovano uživo kroz svež
+nalog -
+permission klasifikator sesije blokirao pravljenje test naloga na produkciji
+(nema Dockera za lokalni stack); ZA SLEDEĆI RAD/MIHAJLA: proći svež
+onboarding end-to-end (usluge → tim → radno vreme → izgled → objava) i
+potvrditi da se traka sama prebacuje posle svakog čuvanja, pa obrisati test
+salon. E2E bezbedni: postojeći specovi ili rade na objavljenom demo salonu
+(traka se ne renderuje) ili ne napuštaju /admin.
+
 **Novo od 12.7 — OG SLIKA SALONA PADALA ZA TEME BEZ GRADIJENTA (Sentry:
 "Cannot read properties of undefined (reading 'trim')" iz @vercel/og +
 "failed to pipe response"):** Uzrok: satori PADA na svaku style vrednost
