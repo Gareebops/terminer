@@ -17,7 +17,7 @@ import type {
 // Kolonske SELECT privilegije puštaju javnim klijentima samo ove kolone -
 // select("*") bi pao sa permission denied
 const TENANT_PUBLIC_COLUMNS =
-  "id, slug, name, timezone, is_published, suspended_at, created_at";
+  "id, slug, name, timezone, is_published, suspended_at, created_at, custom_domain";
 
 export interface TenantSite {
   tenant: PublicTenant;

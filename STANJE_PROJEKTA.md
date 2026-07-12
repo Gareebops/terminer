@@ -4,6 +4,46 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 12.7 (3) — SEO PAKET: canonical URL-ovi + LocalBusiness JSON-LD +
+metadata pomoćnih strana:** (1) NOVI MODUL [seo.ts](src/lib/seo.ts):
+`SITE_URL` (sada je dele i sitemap/robots), `jsonLdString` — escape `< > &`
+u \u sekvence jer JSON-LD od sada nosi i KORISNIČKI sadržaj (nazivi/opisi
+usluga), pa "</script>" iz podataka ne može da probije tag. ⚠️ Bezbednosna
+analiza od 11.7 ("XSS: samo statični JSON-LD") više ne važi doslovno —
+svaki budući JSON-LD MORA kroz `jsonLdString`. `salonCanonicalBase`:
+custom_domain → `https://{domen}`, inače terminer.rs/{slug}; +6 unit
+testova ([seo.test.ts](src/lib/seo.test.ts)). (2) **CANONICAL svuda**:
+custom domen i platformska putanja služe ISTI sadržaj (proxy rewrite) —
+bez canonical-a duplikat u pretrazi. Postavljaju ga [slug]/page.tsx i
+zakazi/page.tsx (NAMERNO ne [slug]/layout — otkazivanje/[token] bi ga
+nasledio uz svoj noindex = kontradiktorni signali); `custom_domain` dodat
+u TENANT_PUBLIC_COLUMNS i PublicTenant (anon kolonski grant postoji od
+migracije 20260709000001). Canonical i na "/", /registracija, /prijava,
+/privatnost, /uslovi. (3) **LocalBusiness JSON-LD** na stranici salona:
+HealthAndBeautyBusiness sa adresom (addressCountry RS), telefonom, slikom
+(hero/logo), sameAs (IG/FB), openingHoursSpecification (getWeeklyHours
+rows prošireni sa dow/start/end — mašinski oblik uz postojeće labele),
+priceRange (min–max) i OfferCatalog SVIH usluga; cene se emituju SAMO kad
+show_prices nije isključen. Opcioni ključevi kroz uslovni spread — isto
+pravilo kao OG slike: NIKAD undefined vrednost. (4) **Metadata salona
+bogatiji**: grad u naslovu ("Salon Aura - Beograd - online zakazivanje" —
+lokalna pretraga), fallback opis (bez hero_subtitle) nabraja prve 3
+usluge + "i još N usluga" (plural helper). (5) **Landing**: Organization
++ SoftwareApplication (BusinessApplication, ponude 1.990/19.900 RSD)
+JSON-LD u @graph; cene održavati zajedno sa sekcijom Cenovnik na istoj
+strani. (6) **Pomoćne strane**: prijava/registracija su client komponente
+pa metadata živi u novim layout.tsx po segmentu (title/description/
+canonical); zaboravljena-lozinka, nova-lozinka i otkazivanje/[token] su
+noindex,nofollow kroz META (namerno ne robots.txt disallow — blokada
+crawla bi sakrila sam noindex signal). VERIFIKOVANO: head uživo na dev
+serveru (/, /demo, /demo/zakazi, /registracija, /prijava, /nova-lozinka,
+otkazivanje token ruta) — canonical/robots/JSON-LD tačni i validan JSON;
+konzola čista; 128 unit, lint, tsc, build zeleni. ZA MIHAJLA (ne-kod
+koraci): Google Search Console (verifikacija domena + prijava sitemap-a)
+i Google Business Profile po salonu su najjači sledeći SEO potezi.
+SVESNO ODLOŽENO: sitemap po custom domenu (traži per-host sitemap rutu),
+blog/sadržajni SEO, per-city landing stranice (direktorijum salona).
+
 **Novo od 12.7 (2) — TRAKA VODIČA: vodič više ne traži vraćanje na Početnu
 (Mihajlo: "u svim koracima da ga vodimo za ruku - tu se korisnik odlučuje"):**
 Do sada je posle svakog koraka jedini put dalje bio prolazni toast "Nastavi
@@ -44,7 +84,16 @@ permission klasifikator sesije blokirao pravljenje test naloga na produkciji
 onboarding end-to-end (usluge → tim → radno vreme → izgled → objava) i
 potvrditi da se traka sama prebacuje posle svakog čuvanja, pa obrisati test
 salon. E2E bezbedni: postojeći specovi ili rade na objavljenom demo salonu
-(traka se ne renderuje) ili ne napuštaju /admin.
+(traka se ne renderuje) ili ne napuštaju /admin. DEPLOY 12.7: commit
+0358d26 pushovan, Vercel READY (izmene su uživo). ⚠️ VAŽNO OTKRIĆE PRI
+DEPLOYU: **CI E2E job je CRVEN na svakom pushu još od 2773bca (11.7)** -
+pada podrska.spec ("superadmin vidi razgovor": inbox POST vraća
+{ok:true,items:[]} iako je razgovor upisan i vlasnik ga čita; drugi test
+kaskadno), dakle NE od vodiča - unit+build jobovi zeleni. Zapisi 11.7 o
+"CI zelen" za taj period važe samo za unit job; Vercel deployuje nezavisno
+pa je promaklo. Tragovi i hipoteze (bypassrls u lokalnom stacku? verzija
+supabase CLI na runneru?) predati u poseban task "Popravi podrska.spec
+E2E pad u CI-ju".
 
 **Novo od 12.7 — OG SLIKA SALONA PADALA ZA TEME BEZ GRADIJENTA (Sentry:
 "Cannot read properties of undefined (reading 'trim')" iz @vercel/og +

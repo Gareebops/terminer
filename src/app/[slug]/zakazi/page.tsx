@@ -1,13 +1,27 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-
-// Kroz template iz [slug]/layout postaje "Zakaži termin | {salon}"
-export const metadata: Metadata = { title: "Zakaži termin" };
 import { ArrowLeft } from "lucide-react";
 import { nowInZone } from "@/lib/booking/timezone";
+import { salonCanonicalBase } from "@/lib/seo";
 import { getTenantSite } from "@/lib/tenant";
 import { BookingWizard } from "./booking-wizard";
+
+// Kroz template iz [slug]/layout postaje "Zakaži termin | {salon}";
+// canonical prati kanonsku bazu salona (custom domen kad je povezan)
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const site = await getTenantSite(slug);
+  if (!site) return { title: "Zakaži termin" };
+  return {
+    title: "Zakaži termin",
+    alternates: { canonical: `${salonCanonicalBase(site.tenant)}/zakazi` },
+  };
+}
 
 export default async function BookingPage({
   params,

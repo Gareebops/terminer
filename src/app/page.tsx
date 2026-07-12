@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -12,6 +13,9 @@ import { FaqAccordion } from "@/components/landing/faq";
 import { FAQ_ITEMS } from "@/components/landing/faq-items";
 import { HeroDemo } from "@/components/landing/hero-demo";
 import { TerminerLogo } from "@/components/terminer-logo";
+import { jsonLdString, SITE_URL } from "@/lib/seo";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 // FAQPage structured data - Google ume da prikaže pitanja u rezultatima
 const faqJsonLd = {
@@ -22,6 +26,46 @@ const faqJsonLd = {
     name: item.q,
     acceptedAnswer: { "@type": "Answer", text: item.a },
   })),
+};
+
+// Organizacija + aplikacija sa cenama: Google-u kaže ko stoji iza sajta
+// i šta se nudi (cene iz sekcije Cenovnik - održavati zajedno)
+const orgJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: "Terminer",
+      url: SITE_URL,
+      logo: `${SITE_URL}/icon.svg`,
+      email: CONTACT_EMAIL,
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "Terminer",
+      url: SITE_URL,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      description:
+        "Platforma za frizerske, kozmetičke i beauty salone, barbershope i masažne studije: sopstveni mini-sajt i online zakazivanje termina.",
+      publisher: { "@id": `${SITE_URL}/#organization` },
+      offers: [
+        {
+          "@type": "Offer",
+          name: "Mesečna članarina",
+          price: "1990",
+          priceCurrency: "RSD",
+        },
+        {
+          "@type": "Offer",
+          name: "Godišnja članarina",
+          price: "19900",
+          priceCurrency: "RSD",
+        },
+      ],
+    },
+  ],
 };
 
 const features = [
@@ -54,6 +98,10 @@ const features = [
 export default function HomePage() {
   return (
     <main className="flex-1 bg-canvas font-display text-ink">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(orgJsonLd) }}
+      />
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5">
         <TerminerLogo />
         <nav className="flex items-center gap-2">
@@ -216,7 +264,7 @@ export default function HomePage() {
         </p>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: jsonLdString(faqJsonLd) }}
         />
       </section>
 

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
@@ -21,16 +22,49 @@ import {
   resolveWindow,
 } from "@/lib/booking/schedule";
 import { nowInZone } from "@/lib/booking/timezone";
+import { jsonLdString, salonCanonicalBase } from "@/lib/seo";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getTenantSite, type TenantSite } from "@/lib/tenant";
 import type { ScheduleException, WorkingHours } from "@/lib/types";
+
+// Canonical: custom domen i terminer.rs/{slug} služe isti sadržaj -
+// jedan od njih mora biti kanonski da ne budu duplikati u pretrazi
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const site = await getTenantSite(slug);
+  if (!site) return {};
+  return { alternates: { canonical: salonCanonicalBase(site.tenant) } };
+}
+
+// schema.org imena dana; indeks prati dayOfWeek() konvenciju (0 = nedelja)
+const SCHEMA_DAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+] as const;
 
 // Radno vreme salona za tekuću nedelju: unija radnih okana svih aktivnih
 // zaposlenih (pravilo + izuzeci). working_hours javno nije čitljiv (RLS),
 // pa server komponenta čita service-role klijentom - u browser ide samo
 // izračunata lista.
 async function getWeeklyHours(site: TenantSite): Promise<{
-  rows: { name: string; label: string; isToday: boolean }[];
+  rows: {
+    name: string;
+    label: string;
+    isToday: boolean;
+    // Mašinski oblik za JSON-LD (openingHoursSpecification)
+    dow: number;
+    start: string | null;
+    end: string | null;
+  }[];
   openNow: boolean;
 } | null> {
   if (site.staff.length === 0) return null;
@@ -74,6 +108,9 @@ async function getWeeklyHours(site: TenantSite): Promise<{
       name: DAY_NAMES_SR[dayOfWeek(date)],
       label: start && end ? `${start} – ${end}` : "Ne radi",
       isToday: date === today,
+      dow: dayOfWeek(date),
+      start,
+      end,
     };
   });
   // Salon bez ijednog radnog dana: sekcija se ne prikazuje
@@ -103,9 +140,92 @@ export default async function SalonPage({
         .replace(/^@/, "")
         .split(/[/?#]/)[0]
     : null;
+  const fbRaw = settings?.facebook?.trim() || null;
+  const fbUrl = fbRaw
+    ? /^https?:\/\//i.test(fbRaw)
+      ? fbRaw
+      : `https://facebook.com/${fbRaw.replace(/^@/, "")}`
+    : null;
+
+  // LocalBusiness strukturirani podaci za lokalnu pretragu: tip, adresa,
+  // radno vreme, cenovnik. Opcione vrednosti idu ISKLJUČIVO kroz uslovni
+  // spread - nikad undefined u objektu (isto pravilo kao OG slike).
+  const canonicalBase = salonCanonicalBase(tenant);
+  const showPrices = settings?.show_prices !== false;
+  const allPrices = services.flatMap((s) => [s.price, s.price_max ?? s.price]);
+  const minPrice = Math.min(...allPrices);
+  const maxPrice = Math.max(...allPrices);
+  const sameAs = [
+    ...(igHandle ? [`https://instagram.com/${igHandle}`] : []),
+    ...(fbUrl ? [fbUrl] : []),
+  ];
+  const salonJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "HealthAndBeautyBusiness",
+    "@id": `${canonicalBase}#salon`,
+    name: tenant.name,
+    url: canonicalBase,
+    ...(settings?.hero_subtitle ? { description: settings.hero_subtitle } : {}),
+    ...(settings?.phone ? { telephone: settings.phone } : {}),
+    ...(settings?.hero_image_url || settings?.logo_url
+      ? { image: settings?.hero_image_url ?? settings?.logo_url }
+      : {}),
+    ...(settings?.address || settings?.city
+      ? {
+          address: {
+            "@type": "PostalAddress",
+            ...(settings?.address ? { streetAddress: settings.address } : {}),
+            ...(settings?.city ? { addressLocality: settings.city } : {}),
+            addressCountry: "RS",
+          },
+        }
+      : {}),
+    ...(sameAs.length > 0 ? { sameAs } : {}),
+    ...(weekly
+      ? {
+          openingHoursSpecification: weekly.rows
+            .filter((r) => r.start && r.end)
+            .map((r) => ({
+              "@type": "OpeningHoursSpecification",
+              dayOfWeek: SCHEMA_DAYS[r.dow],
+              opens: r.start,
+              closes: r.end,
+            })),
+        }
+      : {}),
+    ...(showPrices && services.length > 0
+      ? {
+          priceRange:
+            minPrice === maxPrice
+              ? `${minPrice} ${services[0].currency}`
+              : `${minPrice}–${maxPrice} ${services[0].currency}`,
+        }
+      : {}),
+    ...(services.length > 0
+      ? {
+          hasOfferCatalog: {
+            "@type": "OfferCatalog",
+            name: "Usluge i cenovnik",
+            itemListElement: services.map((s) => ({
+              "@type": "Offer",
+              itemOffered: {
+                "@type": "Service",
+                name: s.name,
+                ...(s.description ? { description: s.description } : {}),
+              },
+              ...(showPrices ? { price: s.price, priceCurrency: s.currency } : {}),
+            })),
+          },
+        }
+      : {}),
+  };
 
   return (
     <main className="flex-1">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(salonJsonLd) }}
+      />
       {/* Neobjavljen sajt vide samo članovi salona (RLS) - podseti ih */}
       {!tenant.is_published && (
         <div className="bg-amber-500 px-4 py-2 text-center text-sm font-medium text-amber-950">

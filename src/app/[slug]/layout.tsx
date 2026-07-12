@@ -8,10 +8,13 @@ import {
   readableForeground,
 } from "@/lib/color";
 import { getFontPair } from "@/lib/fonts";
+import { plural } from "@/lib/plural";
 import { getTenantSite } from "@/lib/tenant";
 
 // SEO za sajt salona: naslov i opis su salonovi, ne Terminerovi.
 // getTenantSite je React cache, pa layout ne plaća drugi upit.
+// Canonical NIJE ovde (nasledio bi ga i /otkazivanje) - postavljaju ga
+// stranice: [slug]/page.tsx i zakazi/page.tsx kroz salonCanonicalBase.
 export async function generateMetadata({
   params,
 }: {
@@ -20,10 +23,24 @@ export async function generateMetadata({
   const { slug } = await params;
   const site = await getTenantSite(slug);
   if (!site) return {};
-  const title = `${site.tenant.name} - online zakazivanje`;
+  const city = site.settings?.city?.trim() || null;
+  // Grad u naslovu = lokalna pretraga ("frizer + grad") vidi salon
+  const title = [site.tenant.name, city, "online zakazivanje"]
+    .filter(Boolean)
+    .join(" - ");
+  // Opis: tekst vlasnika ima prednost; fallback nabraja prve usluge da
+  // svaki salon dobije jedinstven, konkretan opis u rezultatima pretrage
+  const topServices = site.services.slice(0, 3).map((s) => s.name).join(", ");
+  const rest = site.services.length - 3;
   const description =
     site.settings?.hero_subtitle ??
-    `${site.tenant.name} - zakaži svoj termin online, brzo i bez poziva.`;
+    (topServices
+      ? `${site.tenant.name}${city ? `, ${city}` : ""} - pogledaj cenovnik i zakaži termin online: ${topServices}${
+          rest > 0
+            ? ` i još ${rest} ${plural(rest, ["usluga", "usluge", "usluga"])}`
+            : ""
+        }.`
+      : `${site.tenant.name} - zakaži svoj termin online, brzo i bez poziva.`);
   return {
     title: {
       // absolute: bez root "%s | Terminer" šablona - sajt salona nosi svoj brend

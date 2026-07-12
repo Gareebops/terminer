@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/seo";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Landing + pravne strane + svi objavljeni saloni. Service-role klijent da
@@ -6,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // nesuspendovan). Sat keša — novi salon uđe u sitemap najkasnije za sat.
 export const revalidate = 3600;
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://terminer.rs";
+const BASE_URL = SITE_URL;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [

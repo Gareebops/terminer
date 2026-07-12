@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Uslovi korišćenja",
   description:
     "Uslovi korišćenja Terminer platforme za salone: usluga, probni period, cene i naplata.",
+  alternates: { canonical: "/uslovi" },
 };
 
 export default function TermsPage() {

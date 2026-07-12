@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -14,6 +15,12 @@ import { CancelCard } from "./cancel-card";
 // isključivo po (tenant, token) paru.
 
 const TOKEN_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Privatan link sa tokenom iz mejla - ne sme u indeks pretraživača
+export const metadata: Metadata = {
+  title: "Otkazivanje termina",
+  robots: { index: false, follow: false },
+};
 
 export default async function CancelPage({
   params,

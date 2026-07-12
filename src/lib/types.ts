@@ -31,7 +31,14 @@ export interface Tenant {
 // service-role klijentom posle provere članstva.
 export type PublicTenant = Pick<
   Tenant,
-  "id" | "slug" | "name" | "timezone" | "is_published" | "suspended_at" | "created_at"
+  | "id"
+  | "slug"
+  | "name"
+  | "timezone"
+  | "is_published"
+  | "suspended_at"
+  | "created_at"
+  | "custom_domain"
 >;
 
 export type ButtonStyle = "rounded" | "pill" | "square";

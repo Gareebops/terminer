@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "Politika privatnosti",
   description:
     "Kako Terminer prikuplja, koristi i čuva podatke vlasnika salona i njihovih klijenata.",
+  alternates: { canonical: "/privatnost" },
 };
 
 export default function PrivacyPage() {
