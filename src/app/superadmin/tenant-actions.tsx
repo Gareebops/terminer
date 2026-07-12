@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { extendSubscription, extendTrial, setPaidUntil } from "./actions";
+import { formatAmount, PLANS, type PlanId } from "@/lib/invoice";
+import { extendSubscription, extendTrial, issueInvoice, setPaidUntil } from "./actions";
 
 export function TenantActions({
   tenantId,
@@ -16,12 +17,37 @@ export function TenantActions({
   const [pending, startTransition] = useTransition();
   const [dateOpen, setDateOpen] = useState(false);
   const [date, setDate] = useState(paidUntil ?? "");
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [plan, setPlan] = useState<PlanId>("monthly");
+  const [amount, setAmount] = useState("");
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>, okMsg: string) {
     startTransition(async () => {
       const res = await fn();
       if (res.ok) toast.success(okMsg);
       else toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
+    });
+  }
+
+  function submitInvoice() {
+    const custom = amount.trim() === "" ? undefined : Number(amount.replace(",", "."));
+    if (custom !== undefined && (!Number.isFinite(custom) || custom <= 0)) {
+      toast.error("Iznos mora biti pozitivan broj (prazan = cenovnik).");
+      return;
+    }
+    startTransition(async () => {
+      const res = await issueInvoice({ tenantId, plan, amount: custom });
+      if (!res.ok) {
+        toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
+        return;
+      }
+      toast.success(
+        res.reused
+          ? "Aktivna faktura za taj period već postoji - nova nije izdata."
+          : "Faktura je izdata."
+      );
+      setInvoiceOpen(false);
+      setAmount("");
     });
   }
 
@@ -53,6 +79,47 @@ export function TenantActions({
           +{m} mes
         </button>
       ))}
+      <button
+        disabled={pending}
+        onClick={() => setInvoiceOpen((o) => !o)}
+        className={`${pill} bg-mint text-ink`}
+        title="Izdaj fakturu umesto vlasnika (telefonski dogovor, founder cena)"
+      >
+        Izdaj fakturu…
+      </button>
+      {invoiceOpen && (
+        <span className="flex flex-wrap items-center gap-1.5">
+          {(Object.keys(PLANS) as PlanId[]).map((p) => (
+            <button
+              key={p}
+              disabled={pending}
+              onClick={() => setPlan(p)}
+              className={`${pill} ${
+                plan === p ? "bg-ink text-white" : "border border-ink/15 text-ink/70"
+              }`}
+            >
+              {p === "monthly" ? "Mesečna" : "Godišnja"}
+            </button>
+          ))}
+          <input
+            type="number"
+            min="1"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder={`${formatAmount(PLANS[plan].amount)} RSD`}
+            title="Prilagođen iznos (prazan = cenovnik)"
+            className="w-32 rounded-full border border-ink/15 px-3 py-1 text-xs font-semibold"
+          />
+          <button
+            disabled={pending}
+            onClick={submitInvoice}
+            className={`${pill} bg-mint text-ink`}
+          >
+            Izdaj
+          </button>
+        </span>
+      )}
       <button
         disabled={pending}
         onClick={() => setDateOpen((o) => !o)}

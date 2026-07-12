@@ -171,6 +171,93 @@ export async function replySupportMessage(input: {
   return { ok: true };
 }
 
+// Proaktivna poruka salonu ("proba ti ističe, treba li pomoć?") - do sada
+// je razgovor mogao da otvori samo vlasnik. Piše u postojeći otvoren
+// razgovor ako ga ima; inače otvara nov sa owner_read_at na epohi da
+// vlasnikov widget odmah pokaže nepročitanu poruku. Mejl vlasniku se NE
+// šalje (mejl obaveštava podršku o porukama vlasnika, ne obrnuto).
+export async function startSupportConversation(input: {
+  tenantId: string;
+  body: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const parsed = z
+    .object({
+      tenantId: uuidLoose,
+      body: z
+        .string()
+        .trim()
+        .min(1, "Poruka je prazna.")
+        .max(4000, "Poruka je predugačka."),
+    })
+    .safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Neispravni podaci." };
+  }
+  const me = await assertSuperAdmin();
+  if (!me) return { ok: false, error: "Nemaš pristup." };
+  const db = createAdminClient();
+
+  const { data: tenant } = await db
+    .from("tenants")
+    .select("id")
+    .eq("id", parsed.data.tenantId)
+    .maybeSingle();
+  if (!tenant) return { ok: false, error: "Salon nije pronađen." };
+
+  const now = new Date().toISOString();
+
+  // Postojeći otvoren razgovor ima prednost (unique index ionako brani drugi)
+  const { data: open } = await db
+    .from("support_conversations")
+    .select("id")
+    .eq("tenant_id", tenant.id)
+    .eq("status", "open")
+    .maybeSingle();
+
+  let conversationId = open?.id ?? null;
+  if (!conversationId) {
+    const { data: created, error: createError } = await db
+      .from("support_conversations")
+      .insert({
+        tenant_id: tenant.id,
+        status: "open",
+        support_read_at: now,
+        // Vlasnik ovu poruku još nije video - widget mora da pokaže badge
+        owner_read_at: new Date(0).toISOString(),
+      })
+      .select("id")
+      .maybeSingle();
+    if (createError?.code === "23505") {
+      // Trka: razgovor je upravo otvoren (vlasnik ili paralelni tab) - piši u njega
+      const { data: raced } = await db
+        .from("support_conversations")
+        .select("id")
+        .eq("tenant_id", tenant.id)
+        .eq("status", "open")
+        .maybeSingle();
+      conversationId = raced?.id ?? null;
+    } else {
+      conversationId = created?.id ?? null;
+    }
+  }
+  if (!conversationId) return { ok: false, error: "Nešto nije uspelo. Pokušaj ponovo." };
+
+  const { error: insertError } = await db.from("support_messages").insert({
+    tenant_id: tenant.id,
+    conversation_id: conversationId,
+    sender: "support",
+    body: parsed.data.body,
+  });
+  if (insertError) return { ok: false, error: "Nešto nije uspelo. Pokušaj ponovo." };
+
+  await db
+    .from("support_conversations")
+    .update({ last_message_at: now, support_read_at: now })
+    .eq("id", conversationId);
+
+  return { ok: true };
+}
+
 export async function closeSupportConversation(
   conversationId: string
 ): Promise<{ ok: boolean; error?: string }> {

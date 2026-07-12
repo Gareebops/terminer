@@ -50,6 +50,51 @@ export function invoiceLabel(inv: { number: number; year: number }): string {
   return `${inv.number}/${inv.year}`;
 }
 
+// Dodaje mesece na YYYY-MM-DD uz klamp na poslednji dan ciljanog meseca:
+// 31.1. + 1 mesec = 28.2, ne 3.3. (podne izbegava DST rubove)
+export function addMonths(dateStr: string, months: number): string {
+  const d = new Date(`${dateStr}T12:00:00`);
+  const day = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + months);
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  d.setDate(Math.min(day, lastDay));
+  return d.toISOString().slice(0, 10);
+}
+
+// Period nove fakture: počinje danas, ili dan posle postojećeg isteka ako
+// je pretplata još plaćena - periodi se lančano nastavljaju bez rupa.
+export function invoicePeriod(
+  paidUntil: string | null,
+  months: number,
+  today: string
+): { from: string; to: string } {
+  const from =
+    paidUntil && paidUntil >= today
+      ? new Date(new Date(`${paidUntil}T12:00:00`).getTime() + 86400000)
+          .toISOString()
+          .slice(0, 10)
+      : today;
+  return { from, to: addMonths(from, months) };
+}
+
+// Vraćanje pogrešno naplaćene fakture u "na čekanju": paid_until se dira
+// SAMO ako ga je upravo ta faktura postavila (current == njen period_to) -
+// tada pada na najkasniji period_to preostalih plaćenih faktura (ili null).
+// Ručne korekcije i produžetci bez fakture se ne pregaze.
+export function revertedPaidUntil(
+  current: string | null,
+  revertedPeriodTo: string,
+  otherPaidPeriodTos: string[]
+): { change: boolean; value: string | null } {
+  if (current !== revertedPeriodTo) return { change: false, value: current };
+  const latest = otherPaidPeriodTos.reduce<string | null>(
+    (max, d) => (max === null || d > max ? d : max),
+    null
+  );
+  return { change: true, value: latest };
+}
+
 export type InvoiceStatus = "issued" | "paid" | "cancelled";
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -60,7 +105,10 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
 
 export interface Invoice {
   id: string;
-  tenant_id: string;
+  // null = salon obrisan; faktura kao finansijski zapis ostaje (migracija
+  // 20260712000001), tenant_label čuva ime salona za prikaz
+  tenant_id: string | null;
+  tenant_label?: string | null;
   number: number;
   year: number;
   plan: PlanId;

@@ -10,6 +10,7 @@ import { AdminNav } from "./admin-nav";
 import { GuideRail } from "./guide-rail";
 import { LogoutButton } from "./logout-button";
 import { MobileHeader } from "./mobile-header";
+import { PresencePing } from "./presence-ping";
 import { PublishControl } from "./publish-control";
 import { SubscriptionBanner } from "./subscription-banner";
 import { SupportChat } from "./support-chat";
@@ -104,6 +105,7 @@ export default async function AdminLayout({
         {children}
       </main>
       <SupportChat />
+      <PresencePing />
     </div>
   );
 }

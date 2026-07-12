@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getAdminContext } from "@/lib/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  removeDomainFromVercel,
+  vercelEnv,
+  vercelFetch,
+} from "@/lib/vercel-domains";
 
 // Custom domen salona: povezivanje ide kroz Vercel Domains API (domen se
 // dodaje na naš Vercel projekat), pa se čuva u tenants.custom_domain koju
@@ -35,32 +40,6 @@ export interface DomainStatus {
 }
 
 type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
-
-function vercelEnv() {
-  const token = process.env.VERCEL_TOKEN;
-  const projectId = process.env.VERCEL_PROJECT_ID;
-  if (!token || !projectId) return null;
-  return { token, projectId, teamId: process.env.VERCEL_TEAM_ID || null };
-}
-
-async function vercelFetch(
-  path: string,
-  init?: RequestInit
-): Promise<{ status: number; body: Record<string, unknown> }> {
-  const env = vercelEnv()!;
-  const url = new URL(`https://api.vercel.com${path}`);
-  if (env.teamId) url.searchParams.set("teamId", env.teamId);
-  const res = await fetch(url, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${env.token}`,
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
-  const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  return { status: res.status, body };
-}
 
 function normalizeDomain(raw: string): string {
   return raw
@@ -180,9 +159,7 @@ export async function setCustomDomain(
     return { ok: false, error: "Čuvanje nije uspelo. Pokušaj ponovo." };
   }
   if (previous && previous !== domain) {
-    await vercelFetch(`/v9/projects/${env.projectId}/domains/${previous}`, {
-      method: "DELETE",
-    }).catch(() => {});
+    await removeDomainFromVercel(previous);
   }
 
   revalidatePath("/admin/podesavanja");
@@ -197,13 +174,8 @@ export async function removeCustomDomain(): Promise<Result<object>> {
   const domain = tenant.custom_domain;
   if (!domain) return { ok: true };
 
-  const env = vercelEnv();
-  if (env) {
-    // 404 je u redu (već skinut sa Vercela) - bazu čistimo svakako
-    await vercelFetch(`/v9/projects/${env.projectId}/domains/${domain}`, {
-      method: "DELETE",
-    }).catch(() => {});
-  }
+  // 404 je u redu (već skinut sa Vercela) - bazu čistimo svakako
+  await removeDomainFromVercel(domain);
 
   const db = createAdminClient();
   const { error } = await db

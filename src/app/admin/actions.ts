@@ -19,7 +19,7 @@ import {
   type WorkWindow,
 } from "@/lib/booking/schedule";
 import QRCode from "qrcode";
-import { buildIpsQr, PLANS, type PlanId } from "@/lib/invoice";
+import { buildIpsQr, invoicePeriod, PLANS, type PlanId } from "@/lib/invoice";
 import { FONT_PAIR_IDS } from "@/lib/font-ids";
 import { DELATNOST_LABELS, predloziTemu } from "@/lib/themes";
 import type {
@@ -1407,17 +1407,6 @@ export async function updateBillingInfo(info: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-function addMonths(dateStr: string, months: number): string {
-  const d = new Date(`${dateStr}T12:00:00`);
-  const day = d.getDate();
-  d.setDate(1);
-  d.setMonth(d.getMonth() + months);
-  // Klamp na poslednji dan ciljanog meseca: 31.1. + 1 mesec = 28.2, ne 3.3.
-  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  d.setDate(Math.min(day, lastDay));
-  return d.toISOString().slice(0, 10);
-}
-
 // Samoposlužna faktura: kreira (ili ponovo koristi) fakturu za naredni
 // period. Numeracija je globalna po godini pa ide preko service-role klijenta;
 // članstvo je već potvrđeno kroz getAdminContext.
@@ -1439,13 +1428,11 @@ export async function createInvoice(
 
   // Period počinje danas, ili dan posle postojećeg isteka ako je još plaćen
   const today = new Date().toISOString().slice(0, 10);
-  const periodFrom =
-    tenant.paid_until && tenant.paid_until >= today
-      ? new Date(new Date(`${tenant.paid_until}T12:00:00`).getTime() + 86400000)
-          .toISOString()
-          .slice(0, 10)
-      : today;
-  const periodTo = addMonths(periodFrom, PLANS[plan].months);
+  const { from: periodFrom, to: periodTo } = invoicePeriod(
+    tenant.paid_until,
+    PLANS[plan].months,
+    today
+  );
 
   // Ako već postoji aktivna faktura za isti plan i period, ne izdaji novu
   // (stornirane se ignorišu - za njih sme nova)
@@ -1476,6 +1463,8 @@ export async function createInvoice(
       .from("invoices")
       .insert({
         tenant_id: tenant.id,
+        // Ime salona uz fakturu preživi i eventualno kasnije brisanje salona
+        tenant_label: `${tenant.name} (/${tenant.slug})`,
         number: nextNumber,
         year,
         plan,

@@ -24,6 +24,9 @@ export interface Tenant {
   // Custom domen salona (null = samo terminer.rs/{slug}); upisuje se
   // isključivo kroz domain-actions posle Vercel sinhronizacije
   custom_domain?: string | null;
+  // Interna beleška superadmina (migracija 20260712000001) - kolona bez
+  // grant-a za anon/authenticated, vidi je samo service role
+  superadmin_note?: string | null;
 }
 
 // Kolone tenants reda dostupne javnim klijentima (kolonske SELECT

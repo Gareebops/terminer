@@ -1,35 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, TriangleAlert } from "lucide-react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { datumSr, datumVremeSr } from "@/lib/datum";
 import { subscriptionInfo } from "@/lib/billing";
-import {
-  formatAmount,
-  invoiceLabel,
-  INVOICE_STATUS_LABELS,
-  PLANS,
-  type Invoice,
-} from "@/lib/invoice";
+import { CRON_MARKER_ACTION } from "@/lib/audit";
+import { listAllUsers } from "@/lib/auth-users";
+import { formatAmount, invoiceLabel, PLANS, type Invoice } from "@/lib/invoice";
+import { isOnline, presenceLabel } from "@/lib/presence";
 import type { Tenant } from "@/lib/types";
-import { plural } from "@/lib/plural";
 import { assertSuperAdmin } from "./actions";
-import { AccountControls } from "./account-controls";
-import { InvoiceActions } from "./invoice-actions";
-import { TenantActions } from "./tenant-actions";
-
-const statusLabels: Record<string, { label: string; cls: string }> = {
-  trial: { label: "Proba", cls: "bg-lavender text-ink" },
-  active: { label: "Aktivan", cls: "bg-mint text-ink" },
-  grace: { label: "Grace", cls: "bg-amber-300 text-amber-950" },
-  expired: { label: "Istekao", cls: "bg-red-600 text-white" },
-};
-
-const invoiceStatusCls: Record<string, string> = {
-  issued: "bg-amber-200 text-amber-950",
-  paid: "bg-mint text-ink",
-  cancelled: "bg-ink/10 text-ink/70",
-};
+import { AuditLogList, type AuditRow } from "./audit-log-list";
+import { InvoiceList, type InvoiceRow } from "./invoice-list";
+import { OrphanAccounts, type OrphanAccount } from "./orphan-accounts";
+import { SalonList, type SalonRow } from "./salon-list";
 
 export default async function SuperAdminPage() {
   const me = await assertSuperAdmin();
@@ -46,26 +30,46 @@ export default async function SuperAdminPage() {
     { data: tenants },
     { data: allInvoices },
     { data: owners },
+    { data: allMembers },
     { data: auditLog },
     { data: chats },
     { data: recentBookings },
     { data: activeServices },
     { data: activeStaff },
+    // Pre migracije 20260712000001 kolona last_seen_at ne postoji - upit
+    // vrati grešku (data null) i prisustvo se jednostavno ne prikazuje
+    { data: presenceRows },
+    { data: cronMarker },
   ] = await Promise.all([
     db.from("tenants").select("*").order("created_at"),
     db.from("invoices").select("*, tenants(name, slug)").order("created_at", { ascending: false }),
     db.from("tenant_members").select("tenant_id, user_id").eq("role", "owner"),
+    db.from("tenant_members").select("user_id"),
     db
       .from("superadmin_audit_log")
       .select("*")
       .order("created_at", { ascending: false })
-      .limit(30),
+      .limit(200),
     // Pre migracije chata upit vrati grešku (data null) - badge je tada 0
     db.from("support_conversations").select("last_message_at, support_read_at"),
     db.from("bookings").select("tenant_id, created_at").gte("created_at", since30),
     db.from("services").select("tenant_id").eq("is_active", true),
     db.from("staff").select("tenant_id").eq("is_active", true),
+    db.from("tenant_members").select("tenant_id, last_seen_at"),
+    db
+      .from("superadmin_audit_log")
+      .select("created_at")
+      .eq("action", CRON_MARKER_ACTION)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
+
+  // Svi auth korisnici JEDNIM prolazom (umesto getUserById po vlasniku) -
+  // daje i mejlove vlasnika i naloge koji nikad nisu napravili salon.
+  // Pad auth API-ja ne obara panel, samo se ti podaci ne prikažu.
+  const users = await listAllUsers(db).catch(() => []);
+  const userById = new Map(users.map((u) => [u.id, u]));
 
   // Zdravlje salona: rezervacije u 30/7 dana + obim podešenog sadržaja
   const since7 = now.getTime() - 7 * 86_400_000;
@@ -84,6 +88,17 @@ export default async function SuperAdminPage() {
   const servicesCount = countByTenant(activeServices);
   const staffCount = countByTenant(activeStaff);
 
+  // Prisustvo: najskoriji heartbeat bilo kog člana salona
+  const lastSeenByTenant = new Map<string, string>();
+  for (const p of (presenceRows ?? []) as {
+    tenant_id: string;
+    last_seen_at: string | null;
+  }[]) {
+    if (!p.last_seen_at) continue;
+    const prev = lastSeenByTenant.get(p.tenant_id);
+    if (!prev || p.last_seen_at > prev) lastSeenByTenant.set(p.tenant_id, p.last_seen_at);
+  }
+
   // Aktivnost posle read markera = razgovor čeka odgovor (poruka vlasnika
   // pomera last_message_at; odgovor podrške pomera i support_read_at)
   const unreadChats = (chats ?? []).filter(
@@ -96,12 +111,12 @@ export default async function SuperAdminPage() {
     { email: string; confirmed: boolean; lastSignIn: string | null }
   >();
   for (const o of owners ?? []) {
-    const { data } = await db.auth.admin.getUserById(o.user_id);
-    if (data.user?.email) {
+    const u = userById.get(o.user_id);
+    if (u?.email) {
       ownerInfo.set(o.tenant_id, {
-        email: data.user.email,
-        confirmed: !!data.user.email_confirmed_at,
-        lastSignIn: data.user.last_sign_in_at ?? null,
+        email: u.email,
+        confirmed: !!u.email_confirmed_at,
+        lastSignIn: u.last_sign_in_at ?? null,
       });
     }
   }
@@ -125,11 +140,58 @@ export default async function SuperAdminPage() {
       a.sub.daysLeft - b.sub.daysLeft
   );
 
+  const fmt = (d: string) => datumSr(d);
+
+  const salonRows: SalonRow[] = rows.map(({ tenant, sub }) => {
+    const act = bookingActivity.get(tenant.id) ?? { b30: 0, b7: 0 };
+    const owner = ownerInfo.get(tenant.id) ?? null;
+    const lastSeen = lastSeenByTenant.get(tenant.id) ?? null;
+    return {
+      id: tenant.id,
+      name: tenant.name,
+      slug: tenant.slug,
+      ownerEmail: owner?.email ?? null,
+      ownerConfirmed: owner?.confirmed ?? true,
+      suspended: !!tenant.suspended_at,
+      suspendedReason: tenant.suspended_reason,
+      status: sub.status,
+      daysLeft: sub.daysLeft,
+      paidUntil: tenant.paid_until,
+      deadlineLabel: tenant.paid_until
+        ? `Plaćeno do ${fmt(tenant.paid_until)}`
+        : `Proba do ${fmt(tenant.trial_ends_at)}`,
+      isPublished: tenant.is_published,
+      b30: act.b30,
+      b7: act.b7,
+      services: servicesCount.get(tenant.id) ?? 0,
+      staff: staffCount.get(tenant.id) ?? 0,
+      lastSignInLabel: owner?.lastSignIn ? fmt(owner.lastSignIn) : null,
+      online: isOnline(lastSeen, now),
+      presenceLabel: presenceLabel(lastSeen, now),
+      customDomain: tenant.custom_domain ?? null,
+      note: tenant.superadmin_note ?? null,
+    };
+  });
+
+  // Nalozi koji nikad nisu napravili salon - nevidljivi u listi salona
+  const memberIds = new Set((allMembers ?? []).map((m) => m.user_id));
+  const orphans: OrphanAccount[] = users
+    .filter((u) => !memberIds.has(u.id))
+    .sort((a, b) => (b.created_at > a.created_at ? 1 : -1))
+    .map((u) => ({
+      id: u.id,
+      email: u.email ?? null,
+      createdLabel: fmt(u.created_at),
+      lastSignInLabel: u.last_sign_in_at ? fmt(u.last_sign_in_at) : null,
+      confirmed: !!u.email_confirmed_at,
+    }));
+
   const novih30 = rows.filter(
     (r) => new Date(r.tenant.created_at).getTime() > now.getTime() - 30 * 86_400_000
   ).length;
+  const onlineCount = salonRows.filter((r) => r.online).length;
 
-  const year = new Date().getFullYear();
+  const year = now.getFullYear();
   const stats = [
     {
       label: "Aktivni saloni",
@@ -142,9 +204,29 @@ export default async function SuperAdminPage() {
       cls: "bg-lavender",
     },
     {
+      label: "Grace (uplata kasni)",
+      value: rows.filter((r) => r.sub.status === "grace").length,
+      cls: "bg-amber-200",
+    },
+    {
+      label: "Istekli",
+      value: rows.filter((r) => r.sub.status === "expired").length,
+      cls: "bg-white shadow-card",
+    },
+    {
+      label: "Suspendovani",
+      value: rows.filter((r) => r.tenant.suspended_at).length,
+      cls: "bg-white shadow-card",
+    },
+    {
       label: "Novi saloni (30d)",
       value: novih30,
       cls: "bg-white shadow-card",
+    },
+    {
+      label: "Online sada",
+      value: onlineCount,
+      cls: "bg-emerald-100",
     },
     {
       label: `Naplaćeno ${year}.`,
@@ -162,7 +244,38 @@ export default async function SuperAdminPage() {
     },
   ];
 
-  const fmt = (d: string) => datumSr(d);
+  const invoiceRows: InvoiceRow[] = invoices.map((inv) => ({
+    id: inv.id,
+    label: invoiceLabel(inv),
+    tenantName: inv.tenants?.name ?? inv.tenant_label ?? "-",
+    tenantDeleted: !inv.tenants,
+    planLabel: PLANS[inv.plan].label,
+    amountLabel: formatAmount(Number(inv.amount)),
+    createdLabel: fmt(inv.created_at),
+    status: inv.status,
+    paidAtLabel: inv.paid_at ? fmt(inv.paid_at) : null,
+  }));
+
+  const auditRows: AuditRow[] = ((auditLog ?? []) as {
+    id: string;
+    created_at: string;
+    action: string;
+    tenant_label: string | null;
+    details: Record<string, unknown> | null;
+  }[]).map((entry) => ({
+    id: entry.id,
+    atLabel: datumVremeSr(entry.created_at),
+    action: entry.action,
+    tenantLabel: entry.tenant_label,
+    details: entry.details ? JSON.stringify(entry.details) : null,
+  }));
+
+  // Zdravlje crona: bez CRON_SECRET ruta vraća 401; marker stariji od 48h
+  // znači da Vercel cron ne radi (upisuje se na SVAKOM uspešnom runu)
+  const cronSecretSet = !!process.env.CRON_SECRET;
+  const cronLastRun = cronMarker?.created_at ?? null;
+  const cronStale =
+    !cronLastRun || now.getTime() - new Date(cronLastRun).getTime() > 48 * 3_600_000;
 
   return (
     <main className="min-h-screen flex-1 bg-canvas p-6 font-display text-ink">
@@ -171,20 +284,40 @@ export default async function SuperAdminPage() {
         <p className="mt-1 text-sm font-medium text-ink/70">
           Saloni, pretplate i naplata. Prijavljen: {me.email}
         </p>
+        {!cronSecretSet ? (
+          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-200 px-3 py-1 text-xs font-bold text-amber-950">
+            <TriangleAlert className="size-3.5" /> CRON_SECRET nije podešen -
+            dnevni podsetnici o isteku probe ne rade
+          </p>
+        ) : (
+          <p
+            className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+              cronStale ? "bg-amber-200 text-amber-950" : "bg-ink/5 text-ink/70"
+            }`}
+          >
+            {cronStale && <TriangleAlert className="size-3.5" />}
+            Cron podsetnik:{" "}
+            {cronLastRun
+              ? `poslednja provera ${datumVremeSr(cronLastRun)}${cronStale ? " (kasni!)" : ""}`
+              : "još nema zabeleženog runa"}
+          </p>
+        )}
 
-        <Link
-          href="/superadmin/poruke"
-          className="mt-4 inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:opacity-85"
-        >
-          <MessageCircle className="size-4" /> Poruke podrške
-          {unreadChats > 0 && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-mint px-1.5 text-xs font-bold text-ink">
-              {unreadChats}
-            </span>
-          )}
-        </Link>
+        <div className="mt-4">
+          <Link
+            href="/superadmin/poruke"
+            className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:opacity-85"
+          >
+            <MessageCircle className="size-4" /> Poruke podrške
+            {unreadChats > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-mint px-1.5 text-xs font-bold text-ink">
+                {unreadChats}
+              </span>
+            )}
+          </Link>
+        </div>
 
-        {/* Statistika - 5 kartica: saloni u prvom redu, novac u drugom */}
+        {/* Statistika - 9 kartica: statusi salona, rast/prisustvo, novac */}
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {stats.map((s) => (
             <div key={s.label} className={`rounded-[2rem] p-5 ${s.cls}`}>
@@ -196,170 +329,20 @@ export default async function SuperAdminPage() {
 
         {/* Saloni */}
         <h2 className="mt-10 text-xl font-extrabold tracking-tight">Saloni</h2>
-        <div className="mt-4 space-y-3">
-          {rows.map(({ tenant, sub }) => {
-            const s = statusLabels[sub.status];
-            const act = bookingActivity.get(tenant.id) ?? { b30: 0, b7: 0 };
-            const nSvc = servicesCount.get(tenant.id) ?? 0;
-            const nStaff = staffCount.get(tenant.id) ?? 0;
-            const owner = ownerInfo.get(tenant.id);
-            return (
-              <div
-                key={tenant.id}
-                className="rounded-2xl bg-white p-4 shadow-card"
-              >
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="min-w-44">
-                    <p className="font-bold">{tenant.name}</p>
-                    <p className="text-xs text-ink/70">
-                      <Link href={`/${tenant.slug}`} target="_blank" className="hover:underline">
-                        /{tenant.slug}
-                      </Link>
-                      {ownerInfo.get(tenant.id) && (
-                        <>
-                          {" · "}
-                          <a
-                            href={`mailto:${ownerInfo.get(tenant.id)!.email}`}
-                            className="hover:underline"
-                          >
-                            {ownerInfo.get(tenant.id)!.email}
-                          </a>
-                          {!ownerInfo.get(tenant.id)!.confirmed && " · nalog nepotvrđen"}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                  {tenant.suspended_at && (
-                    <span className="rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white">
-                      SUSPENDOVAN
-                    </span>
-                  )}
-                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${s.cls}`}>
-                    {s.label}
-                    {sub.status !== "expired" && ` · ${sub.daysLeft}d`}
-                  </span>
-                  {/* Proba bez ijedne rezervacije = kandidat za javljanje
-                      pre nego što istekne */}
-                  {sub.status === "trial" && act.b30 === 0 && (
-                    <span className="rounded-full bg-amber-200 px-3 py-1 text-xs font-bold text-amber-950">
-                      bez rezervacija
-                    </span>
-                  )}
-                  <span className="text-xs font-medium text-ink/70">
-                    {tenant.paid_until
-                      ? `Plaćeno do ${fmt(tenant.paid_until)}`
-                      : `Proba do ${fmt(tenant.trial_ends_at)}`}
-                    {" · "}
-                    {tenant.is_published ? "objavljen" : "neobjavljen"}
-                  </span>
-                </div>
-                <p className="mt-2 text-xs font-medium text-ink/70">
-                  {act.b30}{" "}
-                  {plural(act.b30, ["rezervacija", "rezervacije", "rezervacija"])} u 30
-                  dana ({act.b7} u 7) · {nSvc}{" "}
-                  {plural(nSvc, ["usluga", "usluge", "usluga"])} · {nStaff}{" "}
-                  {plural(nStaff, ["član", "člana", "članova"])} tima · vlasnik
-                  prijavljen{" "}
-                  {owner?.lastSignIn ? fmt(owner.lastSignIn) : "nikad"}
-                </p>
-                <div className="mt-3 border-t border-ink/5 pt-3">
-                  <TenantActions
-                    tenantId={tenant.id}
-                    status={sub.status}
-                    paidUntil={tenant.paid_until}
-                  />
-                </div>
-                <div className="mt-2 border-t border-ink/5 pt-2">
-                  <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-ink/70">
-                    Nalog
-                  </p>
-                  <AccountControls
-                    tenantId={tenant.id}
-                    slug={tenant.slug}
-                    suspended={!!tenant.suspended_at}
-                    ownerConfirmed={ownerInfo.get(tenant.id)?.confirmed ?? true}
-                  />
-                </div>
-              </div>
-            );
-          })}
-          {rows.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-ink/20 p-8 text-center text-ink/70">
-              Još nema salona.
-            </p>
-          )}
-        </div>
+        <SalonList rows={salonRows} />
+
+        {/* Nalozi bez salona (registracija bez onboardinga) */}
+        <OrphanAccounts accounts={orphans} />
 
         {/* Fakture */}
         <h2 className="mt-10 text-xl font-extrabold tracking-tight">Fakture</h2>
-        <div className="mt-4 space-y-2">
-          {invoices.map((inv) => (
-            <div
-              key={inv.id}
-              className="flex flex-wrap items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-card"
-            >
-              <Link
-                href={`/faktura/${inv.id}`}
-                target="_blank"
-                className="min-w-16 font-bold underline-offset-2 hover:underline"
-              >
-                {invoiceLabel(inv)}
-              </Link>
-              <span className="min-w-32 text-sm font-semibold">
-                {inv.tenants?.name ?? "-"}
-              </span>
-              <span className="text-sm text-ink/70">
-                {PLANS[inv.plan].label} · {formatAmount(Number(inv.amount))} RSD ·{" "}
-                {fmt(inv.created_at)}
-              </span>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-bold ${invoiceStatusCls[inv.status]}`}
-              >
-                {INVOICE_STATUS_LABELS[inv.status]}
-                {inv.paid_at && ` ${fmt(inv.paid_at)}`}
-              </span>
-              <div className="ml-auto">
-                {inv.status === "issued" && <InvoiceActions invoiceId={inv.id} />}
-              </div>
-            </div>
-          ))}
-          {invoices.length === 0 && (
-            <p className="rounded-2xl border border-dashed border-ink/20 p-8 text-center text-ink/70">
-              Još nema izdatih faktura.
-            </p>
-          )}
-        </div>
+        <InvoiceList rows={invoiceRows} />
 
         {/* Dnevnik superadmin akcija */}
         <h2 className="mt-10 text-xl font-extrabold tracking-tight">
           Dnevnik akcija
         </h2>
-        <div className="mt-4 overflow-hidden rounded-2xl bg-white shadow-card">
-          {(auditLog ?? []).map((entry) => (
-            <div
-              key={entry.id}
-              className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink/5 px-4 py-2.5 text-sm last:border-0"
-            >
-              <span className="text-xs tabular-nums text-ink/70">
-                {datumVremeSr(entry.created_at)}
-              </span>
-              <span className="font-bold">{entry.action}</span>
-              {entry.tenant_label && (
-                <span className="text-ink/70">{entry.tenant_label}</span>
-              )}
-              {entry.details && (
-                <span className="truncate text-xs text-ink/70">
-                  {JSON.stringify(entry.details)}
-                </span>
-              )}
-            </div>
-          ))}
-          {(auditLog ?? []).length === 0 && (
-            <p className="p-8 text-center text-ink/70">
-              Još nema zabeleženih akcija.
-            </p>
-          )}
-        </div>
+        <AuditLogList rows={auditRows} />
       </div>
     </main>
   );

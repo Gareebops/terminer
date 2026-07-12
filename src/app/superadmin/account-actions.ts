@@ -8,6 +8,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bustTenantSiteCache } from "@/lib/tenant";
 import { logAdminAction } from "@/lib/audit";
+import { findUserByEmail } from "@/lib/auth-users";
+import { removeDomainFromVercel } from "@/lib/vercel-domains";
 import { assertSuperAdmin } from "./actions";
 
 // Kontrola naloga sa superadmin panela. Principi:
@@ -240,6 +242,17 @@ export async function deleteTenant(input: {
     return { ok: false, error: "Slug se ne poklapa - brisanje otkazano." };
   }
 
+  // 0) Fakture su finansijski zapis - prežive brisanje (FK set null od
+  //    migracije 20260712000001) uz labelu salona; custom domen se skida
+  //    sa Vercel projekta da ne ostane da visi
+  await ctx.db
+    .from("invoices")
+    .update({ tenant_label: label(ctx.tenant) })
+    .eq("tenant_id", ctx.tenant.id);
+  if (ctx.tenant.custom_domain) {
+    await removeDomainFromVercel(ctx.tenant.custom_domain);
+  }
+
   // 1) Storage fajlovi salona (logo, hero, tim, galerija)
   const { data: files } = await ctx.db.storage
     .from("tenant-media")
@@ -259,7 +272,8 @@ export async function deleteTenant(input: {
     await ctx.db.storage.from("tenant-media").remove(paths);
   }
 
-  // 2) Tenant red - kaskada nosi sve child tabele (uklj. fakture i članstva)
+  // 2) Tenant red - kaskada nosi sve child tabele i članstva; fakture
+  //    ostaju sa tenant_id = null (finansijski zapis)
   const { error } = await ctx.db.from("tenants").delete().eq("id", ctx.tenant.id);
   if (error) return { ok: false, error: "Brisanje salona nije uspelo." };
   bustTenantSiteCache(ctx.tenant.slug);
@@ -286,6 +300,7 @@ export async function deleteTenant(input: {
       owner_email: ctx.owner?.email ?? null,
       owner_account_deleted: ownerDeleted,
       storage_files_deleted: paths.length,
+      custom_domain_removed: ctx.tenant.custom_domain ?? null,
     },
   });
   revalidatePath("/superadmin");
@@ -346,10 +361,10 @@ export async function transferOwnership(input: {
   const ctx = await getTenantWithOwner(parsed.data.tenantId);
   if (!ctx?.owner) return { ok: false, error: "Vlasnik nije pronađen." };
 
-  // Novi vlasnik mora imati postojeći, potvrđen nalog
-  const { data: users } = await ctx.db.auth.admin.listUsers({ perPage: 1000 });
-  const target = users.users.find(
-    (u) => u.email?.toLowerCase() === parsed.data.newOwnerEmail.toLowerCase()
+  // Novi vlasnik mora imati postojeći, potvrđen nalog (findUserByEmail
+  // prolazi sve stranice listUsers - radi i posle 1000. korisnika)
+  const target = await findUserByEmail(ctx.db, parsed.data.newOwnerEmail).catch(
+    () => null
   );
   if (!target) {
     return { ok: false, error: "Nalog sa tom adresom ne postoji - neka se prvo registruje." };
@@ -385,6 +400,106 @@ export async function transferOwnership(input: {
     tenantId: ctx.tenant.id,
     tenantLabel: label(ctx.tenant),
     details: { from: ctx.owner.email, to: target.email },
+  });
+  revalidatePath("/superadmin");
+  return { ok: true };
+}
+
+// ---------- Nivo 1: domen, beleška, nalozi bez salona ----------
+
+// Otkačivanje custom domena sa superadmin panela (spor sa vlasnikom domena,
+// istekla registracija, zloupotreba) - isto što i vlasnikov "Ukloni domen".
+export async function detachCustomDomain(tenantId: string): Promise<ActionResult> {
+  const me = await assertSuperAdmin();
+  if (!me) return { ok: false, error: "Nemaš pristup." };
+  if (!uuidSchema.safeParse(tenantId).success) return { ok: false, error: "Neispravan ID." };
+
+  const ctx = await getTenantWithOwner(tenantId);
+  if (!ctx) return { ok: false, error: "Salon nije pronađen." };
+  const domain = ctx.tenant.custom_domain;
+  if (!domain) return { ok: false, error: "Salon nema povezan domen." };
+
+  await removeDomainFromVercel(domain);
+  const { error } = await ctx.db
+    .from("tenants")
+    .update({ custom_domain: null })
+    .eq("id", tenantId);
+  if (error) return { ok: false, error: "Otkačivanje nije uspelo." };
+  bustTenantSiteCache(ctx.tenant.slug);
+
+  await logAdminAction({
+    adminEmail: me.email,
+    action: "otkačen custom domen",
+    tenantId,
+    tenantLabel: label(ctx.tenant),
+    details: { domain },
+  });
+  revalidatePath("/superadmin");
+  return { ok: true };
+}
+
+// Interna beleška po salonu (CRM-lite) - vidi je samo superadmin
+// (kolona bez grant-a za druge role, migracija 20260712000001).
+export async function setSuperadminNote(input: {
+  tenantId: string;
+  note: string;
+}): Promise<ActionResult> {
+  const me = await assertSuperAdmin();
+  if (!me) return { ok: false, error: "Nemaš pristup." };
+  const parsed = z
+    .object({ tenantId: uuidSchema, note: z.string().trim().max(1000) })
+    .safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Beleška je predugačka (max 1000)." };
+
+  const ctx = await getTenantWithOwner(parsed.data.tenantId);
+  if (!ctx) return { ok: false, error: "Salon nije pronađen." };
+
+  const { error } = await ctx.db
+    .from("tenants")
+    .update({ superadmin_note: parsed.data.note || null })
+    .eq("id", ctx.tenant.id);
+  if (error) return { ok: false, error: "Čuvanje beleške nije uspelo." };
+
+  await logAdminAction({
+    adminEmail: me.email,
+    action: "beleška izmenjena",
+    tenantId: ctx.tenant.id,
+    tenantLabel: label(ctx.tenant),
+    details: { note: parsed.data.note || null },
+  });
+  revalidatePath("/superadmin");
+  return { ok: true };
+}
+
+// Brisanje naloga koji NIJE vezan ni za jedan salon (registracija bez
+// onboardinga - GDPR zahtevi, napušteni nalozi). Nalog sa salonom se briše
+// isključivo kroz deleteTenant.
+export async function deleteAccountWithoutSalon(userId: string): Promise<ActionResult> {
+  const me = await assertSuperAdmin();
+  if (!me) return { ok: false, error: "Nemaš pristup." };
+  if (!uuidSchema.safeParse(userId).success) return { ok: false, error: "Neispravan ID." };
+
+  const db = createAdminClient();
+  const { data: memberships } = await db
+    .from("tenant_members")
+    .select("tenant_id")
+    .eq("user_id", userId)
+    .limit(1);
+  if (memberships && memberships.length > 0) {
+    return { ok: false, error: "Nalog je član salona - briši kroz brisanje salona." };
+  }
+
+  const { data: userRes } = await db.auth.admin.getUserById(userId);
+  const email = userRes.user?.email ?? null;
+  if (!userRes.user) return { ok: false, error: "Nalog nije pronađen." };
+
+  const { error } = await db.auth.admin.deleteUser(userId);
+  if (error) return { ok: false, error: "Brisanje naloga nije uspelo." };
+
+  await logAdminAction({
+    adminEmail: me.email,
+    action: "brisanje naloga bez salona",
+    details: { user_id: userId, email },
   });
   revalidatePath("/superadmin");
   return { ok: true };

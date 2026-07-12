@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bustTenantSiteCache } from "@/lib/tenant";
 import { logAdminAction } from "@/lib/audit";
+import { invoicePeriod, PLANS, revertedPaidUntil, type PlanId } from "@/lib/invoice";
 
 // Superadmin = vlasnik platforme (SUPER_ADMIN_EMAIL u env).
 export async function assertSuperAdmin(): Promise<{ email: string } | null> {
@@ -83,6 +84,182 @@ export async function markInvoicePaid(invoiceId: string): Promise<ActionResult> 
       invoice_id: invoiceId,
       paid_until: newPaidUntil,
       auto_cancelled: (siblings ?? []).map((s) => s.id),
+    },
+  });
+  revalidatePath("/superadmin");
+  return { ok: true };
+}
+
+const issueInvoiceSchema = z.object({
+  tenantId: z.string().min(1),
+  plan: z.enum(["monthly", "yearly"]),
+  // Prilagođen iznos za telefonske/founder dogovore; prazan = cenovnik.
+  // Zaokruživanje na 2 decimale PRE upisa - numeric(10,2) konvencija.
+  amount: z
+    .number()
+    .positive()
+    .max(9_999_999)
+    .transform((n) => Math.round(n * 100) / 100)
+    .optional(),
+});
+
+// Superadmin izdaje fakturu umesto vlasnika (telefonski dogovor, founder
+// cena). Ista numeracija i idempotentnost kao samoposlužni createInvoice -
+// ali ne traži billing_note (kupac pada na ime salona) i prima iznos.
+export async function issueInvoice(input: {
+  tenantId: string;
+  plan: PlanId;
+  amount?: number;
+}): Promise<{ ok: true; invoiceId: string; reused: boolean } | { ok: false; error: string }> {
+  const parsed = issueInvoiceSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Neispravni podaci." };
+  const me = await assertSuperAdmin();
+  if (!me) return { ok: false, error: "Nemaš pristup." };
+
+  const db = createAdminClient();
+  const { data: tenant } = await db
+    .from("tenants")
+    .select("id, name, slug, paid_until, billing_note")
+    .eq("id", parsed.data.tenantId)
+    .maybeSingle();
+  if (!tenant) return { ok: false, error: "Salon nije pronađen." };
+
+  const plan = parsed.data.plan;
+  const amount = parsed.data.amount ?? PLANS[plan].amount;
+  const today = new Date().toISOString().slice(0, 10);
+  const { from: periodFrom, to: periodTo } = invoicePeriod(
+    tenant.paid_until,
+    PLANS[plan].months,
+    today
+  );
+
+  // Aktivna faktura za isti plan i period već postoji - ne dupliraj
+  const { data: existing } = await db
+    .from("invoices")
+    .select("id")
+    .eq("tenant_id", tenant.id)
+    .eq("plan", plan)
+    .eq("period_from", periodFrom)
+    .neq("status", "cancelled")
+    .limit(1)
+    .maybeSingle();
+  if (existing) return { ok: true, invoiceId: existing.id, reused: true };
+
+  const year = new Date().getFullYear();
+  const { data: maxRow } = await db
+    .from("invoices")
+    .select("number")
+    .eq("year", year)
+    .order("number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  let nextNumber = (maxRow?.number ?? 0) + 1;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data: created, error } = await db
+      .from("invoices")
+      .insert({
+        tenant_id: tenant.id,
+        tenant_label: `${tenant.name} (/${tenant.slug})`,
+        number: nextNumber,
+        year,
+        plan,
+        amount,
+        period_from: periodFrom,
+        period_to: periodTo,
+        buyer_info: tenant.billing_note || tenant.name,
+      })
+      .select("id")
+      .single();
+    if (!error) {
+      await logAdminAction({
+        adminEmail: me.email,
+        action: "faktura izdata (superadmin)",
+        tenantId: tenant.id,
+        tenantLabel: `${tenant.name} (/${tenant.slug})`,
+        details: {
+          invoice_id: created.id,
+          plan,
+          amount,
+          period_from: periodFrom,
+          period_to: periodTo,
+        },
+      });
+      revalidatePath("/superadmin");
+      return { ok: true, invoiceId: created.id, reused: false };
+    }
+    if (error.code === "23505") {
+      nextNumber += 1;
+      continue;
+    }
+    console.error("issueInvoice failed:", error);
+    return { ok: false, error: "Izdavanje fakture nije uspelo." };
+  }
+  return { ok: false, error: "Izdavanje fakture nije uspelo. Pokušaj ponovo." };
+}
+
+// Poništavanje pogrešnog klika na "Označi plaćeno": faktura se vraća u
+// "na čekanju", a paid_until se koriguje SAMO ako ga je postavila baš ona
+// (logika u revertedPaidUntil - ručni produžeci se ne gaze). Sestrinske
+// fakture stornirane pri plaćanju OSTAJU stornirane (mogu se izdati iznova).
+export async function revertInvoicePaid(invoiceId: string): Promise<ActionResult> {
+  const me = await assertSuperAdmin();
+  if (!me) return { ok: false, error: "Nemaš pristup." };
+  const db = createAdminClient();
+
+  const { data: invoice } = await db
+    .from("invoices")
+    .select("id, tenant_id, period_to, status")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (!invoice) return { ok: false, error: "Faktura nije pronađena." };
+  if (invoice.status !== "paid") {
+    return { ok: false, error: "Samo plaćena faktura može da se vrati u čekanje." };
+  }
+
+  const { error } = await db
+    .from("invoices")
+    .update({ status: "issued", paid_at: null })
+    .eq("id", invoiceId);
+  if (error) return { ok: false, error: "Vraćanje nije uspelo." };
+
+  // Korekcija paid_until iz preostalih plaćenih faktura (za obrisan salon
+  // tenant_id je null - nema šta da se koriguje)
+  let paidUntilAfter: string | null | undefined;
+  if (invoice.tenant_id) {
+    const [{ data: tenant }, { data: others }] = await Promise.all([
+      db.from("tenants").select("paid_until, slug").eq("id", invoice.tenant_id).maybeSingle(),
+      db
+        .from("invoices")
+        .select("period_to")
+        .eq("tenant_id", invoice.tenant_id)
+        .eq("status", "paid")
+        .neq("id", invoiceId),
+    ]);
+    if (tenant) {
+      const next = revertedPaidUntil(
+        tenant.paid_until,
+        invoice.period_to,
+        (others ?? []).map((o) => o.period_to)
+      );
+      if (next.change) {
+        await db
+          .from("tenants")
+          .update({ paid_until: next.value })
+          .eq("id", invoice.tenant_id);
+        bustTenantSiteCache(tenant.slug);
+        paidUntilAfter = next.value;
+      }
+    }
+  }
+
+  await logAdminAction({
+    adminEmail: me.email,
+    action: "faktura vraćena u čekanje",
+    tenantId: invoice.tenant_id,
+    details: {
+      invoice_id: invoiceId,
+      ...(paidUntilAfter !== undefined ? { paid_until: paidUntilAfter } : {}),
     },
   });
   revalidatePath("/superadmin");

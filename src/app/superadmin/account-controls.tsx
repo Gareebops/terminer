@@ -13,30 +13,46 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   changeOwnerEmail,
   deleteTenant,
+  detachCustomDomain,
   exportTenantData,
   impersonateOwner,
   resendOwnerConfirmation,
   sendOwnerPasswordReset,
+  setSuperadminNote,
   suspendTenant,
   transferOwnership,
   unsuspendTenant,
 } from "./account-actions";
+import { startSupportConversation } from "./support-actions";
 
-type DialogKind = "suspend" | "delete" | "email" | "transfer" | "impersonate" | null;
+type DialogKind =
+  | "suspend"
+  | "delete"
+  | "email"
+  | "transfer"
+  | "impersonate"
+  | "message"
+  | "note"
+  | null;
 
 export function AccountControls({
   tenantId,
   slug,
   suspended,
   ownerConfirmed,
+  customDomain = null,
+  note = null,
 }: {
   tenantId: string;
   slug: string;
   suspended: boolean;
   ownerConfirmed: boolean;
+  customDomain?: string | null;
+  note?: string | null;
 }) {
   const [open, setOpen] = useState<DialogKind>(null);
   const [field, setField] = useState("");
@@ -172,6 +188,46 @@ export function AccountControls({
       confirmLabel: "Uđi kao vlasnik",
       destructive: true,
     },
+    message: {
+      title: "Poruka salonu",
+      desc: "Stiže vlasniku u widget Podrška u njegovom adminu (otvara razgovor ako ne postoji). Mejl se ne šalje.",
+      body: (
+        <div className="space-y-2">
+          <Label htmlFor="sa-message">Poruka</Label>
+          <Textarea
+            id="sa-message"
+            value={field}
+            onChange={(e) => setField(e.target.value)}
+            rows={4}
+            placeholder="npr. Vidim da ti proba ističe za 3 dana - treba li pomoć oko nečega?"
+          />
+        </div>
+      ),
+      confirm: () =>
+        run(
+          () => startSupportConversation({ tenantId, body: field }),
+          "Poruka je poslata."
+        ),
+      confirmLabel: "Pošalji",
+    },
+    note: {
+      title: "Interna beleška",
+      desc: "Vidi je samo superadmin (npr. 'zvao 10.7, obećao uplatu'). Vlasnik je nikad ne vidi. Prazna beleška se briše.",
+      body: (
+        <div className="space-y-2">
+          <Label htmlFor="sa-note">Beleška</Label>
+          <Textarea
+            id="sa-note"
+            value={field}
+            onChange={(e) => setField(e.target.value)}
+            rows={4}
+          />
+        </div>
+      ),
+      confirm: () =>
+        run(() => setSuperadminNote({ tenantId, note: field }), "Beleška je sačuvana."),
+      confirmLabel: "Sačuvaj",
+    },
   };
 
   const d = open ? dialogs[open] : null;
@@ -197,6 +253,38 @@ export function AccountControls({
           className={`${pill} bg-amber-200 text-amber-950`}
         >
           Pošalji potvrdu
+        </button>
+      )}
+      <button
+        disabled={pending}
+        onClick={() => setOpen("message")}
+        className={`${pill} bg-ink/10 text-ink`}
+        title="Poruka u vlasnikov widget podrške"
+      >
+        Pošalji poruku
+      </button>
+      <button
+        disabled={pending}
+        onClick={() => {
+          setField(note ?? "");
+          setOpen("note");
+        }}
+        className={`${pill} ${note ? "bg-amber-200 text-amber-950" : "bg-ink/10 text-ink"}`}
+        title="Interna beleška - vidi je samo superadmin"
+      >
+        Beleška
+      </button>
+      {customDomain && (
+        <button
+          disabled={pending}
+          onClick={() => {
+            if (!confirm(`Otkačiti domen ${customDomain} sa salona i Vercela?`)) return;
+            run(() => detachCustomDomain(tenantId), "Domen je otkačen.");
+          }}
+          className={`${pill} bg-ink/10 text-ink`}
+          title="Skida custom domen sa salona i Vercel projekta"
+        >
+          Otkači domen
         </button>
       )}
       <button

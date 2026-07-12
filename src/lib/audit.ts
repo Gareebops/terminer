@@ -1,5 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// Sumarni red koji cron podsetnika upisuje na SVAKOM uspešnom runu (i kad
+// nema salona za slanje) - superadmin panel iz poslednjeg ovakvog reda
+// prikazuje zdravlje crona. Route fajl ne sme da izvozi konstante, pa živi tu.
+export const CRON_MARKER_ACTION = "cron: dnevna provera podsetnika";
+
 // Dnevnik superadmin akcija - svaka akcija nad tuđim nalogom/salonom mora
 // ostaviti trag (ko, šta, kad, nad kim). Upis ide service-role klijentom;
 // RLS bez policy-ja garantuje da log niko drugi ne čita.

@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { trialReminderDue } from "@/lib/billing";
-import { sendTrialExpiryNotice, type TrialExpirySalon } from "@/lib/email";
-import { logAdminAction } from "@/lib/audit";
+import {
+  sendTrialExpiryNotice,
+  sendTrialExpiryOwnerNotice,
+  type TrialExpirySalon,
+} from "@/lib/email";
+import { CRON_MARKER_ACTION, logAdminAction } from "@/lib/audit";
 import type { Tenant } from "@/lib/types";
 
 // Dnevni Vercel cron (vercel.json): superadminu šalje digest salona kojima
-// proba ističe za REMINDER_DAYS dana, sa aktivnošću po salonu. Selekcija
+// proba ističe za REMINDER_DAYS dana (sa aktivnošću po salonu), a VLASNIKU
+// svakog takvog salona podsetnik sa CTA na /admin/pretplata. Selekcija
 // "tačno N dana" (trialReminderDue) garantuje jedno slanje po salonu bez
-// čuvanja stanja; trag ostaje u superadmin_audit_log.
+// čuvanja stanja. Svaki uspešan run upisuje sumarni red u audit log
+// (CRON_MARKER_ACTION) - panel iz njega prikazuje zdravlje crona.
 
 const REMINDER_DAYS = 3;
 
@@ -34,6 +40,12 @@ export async function GET(request: Request) {
     trialReminderDue(t, REMINDER_DAYS)
   );
   if (due.length === 0) {
+    // Marker i kad nema kome da se šalje - "cron je živ" se vidi u panelu
+    await logAdminAction({
+      adminEmail: "sistem (cron)",
+      action: CRON_MARKER_ACTION,
+      details: { checked: tenants?.length ?? 0, sent: 0 },
+    });
     return NextResponse.json({ checked: tenants?.length ?? 0, sent: 0 });
   }
 
@@ -89,7 +101,23 @@ export async function GET(request: Request) {
     panelUrl: `${baseUrl}/superadmin`,
   });
 
-  if (res.sent) {
+  // Podsetnik i VLASNIKU svakog salona (CTA na produženje) - pad slanja
+  // jednom vlasniku ne sme da preskoči ostale
+  const ownersNotified: string[] = [];
+  for (const t of due) {
+    const to = ownerEmail.get(t.id);
+    if (!to) continue;
+    const ownerRes = await sendTrialExpiryOwnerNotice({
+      to,
+      salonName: t.name,
+      trialEndsAt: t.trial_ends_at,
+      days: REMINDER_DAYS,
+      pretplataUrl: `${baseUrl}/admin/pretplata`,
+    });
+    if (ownerRes.sent) ownersNotified.push(t.slug);
+  }
+
+  if (res.sent || ownersNotified.length > 0) {
     await Promise.all(
       due.map((t) =>
         logAdminAction({
@@ -97,15 +125,29 @@ export async function GET(request: Request) {
           action: "podsetnik: proba ističe",
           tenantId: t.id,
           tenantLabel: `${t.name} (/${t.slug})`,
-          details: { za_dana: REMINDER_DAYS },
+          details: {
+            za_dana: REMINDER_DAYS,
+            vlasnik_obavešten: ownersNotified.includes(t.slug),
+          },
         })
       )
     );
   }
 
+  await logAdminAction({
+    adminEmail: "sistem (cron)",
+    action: CRON_MARKER_ACTION,
+    details: {
+      checked: (tenants ?? []).length,
+      sent: res.sent ? due.length : 0,
+      owners_notified: ownersNotified.length,
+    },
+  });
+
   return NextResponse.json({
     checked: (tenants ?? []).length,
     sent: res.sent ? due.length : 0,
+    ownersNotified,
     salons: due.map((t) => t.slug),
   });
 }

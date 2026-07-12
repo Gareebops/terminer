@@ -4,6 +4,69 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 12.7 (4) — SUPERADMIN RUNDA 3: sve rupe iz analize kontrolnih
+funkcija + ONLINE INDIKATOR admina (⚠️ ZA MIHAJLA: `supabase db push` PRE
+sledećeg deploya - createInvoice sada upisuje i `tenant_label`, stara baza
+bi odbila izdavanje fakture iz payment modala; isti obrazac kao price_max):**
+Migracija [20260712000001_superadmin_kontrole.sql](supabase/migrations/20260712000001_superadmin_kontrole.sql):
+(a) invoices.tenant_id FK cascade → **set null** + kolona `tenant_label`
+(backfill) - FAKTURE PREŽIVE BRISANJE SALONA (finansijski/KPO zapis; panel
+prikazuje "salon obrisan"); (b) `tenants.superadmin_note` (bez grant-a =
+vidi samo service role); (c) `tenant_members.last_seen_at` (prisustvo).
+NOVO U PANELU ([page.tsx](src/app/superadmin/page.tsx) restrukturiran u
+klijent liste): (1) **"Izdaj fakturu…"** po salonu (plan + opcioni
+prilagođen iznos za founder/telefonske dogovore; ista numeracija i
+idempotentnost kao createInvoice - `issueInvoice` u actions.ts) - ručna
+produženja BEZ fakture su do sada bila nevidljiva u "Naplaćeno {god}".
+(2) **"Vrati u čekanje"** za plaćenu fakturu (`revertInvoicePaid`):
+poništava pogrešan klik na "Označi plaćeno"; paid_until se koriguje SAMO
+ako ga je postavila baš ta faktura (`revertedPaidUntil` u lib/invoice.ts,
+čista funkcija + testovi - ručni produžeci se ne gaze; sestrinske
+stornirane OSTAJU stornirane). (3) **ONLINE INDIKATOR** (Mihajlov dodatni
+zahtev): [admin/presence-ping.tsx](src/app/admin/presence-ping.tsx) u
+admin layoutu kuca `pingPresence` svakih 60s SAMO dok je tab vidljiv →
+`tenant_members.last_seen_at`; panel pokazuje pulsirajuću zelenu pilulu
+"online" (< 3 min, lib/presence.ts + testovi), inače "u panelu pre X" u
+redu aktivnosti + stat kartica "Online sada". (4) **Pretraga + filteri
+salona** (ime/slug/mejl/domen; čipovi Svi/Online/Proba/Grace/Istekli/
+Aktivni/Suspendovani) u [salon-list.tsx](src/app/superadmin/salon-list.tsx);
+**filteri i paginacija faktura** (status čipovi + "Prikaži još" po 30) u
+invoice-list.tsx; **dnevnik 200 zapisa** sa pretragom i "Prikaži još"
+(audit-log-list.tsx). (5) **Nalozi bez salona** (registracija bez
+onboardinga - do sada potpuno nevidljivi; listAllUsers jednim prolazom
+zamenjuje i getUserById N+1 po vlasniku) + "Obriši nalog" (guard: sme samo
+bez članstva; GDPR) u orphan-accounts.tsx. (6) **Custom domen vidljiv** u
+kartici + "Otkači domen"; `deleteTenant` sada SKIDA domen sa Vercela
+([lib/vercel-domains.ts](src/lib/vercel-domains.ts) deljen sa
+domain-actions) - ranije je ostajao da visi na projektu. (7) **Interna
+beleška** po salonu (dijalog, amber prikaz u kartici). (8) **Razlog
+suspenzije** prikazan (ranije samo bedž). (9) Stat kartice sada 9: +Grace/
+Istekli/Suspendovani/Online sada. (10) **Mejl VLASNIKU pred istek probe**
+(`sendTrialExpiryOwnerNotice`, CTA na /admin/pretplata) iz istog crona;
+cron upisuje **sumarni marker na svakom runu** (CRON_MARKER_ACTION u
+lib/audit.ts) pa panel prikazuje zdravlje crona (upozorenje ako nema
+CRON_SECRET ili je marker stariji od 48h). (11) **Superadmin može da
+ZAPOČNE chat** ("Pošalji poruku" → `startSupportConversation`: reuse
+otvorenog ili nov razgovor sa owner_read_at na epohi da widget pokaže
+badge; bez mejla). (12) transferOwnership koristi `findUserByEmail`
+([lib/auth-users.ts](src/lib/auth-users.ts)) - paginira sve stranice,
+zatvoren poznati listUsers perPage 1000 problem. FAIL-SOFT PRE MIGRACIJE:
+prisustvo/beleška/tenant_label upiti tiho padaju, panel radi; JEDINI tvrdi
+uslov je createInvoice (zato migracija pre deploya). SVESNO NIJE RAĐENO:
+blocklist ponovne registracije obrisanog vlasnika (suspenzija pokriva
+tekuće; odluka o proizvodu čeka Mihajla ako zatreba). VERIFIKOVANO: 139
+unit (+18: invoicePeriod/addMonths/revertedPaidUntil/presence), lint, tsc,
+build zeleni; kompletan panel UI (kartice, filteri, pretraga, online
+pilula, beleška, razlog suspenzije, izdavanje fakture inline, dijalozi,
+nalozi bez salona, "Vrati u čekanje", "salon obrisan" red) vizuelno kroz
+privremenu stranicu sa mock podacima, desktop + mobil 375px (scrollW=375,
+bez overflow-a), konzola čista; stranica obrisana. E2E superadmin.spec
+selektori provereni protiv novog markupa (rounded-2xl kartice, ista imena
+dugmadi) - kompatibilni. NIJE verifikovano uživo (nema superadmin
+kredencijala u sesiji; migracija nije primenjena): posle `db push` +
+deploya baciti pogled na panel, poslati sebi probnu poruku iz "Pošalji
+poruku" i proveriti online pilulu dok je admin tab otvoren.**
+
 **Novo od 12.7 (3) — SEO PAKET: canonical URL-ovi + LocalBusiness JSON-LD +
 metadata pomoćnih strana:** (1) NOVI MODUL [seo.ts](src/lib/seo.ts):
 `SITE_URL` (sada je dele i sitemap/robots), `jsonLdString` — escape `< > &`

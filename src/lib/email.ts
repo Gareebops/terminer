@@ -492,6 +492,76 @@ export async function sendTrialExpiryNotice(
   }
 }
 
+// Podsetnik VLASNIKU da mu proba ističe - do sada je digest išao samo
+// superadminu pa je javljanje salonu bilo ručno. Ton kao ostatak proizvoda
+// (na "ti"); bez pritiska - sajt ne gasimo, pauzira se samo online
+// zakazivanje.
+export interface TrialExpiryOwnerInput {
+  to: string;
+  salonName: string;
+  trialEndsAt: string; // ISO
+  days: number;
+  pretplataUrl: string;
+}
+
+function trialExpiryOwnerHtml(input: TrialExpiryOwnerInput): string {
+  return `<!doctype html>
+<html lang="sr">
+<body style="margin:0;padding:24px 12px;background:#f4f4f5;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:520px;margin:0 auto;">
+    <div style="background:#ffffff;border-radius:16px;padding:32px;">
+      <p style="margin:0;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;color:#71717a;">Terminer</p>
+      <h1 style="margin:8px 0 16px;font-size:22px;color:#18181b;">Proba ističe za ${input.days} dana</h1>
+      <p style="margin:0 0 12px;font-size:15px;color:#3f3f46;">
+        Probni period za <strong>${escapeHtml(input.salonName)}</strong> traje do
+        ${dateLabelSr(input.trialEndsAt.slice(0, 10))}.
+      </p>
+      <p style="margin:0 0 20px;font-size:14px;color:#52525b;">
+        Ako želiš da klijenti nastave da zakazuju online, produži članarinu -
+        1.990 RSD mesečno ili 19.900 RSD godišnje (2 meseca gratis). Sajt
+        salona ostaje na mreži u svakom slučaju; po isteku probe se pauzira
+        samo online zakazivanje.
+      </p>
+      <a href="${input.pretplataUrl}" style="display:inline-block;background:#18181b;color:#ffffff;font-size:14px;font-weight:600;padding:10px 20px;border-radius:999px;text-decoration:none;">Produži članarinu</a>
+      <p style="margin:20px 0 0;font-size:13px;color:#71717a;">
+        Pitanja? Piši nam iz admin panela (dugme Podrška) - tu smo.
+      </p>
+    </div>
+    <p style="margin:16px 0 0;text-align:center;font-size:12px;color:#a1a1aa;">
+      Poslato preko <a href="https://terminer.rs" style="color:#a1a1aa;">Terminer</a> zakazivanja.
+    </p>
+  </div>
+</body>
+</html>`;
+}
+
+export async function sendTrialExpiryOwnerNotice(
+  input: TrialExpiryOwnerInput
+): Promise<{ sent: boolean }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    console.warn("RESEND_API_KEY nije podešen - podsetnik vlasniku preskočen.");
+    return { sent: false };
+  }
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.emails.send({
+      from: process.env.EMAIL_FROM ?? FROM_FALLBACK,
+      to: input.to,
+      subject: `Proba za ${input.salonName} ističe za ${input.days} dana`,
+      html: trialExpiryOwnerHtml(input),
+    });
+    if (error) {
+      console.error("Resend greška (podsetnik vlasniku):", error);
+      return { sent: false };
+    }
+    return { sent: true };
+  } catch (err) {
+    console.error("Slanje podsetnika vlasniku nije uspelo:", err);
+    return { sent: false };
+  }
+}
+
 export async function sendBookingConfirmation(
   input: BookingEmailInput
 ): Promise<{ sent: boolean }> {

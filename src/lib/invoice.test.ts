@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { buildIpsQr, formatAmount, invoiceLabel, ISSUER, PLANS } from "./invoice";
+import {
+  addMonths,
+  buildIpsQr,
+  formatAmount,
+  invoiceLabel,
+  invoicePeriod,
+  ISSUER,
+  PLANS,
+  revertedPaidUntil,
+} from "./invoice";
 
 // Fakture su novac: pogrešan poziv na broj znači uplatu koja ne može da se
 // upari sa fakturom, pogrešan iznos u QR-u znači pogrešnu uplatu.
@@ -58,5 +67,61 @@ describe("invoiceLabel i planovi", () => {
     expect(PLANS.yearly.amount).toBeLessThan(PLANS.monthly.amount * 12);
     expect(PLANS.yearly.months).toBe(12);
     expect(PLANS.monthly.months).toBe(1);
+  });
+});
+
+// Period fakture i vraćanje pogrešno naplaćene: greška ovde pomera plaćene
+// periode ili gazi ručne korekcije superadmina.
+
+describe("addMonths / invoicePeriod", () => {
+  it("dodaje mesece uz klamp na kraj meseca", () => {
+    expect(addMonths("2026-01-31", 1)).toBe("2026-02-28");
+    expect(addMonths("2026-01-15", 1)).toBe("2026-02-15");
+    expect(addMonths("2026-07-12", 12)).toBe("2027-07-12");
+    expect(addMonths("2024-01-31", 1)).toBe("2024-02-29"); // prestupna
+  });
+
+  it("period kreće danas kad pretplata nije plaćena ili je istekla", () => {
+    expect(invoicePeriod(null, 1, "2026-07-12")).toEqual({
+      from: "2026-07-12",
+      to: "2026-08-12",
+    });
+    expect(invoicePeriod("2026-07-01", 1, "2026-07-12").from).toBe("2026-07-12");
+  });
+
+  it("period se lančano nastavlja dan posle postojećeg isteka", () => {
+    expect(invoicePeriod("2026-07-20", 1, "2026-07-12")).toEqual({
+      from: "2026-07-21",
+      to: "2026-08-21",
+    });
+    // paid_until baš danas: još plaćen, nastavak od sutra
+    expect(invoicePeriod("2026-07-12", 12, "2026-07-12").from).toBe("2026-07-13");
+  });
+});
+
+describe("revertedPaidUntil", () => {
+  it("skida paid_until kad ga je postavila upravo ta faktura", () => {
+    expect(revertedPaidUntil("2026-08-12", "2026-08-12", [])).toEqual({
+      change: true,
+      value: null,
+    });
+  });
+
+  it("pada na najkasniju preostalu plaćenu fakturu", () => {
+    expect(
+      revertedPaidUntil("2026-08-12", "2026-08-12", ["2026-06-01", "2026-07-15"])
+    ).toEqual({ change: true, value: "2026-07-15" });
+  });
+
+  it("ne dira ručne korekcije i tuđe periode", () => {
+    // paid_until je kasniji od perioda fakture (ručni produžetak/gratis)
+    expect(revertedPaidUntil("2027-01-01", "2026-08-12", [])).toEqual({
+      change: false,
+      value: "2027-01-01",
+    });
+    expect(revertedPaidUntil(null, "2026-08-12", [])).toEqual({
+      change: false,
+      value: null,
+    });
   });
 });
