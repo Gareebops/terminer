@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, Pencil, Plus, Scissors, Sparkles, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Plus, Scissors, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -318,7 +318,6 @@ export function ServicesManager({
                     className="rounded-full"
                     disabled={samplesPending}
                   >
-                    <Sparkles className="size-4" />
                     {samplesPending ? "Ubacivanje..." : "Ubaci primere za..."}
                   </Button>
                 </DropdownMenuTrigger>

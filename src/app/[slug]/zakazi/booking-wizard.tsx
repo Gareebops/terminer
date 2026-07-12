@@ -4,7 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { CalendarDays, CalendarPlus, Check, Clock, Copy, Users } from "lucide-react";
+import {
+  CalendarDays,
+  CalendarPlus,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Copy,
+  Users,
+} from "lucide-react";
 import { ConfettiBurst } from "@/components/confetti";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -109,48 +118,177 @@ function StepIndicator({
   );
 }
 
-// Dugme sa skrivenim native date inputom: skok na datum bez listanja
-// trake (kod horizonta od 60+ dana listanje je mučenje, na telefonu
-// native picker radi najbolje)
-function JumpToDate({
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+// Mesečna mreža u temi salona. Ranije je tu bio native date picker
+// (showPicker) - nije mogao da se stilizuje ni lokalizuje (July, M/T/W,
+// plavi akcenti), a nije umeo ni da ugasi neradne dane. min je uvek
+// današnji dan pa služi i kao "danas" oznaka.
+function MiniCalendar({
   min,
   max,
+  selected,
+  openByDate,
   onPick,
 }: {
   min: string;
   max: string;
+  selected: string | null;
+  openByDate: Map<string, boolean> | null;
   onPick: (date: string) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const start = selected ?? min;
+  const [view, setView] = useState({
+    y: Number(start.slice(0, 4)),
+    m: Number(start.slice(5, 7)) - 1,
+  });
+
+  const monthPrefix = `${view.y}-${pad2(view.m + 1)}`;
+  const canPrev = monthPrefix > min.slice(0, 7);
+  const canNext = monthPrefix < max.slice(0, 7);
+  const monthLabel = new Date(view.y, view.m, 1)
+    .toLocaleDateString("sr-Latn-RS", { month: "long", year: "numeric" })
+    .replace(/^./, (c) => c.toUpperCase());
+
+  const daysInMonth = new Date(view.y, view.m + 1, 0).getDate();
+  // getDay: nedelja = 0, a naša nedelja počinje ponedeljkom
+  const offset = (new Date(view.y, view.m, 1).getDay() + 6) % 7;
+
   return (
-    <div className="relative shrink-0">
+    <div
+      role="dialog"
+      aria-label="Izbor datuma"
+      className="absolute left-0 top-full z-30 mt-2 w-72 rounded-[var(--surface-radius)] border bg-background p-3 shadow-xl"
+    >
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          aria-label="Prethodni mesec"
+          disabled={!canPrev}
+          onClick={() => setView((v) => (v.m === 0 ? { y: v.y - 1, m: 11 } : { y: v.y, m: v.m - 1 }))}
+          className="flex size-9 items-center justify-center rounded-full transition-colors hover:bg-accent disabled:opacity-30"
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        <p className="text-sm font-semibold">{monthLabel}</p>
+        <button
+          type="button"
+          aria-label="Sledeći mesec"
+          disabled={!canNext}
+          onClick={() => setView((v) => (v.m === 11 ? { y: v.y + 1, m: 0 } : { y: v.y, m: v.m + 1 }))}
+          className="flex size-9 items-center justify-center rounded-full transition-colors hover:bg-accent disabled:opacity-30"
+        >
+          <ChevronRight className="size-4" />
+        </button>
+      </div>
+      <div className="mt-2 grid grid-cols-7 text-center">
+        {["P", "U", "S", "Č", "P", "S", "N"].map((d, i) => (
+          <span key={i} className="py-1 text-xs font-medium text-muted-foreground">
+            {d}
+          </span>
+        ))}
+        {Array.from({ length: offset }).map((_, i) => (
+          <span key={`prazno-${i}`} />
+        ))}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const iso = `${monthPrefix}-${pad2(i + 1)}`;
+          const inRange = iso >= min && iso <= max;
+          const closed = inRange && openByDate?.get(iso) === false;
+          const isSelected = iso === selected;
+          const isToday = iso === min;
+          return (
+            <button
+              key={iso}
+              type="button"
+              disabled={!inRange || closed}
+              aria-pressed={isSelected}
+              title={closed ? "Ne radi" : undefined}
+              onClick={() => onPick(iso)}
+              className={`mx-auto flex size-9 items-center justify-center rounded-full text-sm transition-colors ${
+                isSelected
+                  ? "bg-primary font-semibold text-primary-foreground"
+                  : closed
+                    ? "text-muted-foreground line-through opacity-50"
+                    : !inRange
+                      ? "text-muted-foreground opacity-30"
+                      : `hover:bg-accent ${isToday ? "font-bold text-primary" : ""}`
+              }`}
+            >
+              {i + 1}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Dugme za skok na datum bez listanja trake (kod horizonta od 60+ dana
+// listanje je mučenje). Otvara MiniCalendar; klik van i Escape zatvaraju.
+function JumpToDate({
+  min,
+  max,
+  selected,
+  openByDate,
+  onPick,
+}: {
+  min: string;
+  max: string;
+  selected: string | null;
+  openByDate: Map<string, boolean> | null;
+  onPick: (date: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: PointerEvent) {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setOpen(false);
+        buttonRef.current?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative shrink-0">
       <button
+        ref={buttonRef}
         type="button"
         aria-label="Izaberi datum iz kalendara"
         title="Izaberi datum iz kalendara"
-        onClick={() => {
-          const el = inputRef.current;
-          if (!el) return;
-          // showPicker traži korisnički gest - klik na dugme jeste
-          if ("showPicker" in el) el.showPicker();
-          else (el as HTMLInputElement).focus();
-        }}
-        className="flex h-full min-h-16 w-12 flex-col items-center justify-center rounded-[var(--surface-radius)] border transition-colors hover:bg-accent"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={`flex h-full min-h-16 w-12 flex-col items-center justify-center rounded-[var(--surface-radius)] border transition-colors ${
+          open ? "border-primary bg-primary text-primary-foreground" : "hover:bg-accent"
+        }`}
       >
         <CalendarDays className="size-5" />
       </button>
-      <input
-        ref={inputRef}
-        type="date"
-        min={min}
-        max={max}
-        tabIndex={-1}
-        aria-hidden
-        className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
-        onChange={(e) => {
-          if (e.target.value >= min && e.target.value <= max) onPick(e.target.value);
-        }}
-      />
+      {open && (
+        <MiniCalendar
+          min={min}
+          max={max}
+          selected={selected}
+          openByDate={openByDate}
+          onPick={(d) => {
+            onPick(d);
+            setOpen(false);
+            buttonRef.current?.focus();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -201,6 +339,8 @@ function DayStrip({
       <JumpToDate
         min={todayISO}
         max={addDaysISO(todayISO, count - 1)}
+        selected={selected}
+        openByDate={openByDate}
         onPick={onSelect}
       />
       <div ref={containerRef} className="scrollbar-none flex gap-2 overflow-x-auto pb-2">

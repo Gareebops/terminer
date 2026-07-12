@@ -4,6 +4,27 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 12.7 (5) — MINI-KALENDAR WIZARDA U TEMI SALONA + 2 UI DETALJA:**
+(1) Dugme "skok na datum" u javnom wizardu više NE otvara native date
+picker (nije mogao da se stilizuje ni lokalizuje - July/M-T-W/plavo - ni
+da ugasi neradne dane): novi `MiniCalendar` u
+[booking-wizard.tsx](src/app/[slug]/zakazi/booking-wizard.tsx) - mesečna
+mreža na tokenima teme (--primary, --surface-radius, accent, background),
+srpski header ("Jul 2026.") i dani P-U-S-Č-P-S-N od ponedeljka, izabran
+dan primary krug, danas bold, prošli/preko horizonta prigušeni, NERADNI
+DANI PRECRTANI (openByDate iz DayStrip-a), navigacija meseci ograničena
+horizontom, klik van/Escape zatvara + fokus nazad. VERIFIKOVANO uživo na
+/demo/zakazi (dark tema; izbor dana selektuje traku i vuče slotove,
+mesec napred/nazad, viewport uzak OK, konzola čista). NAPOMENA: isti
+native obrazac i dalje stoji u ADMIN kalendaru
+([admin/kalendar/date-jump.tsx](src/app/admin/kalendar/date-jump.tsx)) -
+kandidat za isti tretman (fintech DS), čeka Mihajlovo "kreni".
+(2) /admin/pretplata status kartica: uklonjen `pt-6` sa CardContent
+(zaostatak STAROG shadcn API-ja; novi Card sam nosi py - bilo je 40px
+iznad naspram 16px ispod). PRAVILO: uz ovaj Card se CardContent-u NE
+dodaje pt-6. (3) Uklonjena Sparkles ikonica sa "Ubaci primere za..."
+(usluge) - ista odluka kao za "Predloži izgled": bez zvezdica.**
+
 **Novo od 12.7 (4) — SUPERADMIN RUNDA 3: sve rupe iz analize kontrolnih
 funkcija + ONLINE INDIKATOR admina (⚠️ ZA MIHAJLA: `supabase db push` PRE
 sledećeg deploya - createInvoice sada upisuje i `tenant_label`, stara baza

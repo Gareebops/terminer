@@ -59,7 +59,7 @@ export function PretplataClient({
     <div className="space-y-6">
       {/* Status + akcija plaćanja */}
       <Card>
-        <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
+        <CardContent className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span
