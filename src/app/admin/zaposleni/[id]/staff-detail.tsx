@@ -374,8 +374,14 @@ function ScheduleCard({
     buildDayRows(workingHours, 1, buildDayRows(workingHours, 0))
   );
   const [conflicts, setConflicts] = useState<ScheduleConflict[] | null>(null);
-  // Poruka u dijalogu "Korak završen"; null = zatvoren
-  const [stepDoneMsg, setStepDoneMsg] = useState<string | null>(null);
+  // Dijalog "Korak završen"; null = zatvoren. Čuva i guideNext snimljen PRI
+  // čuvanju: revalidacija posle završenog koraka obara svež prop na null,
+  // pa render ne sme da zavisi od njega - dijalog bi se demontirao pre
+  // nego što se vidi
+  const [stepDone, setStepDone] = useState<{
+    message: string;
+    next: GuideNextInfo;
+  } | null>(null);
   const [pending, startTransition] = useTransition();
 
   const monday = mondayOf(today);
@@ -408,8 +414,11 @@ function ScheduleCard({
         setConflicts(null);
         // Tokom vodiča: čuvanje radnog vremena je štikliralo korak, pa
         // upadljiv dijalog vodi pravo na sledeći korak
-        if (guideNext) setStepDoneMsg("Radno vreme je sačuvano.");
-        else toast.success("Radno vreme je sačuvano.");
+        if (guideNext) {
+          setStepDone({ message: "Radno vreme je sačuvano.", next: guideNext });
+        } else {
+          toast.success("Radno vreme je sačuvano.");
+        }
       } else if ("conflicts" in res && res.conflicts) {
         setConflicts(res.conflicts);
       } else {
@@ -491,11 +500,11 @@ function ScheduleCard({
         pending={pending}
       />
 
-      {guideNext && (
+      {stepDone && (
         <GuideStepDone
-          message={stepDoneMsg}
-          next={guideNext}
-          onClose={() => setStepDoneMsg(null)}
+          message={stepDone.message}
+          next={stepDone.next}
+          onClose={() => setStepDone(null)}
         />
       )}
     </Card>

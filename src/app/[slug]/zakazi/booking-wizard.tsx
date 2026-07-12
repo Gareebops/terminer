@@ -577,6 +577,13 @@ export function BookingWizard({
           daysKeyRef.current = staffKey;
         }
       }
+    }).catch(() => {
+      if (!active) return;
+      // Mrežni pad (mobilna veza): bez ovoga promise ostaje odbačen, a
+      // gost gleda večiti skeleton - trajna poruka, izbor drugog dana/osobe
+      // pokreće nov pokušaj
+      setSlotsError("Nešto nije uspelo. Pokušaj ponovo.");
+      setSlots([]);
     });
     return () => {
       active = false;
@@ -657,18 +664,28 @@ export function BookingWizard({
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) return;
     startTransition(async () => {
-      const res = await createBooking({
-        slug,
-        staffId: anyStaff ? "any" : member!.id,
-        serviceId: service.id,
-        date,
-        time,
-        customerName: name,
-        customerPhone: phone,
-        customerEmail: email,
-        note,
-        website,
-      });
+      // Mrežni pad ne sme da "pojede" klik niti da obori ceo wizard u
+      // error boundary - unos ostaje, gost proba ponovo (isti obrazac kao
+      // support-chat). Ako je zahtev ipak stigao do servera, ponovni
+      // pokušaj pada na 23P01/limit pa duplog termina nema.
+      let res: Awaited<ReturnType<typeof createBooking>>;
+      try {
+        res = await createBooking({
+          slug,
+          staffId: anyStaff ? "any" : member!.id,
+          serviceId: service.id,
+          date,
+          time,
+          customerName: name,
+          customerPhone: phone,
+          customerEmail: email,
+          note,
+          website,
+        });
+      } catch {
+        toast.error("Nešto nije uspelo. Pokušaj ponovo.");
+        return;
+      }
       if (res.ok) {
         setEmailSent(res.emailSent);
         setResult({ cancelToken: res.cancelToken, staffName: res.staffName });
@@ -678,13 +695,18 @@ export function BookingWizard({
         if (res.error.includes("zauzet")) {
           setTime(null);
           setSlots(null);
-          const r = await getAvailableSlots({
-            slug,
-            staffId: anyStaff ? "any" : member!.id,
-            serviceId: service.id,
-            date,
-          });
-          setSlots("error" in r ? [] : r.slots);
+          try {
+            const r = await getAvailableSlots({
+              slug,
+              staffId: anyStaff ? "any" : member!.id,
+              serviceId: service.id,
+              date,
+            });
+            setSlots("error" in r ? [] : r.slots);
+          } catch {
+            setSlotsError("Nešto nije uspelo. Pokušaj ponovo.");
+            setSlots([]);
+          }
           go(2);
         }
       }

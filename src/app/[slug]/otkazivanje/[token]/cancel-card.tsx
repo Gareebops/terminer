@@ -75,10 +75,18 @@ export function CancelCard({
   function confirmCancel() {
     if (!booking) return;
     startTransition(async () => {
-      const res = await cancelBooking({
-        bookingId: booking.id,
-        cancelToken: booking.cancelToken,
-      });
+      // Mrežni pad (gost na telefonu): poruka umesto odbačenog promise-a,
+      // dugme ostaje pa se pokušava ponovo
+      let res: Awaited<ReturnType<typeof cancelBooking>>;
+      try {
+        res = await cancelBooking({
+          bookingId: booking.id,
+          cancelToken: booking.cancelToken,
+        });
+      } catch {
+        toast.error("Nešto nije uspelo. Pokušaj ponovo.");
+        return;
+      }
       if (res.ok) {
         setCancelled(true);
       } else if (res.code === "window_expired") {

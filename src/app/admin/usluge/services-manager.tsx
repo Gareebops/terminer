@@ -159,8 +159,14 @@ export function ServicesManager({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Service | undefined>();
   const [toDelete, setToDelete] = useState<Service | null>(null);
-  // Poruka u dijalogu "Korak završen"; null = zatvoren
-  const [stepDoneMsg, setStepDoneMsg] = useState<string | null>(null);
+  // Dijalog "Korak završen"; null = zatvoren. Čuva i guideNext snimljen PRI
+  // čuvanju: revalidacija posle završenog koraka obara svež prop na null,
+  // pa render ne sme da zavisi od njega - dijalog bi se demontirao pre
+  // nego što se vidi
+  const [stepDone, setStepDone] = useState<{
+    message: string;
+    next: GuideNextInfo;
+  } | null>(null);
   const [pending, startTransition] = useTransition();
   const [samplesPending, startSamples] = useTransition();
 
@@ -171,7 +177,7 @@ export function ServicesManager({
         const poruka = `Ubačeno ${res.count ?? ""} primera - cene i trajanja izmeni po svom cenovniku.`;
         // Primeri se ubacuju samo u prazan cenovnik = praktično uvek tokom
         // vodiča, pa upadljiv dijalog vodi na sledeći korak
-        if (guideNext) setStepDoneMsg(poruka);
+        if (guideNext) setStepDone({ message: poruka, next: guideNext });
         else toast.success(poruka);
       } else {
         toast.error(res.error ?? "Nešto nije uspelo. Pokušaj ponovo.");
@@ -216,7 +222,13 @@ export function ServicesManager({
             key={editing?.id ?? "new"}
             service={editing}
             onStepDone={
-              guideNext ? () => setStepDoneMsg("Prva usluga je upisana.") : null
+              guideNext
+                ? () =>
+                    setStepDone({
+                      message: "Prva usluga je upisana.",
+                      next: guideNext,
+                    })
+                : null
             }
             onDone={() => {
               setOpen(false);
@@ -338,11 +350,11 @@ export function ServicesManager({
         )}
       </div>
 
-      {guideNext && (
+      {stepDone && (
         <GuideStepDone
-          message={stepDoneMsg}
-          next={guideNext}
-          onClose={() => setStepDoneMsg(null)}
+          message={stepDone.message}
+          next={stepDone.next}
+          onClose={() => setStepDone(null)}
         />
       )}
 

@@ -4,6 +4,84 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 12.7 (6) — FINALNA PRE-LAUNCH ANALIZA (6 paralelnih agenata:
+klijent/admin/superadmin/dizajn/kvalitet/bezbednost) + 2 HIGH ISPRAVKE:**
+(1) BILANS: 0 BLOCKER u kodu; bezbednost ČISTA (sve superadmin runda 3
+akcije guardovane+validirane, presence izolovan, JSON-LD svuda kroz
+jsonLdString, tajne ne cure); 139 unit, lint, tsc, build zeleni i PRE i
+POSLE ispravki. ⚠️ USLOVNI BLOCKER VAN KODA: kod koji upisuje
+invoices.tenant_label JE NA PRODUKCIJI od 12.7 (Vercel deployuje svaki
+push), pa AKO migracija 20260712000001 još nije primenjena, izdavanje
+fakture (payment modal, /admin/pretplata, superadmin "Izdaj fakturu…")
+TRENUTNO PADA NA PRODUKCIJI — `supabase db push` ODMAH pa probno izdati
+i stornirati jednu fakturu (provera šeme iz ove sesije blokirana
+permisijama pa status nije potvrđen). Dopuna zapisa 12.7 (4): i
+issueInvoice je tvrdi uslov migracije, ne samo createInvoice.
+(2) HIGH ISPRAVKA #1 — mrežni pad server akcija u JAVNOM toku nije bio
+uhvaćen (ista klasa kao chat 11.7 (5), ali na ekranima gostiju na
+mobilnoj mreži): [booking-wizard.tsx](src/app/[slug]/zakazi/booking-wizard.tsx)
+getAvailableSlots dobio `.catch` (trajna poruka umesto VEČITOG skeletona),
+createBooking try/catch (klik više ne "nestaje", unos ostaje; ako je upis
+ipak prošao na serveru, ponovni pokušaj pada na 23P01/limit pa duplog
+termina nema), recovery poziv u "zauzet" grani try/catch;
+[cancel-card.tsx](src/app/[slug]/otkazivanje/[token]/cancel-card.tsx)
+confirmCancel try/catch; [onboarding/page.tsx](src/app/onboarding/page.tsx)
+createSalon try/catch koji PROPUŠTA `NEXT_*` digest kontrolne izuzetke
+(redirect posle uspeha mora da prođe!). VERIFIKOVANO UŽIVO kroz preview:
+slotovi normalni; dev server UGAŠEN ispod otvorenog wizarda → izbor
+drugog dana daje amber "Nešto nije uspelo. Pokušaj ponovo.", konzola
+ČISTA (nula unhandled rejection); restart → sledeći izbor dana opet
+normalno vuče slotove.
+(3) HIGH ISPRAVKA #2 — dijalog "Korak završen!" na Uslugama/Zaposlenima
+se DEMONTIRAO pre prikaza: render je bio iza `{guideNext && ...}`, a
+akcija koja završi korak revalidira rutu pa svež prop padne na null U
+ISTOM odgovoru akcije → dijalog nestane/ne pojavi se (mock stranica iz
+12.7 (2) verifikacije ne prolazi revalidaciju pa je promaklo).
+services-manager.tsx i staff-detail.tsx sada čuvaju `{message, next}` u
+LOKALNOM stanju snimljenom PRI čuvanju — identičan obrazac kao
+guide-rail.tsx (koji je bio imun). PRAVILO: GuideStepDone se NIKAD ne
+renderuje iza svežeg guideNext propa. Verifikovano build/tsc/lint/unit;
+ŽIVU proveru kroz svež nalog uraditi uz već zapisanu stavku "proći svež
+onboarding end-to-end" (test nalozi na produkciji blokirani u sesijama).
+(4) OSTALI NALAZI = PREPORUKE, NIJE dirano (dogovor: MEDIUM/LOW čekaju
+Mihajlovo odobrenje). 10 MEDIUM: superadmin custom iznos fakture parsira
+"1.990" kao 1,99 RSD (number input + sr separator; dodati potvrdu
+iznosa/minimum); "Obriši nalog" (orphan) ne štiti sopstveni/superadmin
+nalog; deleteTenant briše storage+domen PRE tenant reda (pad delete-a =
+živ sajt bez slika); updateStaffSchedule NE zove bustTenantSiteCache
+(weekly↔smene do 60s stari slotovi — krši pravilo iz 8.7 (6));
+deaktiviran zaposleni sa budućim terminima nestaje iz Kalendara (termini
+samo u Rezervacijama); link za otkazivanje iz mejla 404 kad salon
+postane neobjavljen/suspendovan (token je sam po sebi dokaz — čitati
+tenant service-rolom); /auth/callback ignoriše error parametre pa
+istekao link/otkazan Google consent daje "Nalog je potvrđen"; belo <body>
+iza DARK teme salona na pravim telefonima (overscroll bljesak) + nema
+theme-color meta; auth forme: native `required` balončić preduhitri
+srpsku inline validaciju (dodati noValidate); .env.example fali 7
+varijabli koje kod koristi. ~20 LOW (izbor): isOnline da odbaci BUDUĆI
+last_seen_at (falsifikat "online" REST-om); mrtav ui/calendar.tsx +
+neiskorišćene zavisnosti (react-hook-form, @hookform/resolvers,
+date-fns, react-day-picker; shadcn u deps umesto dev — uz @emnapi
+proveru pri uklanjanju); RESERVED_SLUGS bez "opengraph-image"; slug
+min(2) engleska Zod poruka; galerija limit 24 samo na klijentu;
+extendSubscription bez addMonths klampa (31.8.+1mes → 1.10); cancelInvoice
+audit bez tenant konteksta; reset lozinke bez confirm; cron marker ne
+razlikuje "radi" od "mejlovi ne odlaze"; createSalon parcijalni pad
+ostavlja tenant-siroče koje drži slug; lista Zaposleni inicijal umesto
+fotke; "Setio si se?" samo muški rod; loading.tsx nema za /superadmin.
+(5) OPERATIVNO PRE LANSIRANJA (Mihajlo, uz db push gore): u ŽIVOM
+sitemap-u je 6 test salona — studio-test, studio-ragazzi, nidza,
+vanja-studio, kira-beauty, delonghi-ecam (VIŠE nego što je ranije
+zabeleženo!) — skinuti s mreže/obrisati pre launcha + test-admin@terminer.dev
++ test fakture + seed klijent "Test Testić"; CRON_SECRET na Vercel
+(potvrđeno uživo: cron ruta uredno vraća 401 = fail-closed radi);
+proveriti VERCEL_TOKEN/VERCEL_PROJECT_ID na Vercelu (bez njih
+deleteTenant/otkači domen tiho ne skidaju domen); Sentry DSN po svemu
+sudeći VEĆ AKTIVAN na produkciji (prijave stižu od 11.7) — potvrditi env
+pa štiklirati checklist; Vercel Analytics i dalje isključen; CI E2E job
+CRVEN od 2773bca (podrska.spec, poseban task) — trenutno su unit+build
+jedina automatska mreža ispod deploya, E2E popraviti ubrzo posle launcha.**
+
 **Novo od 12.7 (5) — MINI-KALENDAR WIZARDA U TEMI SALONA + 2 UI DETALJA:**
 (1) Dugme "skok na datum" u javnom wizardu više NE otvara native date
 picker (nije mogao da se stilizuje ni lokalizuje - July/M-T-W/plavo - ni

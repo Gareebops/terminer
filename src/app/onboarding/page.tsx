@@ -31,8 +31,23 @@ export default function OnboardingPage() {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const res = await createSalon({ name, slug });
-      if (res?.error) toast.error(res.error);
+      try {
+        const res = await createSalon({ name, slug });
+        if (res?.error) toast.error(res.error);
+      } catch (err) {
+        // redirect() iz uspešne akcije baca Next kontrolni izuzetak - taj
+        // MORA da se propusti; guta se samo stvarni mrežni pad
+        if (
+          err &&
+          typeof err === "object" &&
+          "digest" in err &&
+          typeof err.digest === "string" &&
+          err.digest.startsWith("NEXT_")
+        ) {
+          throw err;
+        }
+        toast.error("Nešto nije uspelo. Pokušaj ponovo.");
+      }
     });
   }
 
