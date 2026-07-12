@@ -21,7 +21,7 @@ export default function TermsPage() {
         uslove.
       </p>
 
-      <h2>Šta usluga obuhvata</h2>
+      <h2>Prava proistekla iz plaćanja članarine</h2>
       <ul>
         <li>mini-sajt salona na adresi terminer.rs/naziv-salona;</li>
         <li>online zakazivanje termina za klijente salona, bez njihove registracije;</li>
@@ -29,7 +29,7 @@ export default function TermsPage() {
         <li>email potvrde termina klijentima koji ostave adresu.</li>
       </ul>
 
-      <h2>Probni period i cene</h2>
+      <h2>Probni period i iznos članarine</h2>
       <p>
         Prvih <strong>30 dana je besplatno</strong>, bez unošenja kartice i bez
         obaveze. Nakon probe, korišćenje se naplaćuje po cenovniku:
@@ -48,7 +48,7 @@ export default function TermsPage() {
         izdaje iz admin panela, u sekciji Pretplata.
       </p>
 
-      <h2>Šta se dešava kad pretplata istekne</h2>
+      <h2>Šta se dešava kada članarina istekne</h2>
       <p>
         Po isteku plaćenog perioda salon ima još 7 dana počeka. Nakon toga se
         pauzira samo online zakazivanje - sajt salona ostaje dostupan

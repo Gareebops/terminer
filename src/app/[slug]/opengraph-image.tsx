@@ -64,7 +64,10 @@ export default async function Image({
           flexDirection: "column",
           justifyContent: "space-between",
           backgroundColor: brand,
-          backgroundImage: flat ? undefined : brandGradient(brand),
+          // Satori PADA na undefined vrednost stila ("Cannot read properties
+          // of undefined (reading 'trim')") — ključ sme da postoji samo kad
+          // gradijent stvarno ima vrednost.
+          ...(flat ? null : { backgroundImage: brandGradient(brand) }),
           padding: 72,
           fontFamily: "Jakarta",
           color: fg,

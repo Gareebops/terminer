@@ -1,8 +1,28 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 11. jul 2026. Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 12. jul 2026. Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
+
+**Novo od 12.7 — OG SLIKA SALONA PADALA ZA TEME BEZ GRADIJENTA (Sentry:
+"Cannot read properties of undefined (reading 'trim')" iz @vercel/og +
+"failed to pipe response"):** Uzrok: satori PADA na svaku style vrednost
+koja je `undefined` — u [slug]/opengraph-image.tsx je stajalo
+`backgroundImage: flat ? undefined : brandGradient(brand)`, pa je OG slika
+pucala za SVAKI salon čija tema ima `gradient: false` (21 od 39 tema,
+uključujući i demo!). Deljenje linka na Viber/WhatsApp/mreže za te salone
+nije imalo sliku. Ispravka: uslovni spread — ključ uopšte ne postoji kad
+nema gradijenta. PRAVILO ZA BUDUĆI OG KOD: u ImageResponse style objektu
+NIKAD `undefined` vrednost; opcioni stil ide kroz `...(uslov ? {kljuc: v}
+: null)`. DIJAGNOSTIČKA LEKCIJA: satori umota izvorni TypeError u novu
+grešku sa sufiksom "in CSS rule \`prop: vrednost\`" u NOVOM REDU — Sentry
+title prikazuje samo prvi red pa se ne vidi koji property; pun message u
+Sentry detaljima otkriva krivca odmah. VERIFIKOVANO: repro skript direktno
+nad kompajliranim @vercel/og (undefined pada, spread prolazi obe grane);
+uživo /demo/opengraph-image (demo JESTE flat tema → vežba popravljenu
+granu) vraća 200 PNG, slika vizuelno ispravna (ravna boja brenda, ime,
+pilula); 108 unit, lint, tsc zeleni. Root opengraph-image i [slug]/icon
+pregledani — nemaju opcione stilove, čisti.
 
 **Novo od 11.7 (8) — PRE-LAUNCH ANALIZE: BEZBEDNOST ČISTA + SECURITY
 HEADERI + LCP ISPRAVKE (Lighthouse pravi throttling: landing 77→98,
@@ -1378,8 +1398,9 @@ Vidi `git log --oneline`. Ukratko, sve navedeno je urađeno i verifikovano uživ
       nalog" sa potvrda@terminer.rs (Mihajlo podesio ranije; checklist je
       kasnila za stvarnošću). Još proveriti: reset-password šablon i
       Auth rate limit za mejlove.
-- [ ] `CONTACT_EMAIL` u [src/components/legal-page.tsx](src/components/legal-page.tsx)
-      prebaciti sa gmail-a na kontakt@terminer.rs kad domen legne.
+- [x] `CONTACT_EMAIL` u [src/components/legal-page.tsx](src/components/legal-page.tsx)
+      prebačen sa gmail-a na info@cvoriste.com (12.7, Mihajlova odluka —
+      ne kontakt@terminer.rs kako je prvobitno planirano).
 - [ ] Pravne strane pregledati očima vlasnika: `/privatnost` i `/uslovi`
       (nacrt pisao AI 3.7.2026 — proveriti PIB/MB i formulacije).
 - [x] OG slika za deljenje linka — generisana kroz next/og 7.7 (Terminer
