@@ -4,6 +4,45 @@
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
 
+**Novo od 14.7 — DEPLOY OBA PRE-LAUNCH COMMITA UŽIVO + TEST PODACI OČIŠĆENI +
+MIGRACIJA POTVRĐENA (BLOCKER ZATVOREN) + ISPRAVKA SLIKE O "TEST SALONIMA":**
+(1) **Migracija 20260712000001 JE PRIMENJENA na produkciji** — potvrđeno
+read-only proverom (tenant_label/superadmin_note/last_seen_at postoje) i
+posredno: fakture obrisanih salona vise sa tenant_id=null (set-null FK).
+Uslovni BLOCKER iz 12.7 (6) je ZATVOREN; `db push` više ne treba.
+(2) **Deploy f1ef665 + 47f2759 je UŽIVO** (Mihajlo pushovao 14.7): terminer.rs/demo
+služi theme-color #0a0a0a iz novog paketa. CI mejl "Some jobs were not
+successful" = POZNATI podrska.spec E2E pad (isti job/korak od 11.7; unit+
+build i integracioni ZELENI; 8 E2E specova statički provereno protiv
+izmena — nema dodira). (3) **ČIŠĆENJE test podataka izvršeno** (Mihajlo
+pokrenuo pripremljeni skript sa preflight guardovima; AI-jev direktan upis
+u produkciju blokira permission klasifikator — čitanja prolaze): obrisani
+seed klijent "Test Testić" (demo), TEST FAKTURE br 1–9/2026 (demo,
+studio-test i siročići obrisanih salona; preostale SAMO 10/11 →
+mila-studio), salon studio-vodic-proba + nalog vodic-proba@terminer.dev
+(zaostali test vodiča). Sada 11 salona. (4) ⚠️ **VAŽNA ISPRAVKA nalaza
+"6 test salona u sitemap-u" iz 12.7 (6)**: keširan sitemap je prikazivao i
+VEĆ OBRISANE salone (kira-beauty, delonghi-ecam ne postoje u bazi).
+Inventar pravog stanja: **studio-ragazzi** (jocaragazzi@, kupljen domen
+ragazzisalon.rs) i **mila-studio** (allandeverything1@, domen
+milastudio.com, 2 izdate fakture) su po svemu sudeći PRAVI PILOT
+KORISNICI — NE DIRATI, NE BRISATI IM FAKTURE (10/11 ostavljene baš zato);
+**nidza** (krlemir@) i **vanja-studio** (ivonavidojevic@) su prijatelji/
+porodica u probi — objavljeni pa u sitemap-u, odluka (suspenzija/zamolba)
+na Mihajlu; **zdravo-test/nona-test/nije-pu-nego-paz/mica-sisa/kiki** su
+neobjavljeni i prazni (bezopasni). ODLUKE KOJE ČEKAJU MIHAJLA:
+(a) studio-test (njegov lični, domen demosalon.shop, 17 test rezervacija):
+obrisati ceo → oslobađa milosevicmihajlo13@ nalog → prenos vlasništva demo
+salona na njega → TEK ONDA sme brisanje test-admin@terminer.dev (test-admin
+je vlasnik demo salona — NE brisati pre prenosa!); ili samo skinuti s
+mreže; (b) nidza/vanja-studio s mreže?; (c) orphan nalozi cvoristeuser@
+(nepotvrđen, možda čuvan za firmu) i valentinavidojevic@icloud (nepotvrđena
+realna registracija) — ostavljeni. PREOSTALO ZA LAUNCH (sve na Mihajlu):
+CRON_SECRET + provera VERCEL_TOKEN/PROJECT_ID/SENTRY_DSN na Vercelu (env
+važi od SLEDEĆEG deploya!), Vercel Analytics Enable, svež onboarding uživo
+(dijalog "Korak završen!" — jedina neproverena ispravka), Search Console
+POSLE sređivanja sitemap-a, pravne strane, popravka podrska.spec (task).**
+
 **Novo od 12.7 (7) — MEDIUM + LOW PAKET IZ ANALIZE ODRAĐEN (Mihajlo: "odradi
 i izmene iz medium i low paketa"); 140 unit, lint, tsc, build zeleni, uživo
 verifikovano:** Sve preporuke iz 12.7 (6) sprovedene osim svesnih izuzetaka.
