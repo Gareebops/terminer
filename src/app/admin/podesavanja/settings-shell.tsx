@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SiteSettings } from "@/lib/types";
+import { AccountCard } from "./account-card";
 import { AppearanceForm } from "./appearance-form";
 import { DomainCard } from "./domain-card";
 import { PhonePreview } from "./phone-preview";
@@ -14,11 +15,15 @@ export function SettingsShell({
   slug,
   customDomain,
   settings,
+  accountEmail,
+  accountHasPassword,
 }: {
   tenantId: string;
   slug: string;
   customDomain: string | null;
   settings: SiteSettings | null;
+  accountEmail: string;
+  accountHasPassword: boolean;
 }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const onSaved = useCallback(() => setRefreshKey((k) => k + 1), []);
@@ -36,6 +41,7 @@ export function SettingsShell({
         />
         <SettingsForm settings={settings} onSaved={onSaved} />
         <DomainCard slug={slug} customDomain={customDomain} />
+        <AccountCard email={accountEmail} hasPassword={accountHasPassword} />
       </div>
 
       {/* Živi pregled sajta (mobilni prikaz) */}

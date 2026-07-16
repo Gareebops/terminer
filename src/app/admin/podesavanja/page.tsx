@@ -10,11 +10,18 @@ export default async function SettingsPage() {
   const { tenant } = await getAdminContext();
   const supabase = await createClient();
 
-  const { data: settings } = await supabase
-    .from("site_settings")
-    .select("*")
-    .eq("tenant_id", tenant.id)
-    .maybeSingle();
+  // getUser (round-trip do Auth API-ja) samo ovde, ne u getAdminContext:
+  // kartici "Nalog" trebaju identiteti (Google nalog bez lozinke dobija
+  // "postavi" umesto "promeni"), a claims ih ne nose
+  const [{ data: settingsData }, { data: userData }] = await Promise.all([
+    supabase.from("site_settings").select("*").eq("tenant_id", tenant.id).maybeSingle(),
+    supabase.auth.getUser(),
+  ]);
+  const settings = settingsData;
+  const accountEmail = userData.user?.email ?? "";
+  const accountHasPassword = (userData.user?.identities ?? []).some(
+    (i) => i.provider === "email"
+  );
 
   const onboarding = ((settings as SiteSettings | null)?.onboarding ??
     {}) as OnboardingState;
@@ -31,6 +38,8 @@ export default async function SettingsPage() {
           slug={tenant.slug}
           customDomain={tenant.custom_domain ?? null}
           settings={settings as SiteSettings | null}
+          accountEmail={accountEmail}
+          accountHasPassword={accountHasPassword}
         />
       </div>
       {/* Put nazad u vodič drži traka vodiča u layoutu; ovaj link vraća

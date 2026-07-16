@@ -1,8 +1,32 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 12. jul 2026. Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 16. jul 2026. Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
+
+**Novo od 16.7 — PROMENA LOZINKE U PODEŠAVANJIMA (propust: opcija nije
+postojala):** Nova kartica "Nalog"
+([podesavanja/account-card.tsx](src/app/admin/podesavanja/account-card.tsx),
+ispod Domena): promena lozinke bez odjave. Supabase `updateUser` ne traži
+staru lozinku, pa je forma sama proverava kroz `signInWithPassword`
+(otvoren admin tab na zajedničkom računaru u salonu ne sme biti dovoljan
+za preuzimanje naloga); nalog prijavljen SAMO Google-om (bez "email"
+identiteta) dobija varijantu "Postavi lozinku" bez polja za trenutnu —
+posle postavljanja radi i prijava mejlom. Detekcija: podesavanja/page.tsx
+zove `auth.getUser()` (trebaju identiteti — claims ih ne nose; namerno
+SAMO na ovoj stranici, ne u getAdminContext zbog perf pravila) paralelno
+sa site_settings upitom; SettingsShell prima accountEmail/
+accountHasPassword. Srpske inline poruke (noValidate obrazac kao auth
+forme); "nova ista kao trenutna" uhvaćena klijentski + mapiranjem
+"different" greške servera; link "Ne sećaš se trenutne lozinke?" →
+/zaboravljena-lozinka; try/catch oko auth poziva (mrežni pad = toast, ne
+unhandled rejection). VERIFIKOVANO: privremena stranica sa obe varijante
+(desktop + 375px; prazan submit → srpske poruke BEZ ijednog Auth poziva;
+ista lozinka → poruka različitosti; konzola čista; stranica obrisana);
+140 unit, lint, tsc, build zeleni. NIJE verifikovano uživo sa pravim
+nalogom (nema kredencijala u sesiji; upis na produkciju blokiran) — ZA
+MIHAJLA posle deploya: na svom nalogu pogrešna trenutna → inline greška,
+tačna → toast pa ponovna prijava novom lozinkom.**
 
 **Novo od 14.7 — DEPLOY OBA PRE-LAUNCH COMMITA UŽIVO + TEST PODACI OČIŠĆENI +
 MIGRACIJA POTVRĐENA (BLOCKER ZATVOREN) + ISPRAVKA SLIKE O "TEST SALONIMA":**
