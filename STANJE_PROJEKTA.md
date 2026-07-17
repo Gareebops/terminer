@@ -26,7 +26,16 @@ ista lozinka → poruka različitosti; konzola čista; stranica obrisana);
 140 unit, lint, tsc, build zeleni. NIJE verifikovano uživo sa pravim
 nalogom (nema kredencijala u sesiji; upis na produkciju blokiran) — ZA
 MIHAJLA posle deploya: na svom nalogu pogrešna trenutna → inline greška,
-tačna → toast pa ponovna prijava novom lozinkom.**
+tačna → toast pa ponovna prijava novom lozinkom. DOPUNA istog dana
+(Mihajlo posle deploya: "polja tek nakon klika, da UI bolje uklopimo"):
+kartica je podrazumevano SKLOPLJENA — tekst + outline dugme
+"Promeni/Postavi lozinku"; klik otvara formu (autoFocus na prvo polje),
+"Odustani" (ghost) sklapa i briše uneto + greške, uspeh sam sklopi
+formu; submit preimenovan u "Sačuvaj novu lozinku"/"Sačuvaj lozinku".
+Verifikovano isto kao gore (obe varijante: otvaranje/fokus, odustani
+čisti polja, prazan submit srpske poruke bez Auth poziva, desktop +
+375px prelom, konzola čista; privremena stranica obrisana); kapije
+ponovo zelene.**
 
 **Novo od 14.7 — DEPLOY OBA PRE-LAUNCH COMMITA UŽIVO + TEST PODACI OČIŠĆENI +
 MIGRACIJA POTVRĐENA (BLOCKER ZATVOREN) + ISPRAVKA SLIKE O "TEST SALONIMA":**

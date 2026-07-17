@@ -24,10 +24,20 @@ export function AccountCard({
   hasPassword: boolean;
 }) {
   const [hasPassword, setHasPassword] = useState(initialHasPassword);
+  // Polja su sklopljena dok se ne klikne "Promeni/Postavi lozinku" -
+  // retka radnja ne zaslužuje dva stalno otvorena input polja
+  const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ current?: string; next?: string }>({});
+
+  function close() {
+    setOpen(false);
+    setCurrent("");
+    setNext("");
+    setErrors({});
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,8 +74,7 @@ export function AccountCard({
       }
       toast.success(hasPassword ? "Lozinka je promenjena." : "Lozinka je postavljena.");
       setHasPassword(true);
-      setCurrent("");
-      setNext("");
+      close();
     } catch {
       toast.error("Nešto nije uspelo. Proveri vezu pa pokušaj ponovo.");
     } finally {
@@ -88,69 +97,80 @@ export function AccountCard({
             " Trenutno se prijavljuješ Google nalogom - ako postaviš lozinku, moći ćeš da se prijaviš i mejlom."}
         </p>
 
-        {/* noValidate: native required balončić bi preduhitrio srpsku poruku */}
-        <form onSubmit={onSubmit} noValidate className="space-y-4">
-          {hasPassword && (
+        {!open ? (
+          <Button variant="outline" onClick={() => setOpen(true)}>
+            {hasPassword ? "Promeni lozinku" : "Postavi lozinku"}
+          </Button>
+        ) : (
+          /* noValidate: native required balončić bi preduhitrio srpsku poruku */
+          <form onSubmit={onSubmit} noValidate className="space-y-4">
+            {hasPassword && (
+              <div className="space-y-2">
+                <Label htmlFor="acc-current">Trenutna lozinka</Label>
+                <PasswordInput
+                  id="acc-current"
+                  autoComplete="current-password"
+                  autoFocus
+                  required
+                  aria-invalid={!!errors.current}
+                  aria-describedby={errors.current ? "acc-current-error" : undefined}
+                  value={current}
+                  onChange={(e) => {
+                    setCurrent(e.target.value);
+                    setErrors((f) => ({ ...f, current: undefined }));
+                  }}
+                />
+                {errors.current && (
+                  <p id="acc-current-error" className="text-xs font-medium text-red-700">
+                    {errors.current}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="space-y-2">
-              <Label htmlFor="acc-current">Trenutna lozinka</Label>
+              <Label htmlFor="acc-next">Nova lozinka (min 8 karaktera)</Label>
               <PasswordInput
-                id="acc-current"
-                autoComplete="current-password"
+                id="acc-next"
+                autoComplete="new-password"
+                autoFocus={!hasPassword}
                 required
-                aria-invalid={!!errors.current}
-                aria-describedby={errors.current ? "acc-current-error" : undefined}
-                value={current}
+                minLength={8}
+                aria-invalid={!!errors.next}
+                aria-describedby={errors.next ? "acc-next-error" : undefined}
+                value={next}
                 onChange={(e) => {
-                  setCurrent(e.target.value);
-                  setErrors((f) => ({ ...f, current: undefined }));
+                  setNext(e.target.value);
+                  setErrors((f) => ({ ...f, next: undefined }));
                 }}
               />
-              {errors.current && (
-                <p id="acc-current-error" className="text-xs font-medium text-red-700">
-                  {errors.current}
+              {errors.next && (
+                <p id="acc-next-error" className="text-xs font-medium text-red-700">
+                  {errors.next}
                 </p>
               )}
             </div>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="acc-next">Nova lozinka (min 8 karaktera)</Label>
-            <PasswordInput
-              id="acc-next"
-              autoComplete="new-password"
-              required
-              minLength={8}
-              aria-invalid={!!errors.next}
-              aria-describedby={errors.next ? "acc-next-error" : undefined}
-              value={next}
-              onChange={(e) => {
-                setNext(e.target.value);
-                setErrors((f) => ({ ...f, next: undefined }));
-              }}
-            />
-            {errors.next && (
-              <p id="acc-next-error" className="text-xs font-medium text-red-700">
-                {errors.next}
-              </p>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" disabled={loading}>
-              {loading
-                ? "Čuvanje..."
-                : hasPassword
-                  ? "Promeni lozinku"
-                  : "Postavi lozinku"}
-            </Button>
-            {hasPassword && (
-              <Link
-                href="/zaboravljena-lozinka"
-                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-              >
-                Ne sećaš se trenutne lozinke?
-              </Link>
-            )}
-          </div>
-        </form>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" disabled={loading}>
+                {loading
+                  ? "Čuvanje..."
+                  : hasPassword
+                    ? "Sačuvaj novu lozinku"
+                    : "Sačuvaj lozinku"}
+              </Button>
+              <Button type="button" variant="ghost" disabled={loading} onClick={close}>
+                Odustani
+              </Button>
+              {hasPassword && (
+                <Link
+                  href="/zaboravljena-lozinka"
+                  className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                >
+                  Ne sećaš se trenutne lozinke?
+                </Link>
+              )}
+            </div>
+          </form>
+        )}
       </CardContent>
     </Card>
   );
