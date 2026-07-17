@@ -1,8 +1,28 @@
 # Terminer — stanje projekta (handoff za AI/developera)
 
-> Poslednje ažuriranje: 16. jul 2026. Ovaj dokument je izvor istine o tome šta je
+> Poslednje ažuriranje: 17. jul 2026. Ovaj dokument je izvor istine o tome šta je
 > urađeno, kako je urađeno i šta je sledeće. Pre bilo kakvog rada pročitaj ga ceo,
 > pa proveri `git log --oneline` za eventualne novije izmene.
+
+**Novo od 17.7 — SILUETA TELEFONA U PREGLEDU = AKTUELNI PIXEL PRO (Mihajlo:
+"zameni siluetu za aktuelni model, ne dopada mi se raspored/oblik bočne
+dugmadi"):** [phone-preview.tsx](src/app/admin/podesavanja/phone-preview.tsx):
+umesto 3 proizvoljne crtice (2 levo + 1 desno) sada Pixel Pro raspored —
+desno kraće power (h-9) pa duži volume rocker (h-16) ispod, LEVA ivica
+čista; dugmad w-1 rounded-full, proporcije prenete sa pravog uređaja.
+Dodata centrirana punch-hole kamera (size-2.5, top-2, z-10 iznad skeletona
+učitavanja). VAŽNA ODLUKA: prvo isproban iPhone Pro stil (Action+2 volume
+levo, power+Camera Control desno + Dynamic Island pilula) — ODBAČEN jer
+iframe ne zna za safe-area pa ŠIROKA island pilula legne preko headera
+sajta (na svetlim temama crna fleka preko naslova = izgleda kao bag);
+mala tačka prekriva zanemarljivo, na tamnim headerima se stopi kao na
+pravom telefonu. Home indikator, staklo-odsjaj, ambijentalni sjaj i hover
+ostaju. VERIFIKOVANO kroz privremenu stranicu (PhonePreview sa slug=demo,
+javna ruta bez prijave): obe ivice, tačka nevidljiva na tamnom headeru,
+konzola čista; 140 unit, lint, tsc, build zeleni; stranica obrisana.
+OPERATIVNA LEKCIJA: `npm run build` pa `next dev` ume da ostavi pokvaren
+`.next` (SVE rute, i /, vraćaju 404 bez greške u logu) — lek `rm -rf
+.next` pa restart dev servera.**
 
 **Novo od 16.7 — PROMENA LOZINKE U PODEŠAVANJIMA (propust: opcija nije
 postojala):** Nova kartica "Nalog"

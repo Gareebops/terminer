@@ -86,18 +86,16 @@ export function PhonePreview({
 
         {/* Telo telefona */}
         <div className="group relative mx-auto w-fit transition-transform duration-500 motion-safe:hover:scale-[1.015] motion-safe:hover:-rotate-1">
-          {/* Bočna dugmad */}
+          {/* Bočna dugmad po uzoru na aktuelni Pixel Pro: desno kraće
+              power pa duži volume rocker ispod, leva ivica čista
+              (proporcije prenete sa pravog uređaja) */}
           <span
             aria-hidden
-            className="absolute -left-[3px] top-24 h-8 w-[3px] rounded-l-md bg-ink"
+            className="absolute -right-1 top-32 h-9 w-1 rounded-r-full bg-ink"
           />
           <span
             aria-hidden
-            className="absolute -left-[3px] top-36 h-12 w-[3px] rounded-l-md bg-ink"
-          />
-          <span
-            aria-hidden
-            className="absolute -right-[3px] top-28 h-16 w-[3px] rounded-r-md bg-ink"
+            className="absolute -right-1 top-[11rem] h-16 w-1 rounded-r-full bg-ink"
           />
 
           {/* Bez ring-a i sa tamnom podlogom ekrana: svetla ivica je na
@@ -114,6 +112,15 @@ export function PhonePreview({
                 className={`h-[600px] w-[300px] bg-white transition-opacity duration-500 ${
                   loaded ? "opacity-100" : "opacity-0"
                 }`}
+              />
+
+              {/* Centrirana punch-hole kamera (Pixel) - namerno NE island
+                  pilula: iframe ne zna za safe-area pa bi šira pilula
+                  legla preko headera sajta; z-10 da "hardver" ostane
+                  preko skeletona učitavanja */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute left-1/2 top-2 z-10 size-2.5 -translate-x-1/2 rounded-full bg-ink"
               />
 
               {/* Home indikator */}
