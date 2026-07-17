@@ -114,14 +114,8 @@ export function PhonePreview({
                 }`}
               />
 
-              {/* Centrirana punch-hole kamera (Pixel) - namerno NE island
-                  pilula: iframe ne zna za safe-area pa bi šira pilula
-                  legla preko headera sajta; z-10 da "hardver" ostane
-                  preko skeletona učitavanja */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute left-1/2 top-2 z-10 size-2.5 -translate-x-1/2 rounded-full bg-ink"
-              />
+              {/* Ekran namerno BEZ kamere/island izreza: iframe ne zna za
+                  safe-area pa bi svaki izrez legao preko sadržaja sajta */}
 
               {/* Home indikator */}
               <span

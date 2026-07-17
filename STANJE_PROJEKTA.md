@@ -10,13 +10,13 @@ dugmadi"):** [phone-preview.tsx](src/app/admin/podesavanja/phone-preview.tsx):
 umesto 3 proizvoljne crtice (2 levo + 1 desno) sada Pixel Pro raspored —
 desno kraće power (h-9) pa duži volume rocker (h-16) ispod, LEVA ivica
 čista; dugmad w-1 rounded-full, proporcije prenete sa pravog uređaja.
-Dodata centrirana punch-hole kamera (size-2.5, top-2, z-10 iznad skeletona
-učitavanja). VAŽNA ODLUKA: prvo isproban iPhone Pro stil (Action+2 volume
+VAŽNA ODLUKA: prvo isproban iPhone Pro stil (Action+2 volume
 levo, power+Camera Control desno + Dynamic Island pilula) — ODBAČEN jer
 iframe ne zna za safe-area pa ŠIROKA island pilula legne preko headera
 sajta (na svetlim temama crna fleka preko naslova = izgleda kao bag);
-mala tačka prekriva zanemarljivo, na tamnim headerima se stopi kao na
-pravom telefonu. Home indikator, staklo-odsjaj, ambijentalni sjaj i hover
+zatim probana i mala punch-hole tačka, ali je Mihajlo tražio i nju van —
+ekran je na kraju POTPUNO ČIST, bez ikakvog izreza (komentar u kodu čuva
+razlog da se izrez ne vrati). Home indikator, staklo-odsjaj, ambijentalni sjaj i hover
 ostaju. VERIFIKOVANO kroz privremenu stranicu (PhonePreview sa slug=demo,
 javna ruta bez prijave): obe ivice, tačka nevidljiva na tamnom headeru,
 konzola čista; 140 unit, lint, tsc, build zeleni; stranica obrisana.
